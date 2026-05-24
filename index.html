@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>BibleBrawl 🎮</title>
+<title>BibleBrawl 🎮 v2</title>
 <!-- PWA Meta Tags -->
 <meta name="application-name" content="BibleBrawl"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -1260,7 +1260,7 @@ async function timeoutQuestion(){
   // Show timeout indicator
   const qBox=document.getElementById('quiz-question');
   const origText=qBox.textContent;
-  qBox.innerHTML='<span style="color:#ef4444;font-size:18px;">⏱ Time's Up! Question forfeited.</span>';
+  qBox.innerHTML='<span style="color:#ef4444;font-size:18px;">&#9200; Time\'s Up! Question forfeited.</span>';
   quizState.answers[quizState.current]={chosen:-1,correct:false,timedOut:true};
   try{
     await db.ref('games/'+myPin+'/players/'+myPlayerId).update({
