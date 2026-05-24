@@ -44,6 +44,7 @@ html,body{min-height:100vh;background:#080b14;color:#e2e8f0;font-family:'DM Sans
 .answer-btn.correct{background:rgba(34,197,94,0.2);border-color:#22c55e;color:#4ade80;}
 .answer-btn.wrong{background:rgba(239,68,68,0.2);border-color:#ef4444;color:#f87171;}
 .answer-btn:disabled{cursor:default;}
+@keyframes spin{to{transform:rotate(360deg);}}
 .progress-bar{height:6px;background:rgba(255,255,255,0.08);border-radius:99px;overflow:hidden;}
 .progress-fill{height:100%;border-radius:99px;transition:width 1s linear;}
 .player-chip{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;margin-bottom:8px;}
@@ -319,17 +320,25 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
 </div>
 
 <!-- ═══ ELIMINATED SCREEN (Survival Mode) ═══ -->
-<div id="page-eliminated" class="page" style="z-index:1;">
-  <div class="fade-in center" style="max-width:420px;width:100%;">
-    <div style="font-size:80px;animation:elimPulse 1s ease infinite;margin-bottom:16px;">💀</div>
-    <h1 class="orbitron" style="font-size:28px;color:#ef4444;margin-bottom:8px;">Eliminated!</h1>
-    <p style="color:#94a3b8;margin-bottom:24px;">One wrong answer was all it took...</p>
-    <div class="glass glow-border" style="border-radius:16px;padding:24px;margin-bottom:16px;">
-      <div style="font-size:13px;color:#64748b;margin-bottom:4px;">Your score before elimination</div>
-      <div class="orbitron" style="font-size:48px;font-weight:900;color:#a855f7;" id="eliminated-score">0</div>
-      <div style="font-size:13px;color:#64748b;margin-top:4px;" id="eliminated-correct">0/0 correct</div>
+<div id="page-eliminated" class="page" style="z-index:1;justify-content:flex-start;padding-top:40px;">
+  <div class="fade-in" style="max-width:480px;width:100%;padding:0 16px 40px;">
+    <div style="text-align:center;margin-bottom:16px;">
+      <div style="font-size:64px;animation:elimPulse 1s ease infinite;margin-bottom:12px;">💀</div>
+      <h1 class="orbitron" style="font-size:26px;color:#ef4444;margin-bottom:6px;">Eliminated!</h1>
+      <p style="color:#94a3b8;margin-bottom:16px;">One wrong answer was all it took...</p>
+      <div class="glass glow-border" style="border-radius:16px;padding:20px;margin-bottom:12px;">
+        <div style="font-size:13px;color:#64748b;margin-bottom:4px;">Your score before elimination</div>
+        <div class="orbitron" style="font-size:48px;font-weight:900;color:#a855f7;" id="eliminated-score">0</div>
+        <div style="font-size:13px;color:#64748b;margin-top:4px;" id="eliminated-correct">0/0 correct</div>
+      </div>
     </div>
-    <p style="font-size:13px;color:#475569;">Taking you to results...</p>
+    <div class="glass glow-border" style="border-radius:16px;padding:20px;margin-bottom:12px;">
+      <div class="label" style="margin-bottom:12px;">📊 LIVE LEADERBOARD — WATCH THE BRAWL</div>
+      <div id="spectator-leaderboard">
+        <div style="text-align:center;color:#475569;padding:20px;font-size:13px;">Loading leaderboard...</div>
+      </div>
+    </div>
+    <p style="text-align:center;color:#475569;font-size:12px;">You will see final results when the game ends</p>
   </div>
 </div>
 
@@ -464,14 +473,96 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
           </div>
         </div>
 
+        <!-- Bulk Import & AI Generate tabs -->
+        <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+          <button class="btn-secondary btn-sm" onclick="toggleImportPanel('bulk')" style="width:auto;padding:9px 16px;">📋 Bulk Import</button>
+          <button class="btn-secondary btn-sm" onclick="toggleImportPanel('ai')" style="width:auto;padding:9px 16px;border-color:rgba(168,85,247,0.5);color:#a855f7;">✨ AI Generate</button>
+          <button class="btn-secondary btn-sm" onclick="toggleImportPanel('csv')" style="width:auto;padding:9px 16px;">📊 CSV Import</button>
+          <button class="btn-danger btn-sm" onclick="clearAllQuestions()" style="width:auto;padding:9px 16px;font-size:13px;">🗑 Clear All</button>
+        </div>
+
+        <!-- BULK IMPORT PANEL -->
+        <div id="import-panel-bulk" style="display:none;background:rgba(59,130,246,0.05);border:1px solid rgba(59,130,246,0.2);border-radius:14px;padding:20px;margin-bottom:16px;">
+          <h4 style="font-size:14px;font-weight:700;margin-bottom:8px;color:#60a5fa;">📋 Bulk Text Import</h4>
+          <p style="font-size:12px;color:#64748b;margin-bottom:12px;">Paste questions in this format (one question per block):</p>
+          <pre style="font-size:11px;color:#94a3b8;background:rgba(0,0,0,0.3);padding:10px;border-radius:8px;margin-bottom:12px;overflow-x:auto;">Q: Who built the ark?
+A: Noah
+B: Moses
+C: David
+D: Solomon
+Answer: A
+
+Q: How many days did creation take?
+A: 5
+B: 6
+C: 7
+D: 8
+Answer: B</pre>
+          <textarea class="input-field" id="bulk-import-text" rows="8" placeholder="Paste your questions here..." style="font-size:13px;font-family:monospace;margin-bottom:12px;"></textarea>
+          <div id="bulk-import-error" style="display:none;color:#f87171;font-size:13px;margin-bottom:8px;"></div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn-primary btn-sm" onclick="processBulkImport()" style="flex:1;">Import Questions</button>
+            <button class="btn-secondary btn-sm" onclick="toggleImportPanel('bulk')" style="width:auto;">Cancel</button>
+          </div>
+        </div>
+
+        <!-- AI GENERATE PANEL -->
+        <div id="import-panel-ai" style="display:none;background:rgba(168,85,247,0.05);border:1px solid rgba(168,85,247,0.3);border-radius:14px;padding:20px;margin-bottom:16px;">
+          <h4 style="font-size:14px;font-weight:700;margin-bottom:4px;color:#a855f7;">✨ AI Question Generator</h4>
+          <p style="font-size:12px;color:#64748b;margin-bottom:14px;">Powered by Claude AI — generates fresh Bible questions instantly</p>
+          <span class="label">BIBLE TOPIC OR BOOK</span>
+          <input class="input-field mb12" id="ai-topic" placeholder="e.g. Book of Daniel, Miracles of Jesus, New Testament, Psalms..."/>
+          <div style="display:flex;gap:12px;margin-bottom:12px;align-items:flex-end;">
+            <div style="flex:1;">
+              <span class="label">NUMBER OF QUESTIONS</span>
+              <select class="input-field" id="ai-count" style="cursor:pointer;">
+                <option value="5">5 questions</option>
+                <option value="10" selected>10 questions</option>
+                <option value="15">15 questions</option>
+                <option value="20">20 questions</option>
+              </select>
+            </div>
+            <div style="flex:1;">
+              <span class="label">DIFFICULTY</span>
+              <select class="input-field" id="ai-difficulty" style="cursor:pointer;">
+                <option value="easy">Easy</option>
+                <option value="medium" selected>Medium</option>
+                <option value="hard">Hard</option>
+                <option value="mixed">Mixed</option>
+              </select>
+            </div>
+          </div>
+          <div id="ai-status" style="display:none;text-align:center;padding:16px;color:#a855f7;font-size:14px;">
+            <div style="font-size:24px;margin-bottom:8px;animation:spin 1s linear infinite;display:inline-block;">✨</div>
+            <div id="ai-status-text">Generating questions...</div>
+          </div>
+          <div id="ai-preview" style="display:none;margin-bottom:12px;">
+            <div style="font-size:13px;color:#4ade80;margin-bottom:8px;" id="ai-preview-label"></div>
+            <div id="ai-preview-list" style="max-height:200px;overflow-y:auto;"></div>
+          </div>
+          <div id="ai-error" style="display:none;color:#f87171;font-size:13px;margin-bottom:8px;"></div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn-primary btn-sm" id="ai-generate-btn" onclick="aiGenerateQuestions()" style="flex:1;background:linear-gradient(135deg,#7c3aed,#ec4899);">✨ Generate with AI</button>
+            <button class="btn-primary btn-sm" id="ai-add-btn" onclick="aiAddToGame()" style="flex:1;display:none;background:linear-gradient(135deg,#15803d,#22c55e);">✅ Add to Game</button>
+            <button class="btn-secondary btn-sm" onclick="toggleImportPanel('ai')" style="width:auto;">Cancel</button>
+          </div>
+        </div>
+
+        <!-- CSV IMPORT PANEL -->
+        <div id="import-panel-csv" style="display:none;background:rgba(234,179,8,0.05);border:1px solid rgba(234,179,8,0.2);border-radius:14px;padding:20px;margin-bottom:16px;">
+          <h4 style="font-size:14px;font-weight:700;margin-bottom:8px;color:#eab308;">📊 CSV Import</h4>
+          <p style="font-size:12px;color:#64748b;margin-bottom:8px;">Upload a CSV file with columns: <code style="color:#94a3b8;">Question, A, B, C, D, Answer</code></p>
+          <p style="font-size:11px;color:#475569;margin-bottom:12px;">Answer column should contain A, B, C or D</p>
+          <input type="file" id="csv-file-input" accept=".csv" style="display:none;" onchange="processCSVImport(this)"/>
+          <div style="display:flex;gap:8px;">
+            <button class="btn-primary btn-sm" onclick="document.getElementById('csv-file-input').click()" style="flex:1;background:linear-gradient(135deg,#92400e,#eab308);color:white;">📁 Choose CSV File</button>
+            <button class="btn-secondary btn-sm" onclick="toggleImportPanel('csv')" style="width:auto;">Cancel</button>
+          </div>
+          <div id="csv-status" style="margin-top:10px;font-size:13px;color:#64748b;"></div>
+        </div>
+
         <!-- Custom questions list -->
         <div id="custom-questions-list"></div>
-
-        <!-- Default questions (read-only accordion) -->
-        <details style="margin-top:16px;">
-          <summary>View 20 built-in fallback questions (only used if you add zero custom questions)</summary>
-          <div id="default-questions-list" style="margin-top:10px;"></div>
-        </details>
       </div>
     </div>
 
@@ -843,12 +934,12 @@ function renderQuestionManager(){
 }
 
 function updateQCountDisplay(){
-  const total=customQuestions.length+DEFAULT_QUESTIONS.length;
+  const total=customQuestions.length;
   const qCount=gameSettings.questionCount;
   const willUse=Math.min(qCount,total);
-  const customUsed=Math.min(customQuestions.length,qCount);
-  let msg=`${customQuestions.length} custom + ${DEFAULT_QUESTIONS.length} default = ${total} available`;
-  if(total<qCount)msg+=` ⚠️ Only ${total} questions available (need ${qCount})`;
+  let msg=`${total} custom question${total!==1?'s':''} added`;
+  if(total===0)msg='⚠️ No questions yet — add questions or use AI Generate below';
+  else if(total<qCount)msg+=` ⚠️ Only ${total} available (need ${qCount} — add more or reduce question count)`;
   else msg+=` — game will use ${willUse}`;
   document.getElementById('qm-summary').textContent=msg;
 }
@@ -1017,6 +1108,21 @@ async function joinGame(){
       errEl.classList.add('show');btn.disabled=false;btn.textContent='Join Game →';return;
     }
     myPin=pin;myNickname=nick;
+    // Check if this nickname was already eliminated in this game (survival mode)
+    const elimSnap=await db.ref('games/'+pin+'/eliminated/'+nick.replace(/[^a-zA-Z0-9]/g,'_')).get();
+    if(elimSnap.exists()&&g.settings&&g.settings.gameMode==='survival'&&g.status==='active'){
+      // Already eliminated — go straight to spectator view
+      myPlayerId=elimSnap.val().playerId||('player_'+Date.now());
+      activeQuestions=[];
+      gameSettings=g.settings||{};
+      quizState={current:0,score:elimSnap.val().score||0,correctCount:elimSnap.val().correctCount||0,answers:{},selected:null,finished:false,eliminated:true};
+      showPage('eliminated');
+      document.getElementById('eliminated-score').textContent=quizState.score;
+      document.getElementById('eliminated-correct').textContent=(quizState.correctCount||0)+' correct';
+      startSpectatorMode();
+      btn.disabled=false;btn.textContent='Join Game →';
+      return;
+    }
     myPlayerId='player_'+Date.now()+'_'+Math.random().toString(36).substr(2,5);
     await db.ref('games/'+pin+'/players/'+myPlayerId).set({
       id:myPlayerId,nickname:nick,score:0,correctCount:0,
@@ -1146,9 +1252,16 @@ async function timeoutQuestion(){
   clearInterval(questionTimerInterval);
   quizState.selected=-1;
   const q=activeQuestions[quizState.current];
-  document.querySelectorAll('.answer-btn').forEach(b=>b.disabled=true);
-  if(q)document.getElementById('opt-'+q.answer).classList.add('correct');
-  quizState.answers[quizState.current]={chosen:-1,correct:false};
+  // Show "Time's Up" flash on all buttons — no correct answer revealed, question forfeited
+  document.querySelectorAll('.answer-btn').forEach(b=>{
+    b.disabled=true;
+    b.style.opacity='0.4';
+  });
+  // Show timeout indicator
+  const qBox=document.getElementById('quiz-question');
+  const origText=qBox.textContent;
+  qBox.innerHTML='<span style="color:#ef4444;font-size:18px;">⏱ Time's Up! Question forfeited.</span>';
+  quizState.answers[quizState.current]={chosen:-1,correct:false,timedOut:true};
   try{
     await db.ref('games/'+myPin+'/players/'+myPlayerId).update({
       score:quizState.score,correctCount:quizState.correctCount,answers:quizState.answers
@@ -1159,7 +1272,7 @@ async function timeoutQuestion(){
     if(next>=activeQuestions.length){finishQuiz();return;}
     quizState.current=next;quizState.selected=null;
     renderQuestion();startQuestionTimer();
-  },900);
+  },1200);
 }
 
 function renderQuestion(){
@@ -1243,15 +1356,48 @@ async function handleAnswer(idx){
   },900);
 }
 
-function eliminatePlayer(){
+async function eliminatePlayer(){
   quizState.eliminated=true;
   clearInterval(quizTimerInterval);
   clearInterval(questionTimerInterval);
   db.ref('games/'+myPin+'/status').off();
+  // Persist elimination permanently so rejoining is blocked
+  const nickKey=myNickname.replace(/[^a-zA-Z0-9]/g,'_');
+  try{
+    await db.ref('games/'+myPin+'/eliminated/'+nickKey).set({
+      playerId:myPlayerId,nickname:myNickname,
+      score:quizState.score,correctCount:quizState.correctCount,
+      eliminatedAt:Date.now()
+    });
+  }catch(e){}
   showPage('eliminated');
   document.getElementById('eliminated-score').textContent=quizState.score;
   document.getElementById('eliminated-correct').textContent=quizState.correctCount+'/'+activeQuestions.length+' correct';
-  setTimeout(()=>goToResults(),3000);
+  startSpectatorMode();
+}
+
+function startSpectatorMode(){
+  // Live leaderboard on eliminated screen that updates in real time
+  db.ref('games/'+myPin+'/players').on('value',snap=>{
+    const players=Object.values(snap.val()||{}).sort((a,b)=>b.score-a.score);
+    const lb=document.getElementById('spectator-leaderboard');
+    if(!lb)return;
+    lb.innerHTML=players.map((p,i)=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(255,255,255,0.03);border-radius:10px;margin-bottom:6px;">
+        <span style="font-size:13px;color:#64748b;min-width:20px;">${i+1}</span>
+        <div class="avatar" style="width:28px;height:28px;background:${avatarColor(p.nickname)}30;color:${avatarColor(p.nickname)};font-size:11px;">${p.nickname[0].toUpperCase()}</div>
+        <span style="flex:1;font-size:13px;${p.id===myPlayerId?'font-weight:700;color:#a855f7;':''}">${escHtml(p.nickname)}${p.eliminated?' 💀':''}</span>
+        <span style="font-size:14px;font-weight:700;color:#4ade80;">${p.score}</span>
+      </div>`).join('');
+  });
+  // Watch for game end
+  db.ref('games/'+myPin+'/status').on('value',snap=>{
+    if(snap.val()==='ended'){
+      db.ref('games/'+myPin+'/players').off();
+      db.ref('games/'+myPin+'/status').off();
+      goToResults();
+    }
+  });
 }
 
 async function finishQuiz(){
@@ -1332,6 +1478,144 @@ initParticles();
 
 // Set initial mode description on setup page
 selectPill('setting-mode','classic');
+
+// ══════════════════════════════════════════
+// QUESTION IMPORT — HELPERS
+// ══════════════════════════════════════════
+function toggleImportPanel(type){
+  ['bulk','ai','csv'].forEach(t=>{
+    const p=document.getElementById('import-panel-'+t);
+    if(p)p.style.display=(t===type&&p.style.display==='none')?'block':'none';
+  });
+}
+
+async function clearAllQuestions(){
+  if(!confirm('Delete ALL custom questions? This cannot be undone.'))return;
+  customQuestions=[];
+  await db.ref('games/'+myPin+'/customQuestions').remove();
+  renderCustomQuestionList();
+  updateQCountDisplay();
+}
+
+async function importQuestionsToGame(questions){
+  let added=0;
+  for(const q of questions){
+    const id='cq_'+Date.now()+'_'+Math.random().toString(36).substr(2,4);
+    const newQ={id,q:q.q,options:q.options,answer:q.answer};
+    customQuestions.push(newQ);
+    await db.ref('games/'+myPin+'/customQuestions/'+id).set(newQ);
+    added++;
+  }
+  renderCustomQuestionList();
+  updateQCountDisplay();
+  return added;
+}
+
+async function processBulkImport(){
+  const raw=document.getElementById('bulk-import-text').value.trim();
+  const errEl=document.getElementById('bulk-import-error');
+  errEl.style.display='none';
+  if(!raw){errEl.textContent='Please paste some questions first.';errEl.style.display='block';return;}
+  const blocks=raw.split(/\n\s*\n/).map(b=>b.trim()).filter(Boolean);
+  const parsed=[];const errors=[];
+  blocks.forEach((block,bi)=>{
+    const lines=block.split('\n').map(l=>l.trim()).filter(Boolean);
+    let q='',opts=[],ans=-1;
+    lines.forEach(line=>{
+      if(/^Q:/i.test(line)) q=line.replace(/^Q:\s*/i,'').trim();
+      else if(/^A:/i.test(line)) opts[0]=line.replace(/^A:\s*/i,'').trim();
+      else if(/^B:/i.test(line)) opts[1]=line.replace(/^B:\s*/i,'').trim();
+      else if(/^C:/i.test(line)) opts[2]=line.replace(/^C:\s*/i,'').trim();
+      else if(/^D:/i.test(line)) opts[3]=line.replace(/^D:\s*/i,'').trim();
+      else if(/^Answer:/i.test(line)){const a=line.replace(/^Answer:\s*/i,'').trim().toUpperCase();ans='ABCD'.indexOf(a);}
+    });
+    if(!q||opts.length<4||opts.some(o=>!o)||ans===-1)errors.push('Block '+(bi+1)+': incomplete');
+    else parsed.push({q,options:opts,answer:ans});
+  });
+  if(parsed.length===0){errEl.textContent='Could not parse any questions. Check format. '+errors.join('; ');errEl.style.display='block';return;}
+  const btn=document.querySelector('#import-panel-bulk .btn-primary');
+  btn.disabled=true;btn.textContent='Importing...';
+  const added=await importQuestionsToGame(parsed);
+  btn.disabled=false;btn.textContent='Import Questions';
+  document.getElementById('bulk-import-text').value='';
+  toggleImportPanel('bulk');
+  alert('Imported '+added+' question'+(added!==1?'s':'')+'!'+(errors.length?' ('+errors.length+' blocks skipped)':''));
+}
+
+async function processCSVImport(input){
+  const file=input.files[0];if(!file)return;
+  const statusEl=document.getElementById('csv-status');
+  statusEl.textContent='Reading file...';
+  const text=await file.text();
+  const lines=text.split('\n').map(l=>l.trim()).filter(Boolean);
+  if(lines.length<2){statusEl.textContent='File appears empty.';return;}
+  const parsed=[];const errors=[];
+  lines.slice(1).forEach((line,i)=>{
+    const cols=line.split(',').map(c=>c.replace(/^"|"$/g,'').trim());
+    if(cols.length<6){errors.push('Row '+(i+2)+': not enough columns');return;}
+    const [q,a,b,c,d,ansLetter]=cols;
+    const ans='ABCD'.indexOf((ansLetter||'').toUpperCase());
+    if(!q||!a||!b||!c||!d||ans===-1){errors.push('Row '+(i+2)+': invalid');return;}
+    parsed.push({q,options:[a,b,c,d],answer:ans});
+  });
+  if(parsed.length===0){statusEl.textContent='No valid questions found. '+errors.join('; ');return;}
+  statusEl.textContent='Importing '+parsed.length+' questions...';
+  const added=await importQuestionsToGame(parsed);
+  statusEl.textContent='Imported '+added+' question'+(added!==1?'s':'')+'!'+(errors.length?' ('+errors.length+' skipped)':'');
+  input.value='';toggleImportPanel('csv');
+}
+
+let aiGeneratedQuestions=[];
+async function aiGenerateQuestions(){
+  const topic=document.getElementById('ai-topic').value.trim();
+  const count=document.getElementById('ai-count').value;
+  const difficulty=document.getElementById('ai-difficulty').value;
+  const errEl=document.getElementById('ai-error');
+  const statusEl=document.getElementById('ai-status');
+  const previewEl=document.getElementById('ai-preview');
+  errEl.style.display='none';previewEl.style.display='none';
+  if(!topic){errEl.textContent='Please enter a Bible topic or book.';errEl.style.display='block';return;}
+  const genBtn=document.getElementById('ai-generate-btn');
+  const addBtn=document.getElementById('ai-add-btn');
+  genBtn.disabled=true;genBtn.textContent='Generating...';
+  statusEl.style.display='block';
+  document.getElementById('ai-status-text').textContent='Claude AI is crafting your questions...';
+  const prompt='You are a Bible quiz expert. Generate exactly '+count+' multiple-choice Bible quiz questions about: "'+topic+'". Difficulty: '+difficulty+'. Rules: factually accurate, 4 options per question, only one correct answer, plausible wrong answers, vary question styles. Respond ONLY with a valid JSON array, no other text, no markdown, no backticks: [{"q":"Question?","options":["A","B","C","D"],"answer":0},...] where answer is the 0-based index of the correct option.';
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})
+    });
+    const data=await res.json();
+    const raw=data.content&&data.content[0]&&data.content[0].text;
+    if(!raw)throw new Error('No response from AI');
+    const cleaned=raw.replace(/```json|```/g,'').trim();
+    const questions=JSON.parse(cleaned);
+    if(!Array.isArray(questions)||questions.length===0)throw new Error('Invalid response format');
+    aiGeneratedQuestions=questions.filter(q=>q.q&&Array.isArray(q.options)&&q.options.length===4&&typeof q.answer==='number');
+    if(aiGeneratedQuestions.length===0)throw new Error('No valid questions in response');
+    document.getElementById('ai-preview-label').textContent=aiGeneratedQuestions.length+' questions generated — preview below:';
+    document.getElementById('ai-preview-list').innerHTML=aiGeneratedQuestions.map((q,i)=>'<div style="padding:8px 10px;background:rgba(168,85,247,0.08);border-radius:8px;margin-bottom:6px;font-size:12px;"><div style="font-weight:600;color:#e2e8f0;margin-bottom:4px;">'+(i+1)+'. '+escHtml(q.q)+'</div><div style="color:#64748b;">'+q.options.map((o,oi)=>'<span style="color:'+(oi===q.answer?'#4ade80':'#64748b')+'">'+'ABCD'[oi]+': '+escHtml(o)+(oi===q.answer?' ✓':'')+'</span>').join(' · ')+'</div></div>').join('');
+    previewEl.style.display='block';addBtn.style.display='';genBtn.textContent='Regenerate';
+  }catch(e){
+    errEl.textContent='AI Error: '+(e.message||'Unknown error. Try again.');errEl.style.display='block';genBtn.textContent='Generate with AI';
+  }
+  genBtn.disabled=false;statusEl.style.display='none';
+}
+
+async function aiAddToGame(){
+  if(!aiGeneratedQuestions.length)return;
+  const addBtn=document.getElementById('ai-add-btn');
+  addBtn.disabled=true;addBtn.textContent='Adding...';
+  const added=await importQuestionsToGame(aiGeneratedQuestions);
+  addBtn.disabled=false;aiGeneratedQuestions=[];
+  document.getElementById('ai-preview').style.display='none';
+  addBtn.style.display='none';
+  document.getElementById('ai-generate-btn').textContent='Generate with AI';
+  document.getElementById('ai-topic').value='';
+  toggleImportPanel('ai');
+  alert(added+' AI-generated question'+(added!==1?'s':'')+' added to your game!');
+}
 
 // PWA SERVICE WORKER
 if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});}
