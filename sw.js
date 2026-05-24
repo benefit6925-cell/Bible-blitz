@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bible-blitz-v1';
+const CACHE_NAME = 'biblebrawl-v3';
 const STATIC_ASSETS = [
   '/Bible-blitz/',
   '/Bible-blitz/index.html',
