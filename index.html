@@ -354,6 +354,7 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
         <button class="btn-primary btn-sm" id="admin-start-btn" onclick="adminStartGame()" style="background:linear-gradient(135deg,#15803d,#22c55e);">▶ Start Game</button>
         <button class="btn-danger" id="admin-end-btn" onclick="adminEndGame()" style="display:none;">⏹ End Game</button>
         <button class="btn-secondary btn-sm" onclick="adminReset()">↺ Reset</button>
+        <button class="btn-secondary btn-sm" onclick="adminCloseRoom()" style="border-color:rgba(239,68,68,0.4);color:#f87171;">✕ Close Room</button>
       </div>
     </div>
 
@@ -456,7 +457,7 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
 
         <!-- Default questions (read-only accordion) -->
         <details style="margin-top:16px;">
-          <summary>View 20 built-in default questions</summary>
+          <summary>View 20 built-in fallback questions (only used if you add zero custom questions)</summary>
           <div id="default-questions-list" style="margin-top:10px;"></div>
         </details>
       </div>
@@ -471,7 +472,16 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
 // ══════════════════════════════════════════
 // FIREBASE CONFIG
 // ══════════════════════════════════════════
-const firebaseConfig={databaseURL:"https://bible-blitz-default-rtdb.firebaseio.com/"};
+const firebaseConfig={
+  apiKey:"AIzaSyC5mWTJYnQRZJ8BxGx9xQ4Xm2dQUIyjIfM",
+  authDomain:"bible-blitz.firebaseapp.com",
+  databaseURL:"https://bible-blitz-default-rtdb.firebaseio.com",
+  projectId:"bible-blitz",
+  storageBucket:"bible-blitz.firebasestorage.app",
+  messagingSenderId:"287293986494",
+  appId:"1:287293986494:web:cc2332e5edac83ae0470ef",
+  measurementId:"G-76PMZ0RBTL"
+};
 firebase.initializeApp(firebaseConfig);
 const db=firebase.database();
 
@@ -758,8 +768,8 @@ async function adminStartGame(){
     // Load custom questions
     const snap=await db.ref('games/'+myPin+'/customQuestions').get();
     const custom=snap.val()?Object.values(snap.val()):[];
-    // Build pool: custom first, then defaults
-    const pool=[...custom,...DEFAULT_QUESTIONS];
+    // Build pool: custom only; fall back to defaults only if admin has added zero questions
+    const pool=custom.length>0?custom:[...DEFAULT_QUESTIONS];
     const seed=Date.now();
     const shuffled=seededShuffle(pool,seed);
     const qCount=gameSettings.questionCount||20;
@@ -791,6 +801,21 @@ async function adminReset(){
   document.getElementById('admin-end-btn').style.display='none';
   document.getElementById('admin-timer').textContent='—';
   document.getElementById('admin-timer').style.color='';
+}
+
+async function adminCloseRoom(){
+  if(!confirm('Close this room and go back to the home screen? All players will be disconnected.'))return;
+  clearInterval(adminTimerInterval);
+  clearInterval(questionTimerInterval);
+  try{
+    await db.ref('games/'+myPin).update({status:'ended'});
+    await db.ref('games/'+myPin+'/players').remove();
+    if(gameRef)gameRef.off();
+    if(playersRef)playersRef.off();
+  }catch(e){}
+  myPin=null;isHost=false;gameSettings={questionCount:20,timerDuration:120,gameMode:'classic',scoringMode:'standard'};
+  activeQuestions=[];customQuestions=[];
+  showPage('landing');
 }
 
 // ══════════════════════════════════════════
