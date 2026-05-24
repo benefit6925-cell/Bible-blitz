@@ -4,6 +4,18 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Bible Blitz 🎮</title>
+<!-- PWA Meta Tags -->
+<meta name="application-name" content="Bible Blitz"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Bible Blitz"/>
+<meta name="description" content="The ultimate multiplayer Bible quiz game. Play with friends anywhere in the world!"/>
+<meta name="theme-color" content="#7c3aed"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<link rel="manifest" href="manifest.json"/>
+<meta property="og:title" content="Bible Blitz 🎮"/>
+<meta property="og:description" content="The ultimate multiplayer Bible quiz — play with friends anywhere!"/>
+<meta property="og:type" content="website"/>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
@@ -1320,6 +1332,25 @@ initParticles();
 
 // Set initial mode description on setup page
 selectPill('setting-mode','classic');
+
+// PWA SERVICE WORKER
+if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});}
+
+let deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;setTimeout(()=>{const b=document.getElementById('pwa-install-banner');if(b)b.style.display='flex';},3000);});
+
+function installApp(){const b=document.getElementById('pwa-install-banner');if(b)b.style.display='none';if(deferredPrompt){deferredPrompt.prompt();deferredPrompt.userChoice.then(()=>{deferredPrompt=null;});}}
+
+function dismissInstallBanner(){const b=document.getElementById('pwa-install-banner');if(b)b.style.display='none';}
+
+window.addEventListener('appinstalled',()=>{const b=document.getElementById('pwa-install-banner');if(b)b.style.display='none';deferredPrompt=null;});
 </script>
+<!-- PWA Install Banner -->
+<div id="pwa-install-banner" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:9999;background:linear-gradient(135deg,#7c3aed,#a855f7);border-radius:16px;padding:14px 20px;box-shadow:0 0 40px #a855f760;align-items:center;gap:14px;max-width:360px;width:calc(100% - 40px);">
+  <div style="font-size:28px;">✝</div>
+  <div style="flex:1;"><div style="font-weight:700;color:white;font-size:14px;font-family:DM Sans,sans-serif;">Install Bible Blitz</div><div style="color:rgba(255,255,255,0.8);font-size:12px;font-family:DM Sans,sans-serif;">Add to your home screen for quick access!</div></div>
+  <button onclick="installApp()" style="background:white;color:#7c3aed;border:none;border-radius:8px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer;font-family:DM Sans,sans-serif;white-space:nowrap;">Install</button>
+  <button onclick="dismissInstallBanner()" style="background:none;border:none;color:white;font-size:18px;cursor:pointer;padding:0 4px;">✕</button>
+</div>
 </body>
 </html>

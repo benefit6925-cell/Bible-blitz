@@ -1,0 +1,28 @@
+{
+  "name": "Bible Blitz",
+  "short_name": "Bible Blitz",
+  "description": "The ultimate multiplayer Bible quiz game. Play with friends anywhere in the world!",
+  "start_url": "/Bible-blitz/",
+  "scope": "/Bible-blitz/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#080b14",
+  "theme_color": "#7c3aed",
+  "categories": ["games", "education"],
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='32' fill='%237c3aed'/><text x='96' y='140' font-size='120' text-anchor='middle' fill='white'>✝</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='80' fill='%237c3aed'/><text x='256' y='370' font-size='320' text-anchor='middle' fill='white'>✝</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "lang": "en"
+}
