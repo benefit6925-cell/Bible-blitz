@@ -1,0 +1,1300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Bible Blitz 🎮</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{min-height:100vh;background:#080b14;color:#e2e8f0;font-family:'DM Sans',sans-serif;}
+#app{min-height:100vh;background:radial-gradient(ellipse at 20% 20%,#1a0533 0%,#080b14 50%,#001133 100%);position:relative;}
+.orbitron{font-family:'Orbitron',monospace;}
+.neon-text{color:#a855f7;text-shadow:0 0 20px #a855f780,0 0 40px #a855f740;}
+.neon-green{color:#4ade80;text-shadow:0 0 20px #22c55e80;}
+.glass{background:rgba(255,255,255,0.03);backdrop-filter:blur(12px);}
+.glow-border{border:1px solid #a855f740;box-shadow:0 0 20px #a855f720,inset 0 0 20px #a855f708;}
+.glow-border-green{border:1px solid #22c55e60;box-shadow:0 0 20px #22c55e20;}
+.btn-primary{background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;color:white;padding:14px 32px;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer;transition:all 0.2s;box-shadow:0 0 30px #a855f740;font-family:'DM Sans',sans-serif;letter-spacing:0.5px;width:100%;}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 0 50px #a855f760;}
+.btn-primary:disabled{opacity:0.5;cursor:not-allowed;transform:none;}
+.btn-secondary{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#cbd5e1;padding:14px 32px;border-radius:12px;font-size:16px;font-weight:500;cursor:pointer;transition:all 0.2s;font-family:'DM Sans',sans-serif;width:100%;}
+.btn-secondary:hover{background:rgba(255,255,255,0.1);color:white;}
+.btn-danger{background:linear-gradient(135deg,#991b1b,#dc2626);border:none;color:white;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.btn-sm{padding:10px 20px;font-size:14px;width:auto;}
+.input-field{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:white;padding:14px 18px;border-radius:12px;font-size:16px;width:100%;outline:none;transition:all 0.2s;font-family:'DM Sans',sans-serif;}
+.input-field:focus{border-color:#a855f7;box-shadow:0 0 20px #a855f730;}
+.input-field::placeholder{color:#475569;}
+.answer-btn{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:#e2e8f0;padding:18px 24px;border-radius:14px;font-size:16px;font-weight:500;cursor:pointer;transition:all 0.25s;text-align:left;width:100%;font-family:'DM Sans',sans-serif;margin-bottom:10px;display:block;}
+.answer-btn:hover:not(:disabled){background:rgba(168,85,247,0.15);border-color:#a855f780;transform:translateX(4px);}
+.answer-btn.correct{background:rgba(34,197,94,0.2);border-color:#22c55e;color:#4ade80;}
+.answer-btn.wrong{background:rgba(239,68,68,0.2);border-color:#ef4444;color:#f87171;}
+.answer-btn:disabled{cursor:default;}
+.progress-bar{height:6px;background:rgba(255,255,255,0.08);border-radius:99px;overflow:hidden;}
+.progress-fill{height:100%;border-radius:99px;transition:width 1s linear;}
+.player-chip{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;}
+.rank-badge{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;}
+.page{display:none;min-height:100vh;padding:24px 20px;}
+.page.active{display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.page-top{display:none;min-height:100vh;padding:20px;}
+.page-top.active{display:block;}
+.card{background:rgba(255,255,255,0.03);backdrop-filter:blur(12px);border:1px solid #a855f740;box-shadow:0 0 20px #a855f720;border-radius:20px;padding:32px;width:100%;max-width:460px;}
+.error-box{margin-top:12px;background:rgba(239,68,68,0.15);border:1px solid #ef444440;border-radius:10px;padding:12px 16px;color:#f87171;font-size:14px;display:none;}
+.error-box.show{display:block;}
+.timer-bar{height:4px;background:rgba(255,255,255,0.05);transition:none;}
+.timer-fill{height:100%;background:#a855f7;transition:width 0.5s linear,background 0.5s;}
+.winner-glow{animation:winnerPulse 2s ease infinite;}
+.stat-card{background:rgba(255,255,255,0.03);border:1px solid #a855f740;border-radius:14px;padding:14px 18px;}
+@keyframes winnerPulse{0%,100%{box-shadow:0 0 30px #eab30880;border-color:#eab308;}50%{box-shadow:0 0 60px #eab308cc;border-color:#fbbf24;}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+@keyframes floatUp{from{transform:translateY(100vh) scale(0);opacity:0;}10%{opacity:1;}90%{opacity:0.5;}to{transform:translateY(-100px) scale(1);opacity:0;}}
+@keyframes confettiFall{from{transform:translateY(-20px) rotate(0deg);opacity:1;}to{transform:translateY(100vh) rotate(720deg);opacity:0;}}
+@keyframes timerPulse{0%,100%{text-shadow:0 0 20px #ef444480;}50%{text-shadow:0 0 40px #ef4444cc;}}
+@keyframes elimPulse{0%,100%{opacity:1;}50%{opacity:0.6;}}
+.timer-critical{color:#ef4444!important;animation:timerPulse 0.5s ease infinite;}
+.fade-in{animation:fadeIn 0.4s ease forwards;}
+.particle{position:fixed;border-radius:50%;pointer-events:none;animation:floatUp linear infinite;z-index:0;}
+.confetti-p{position:fixed;width:8px;height:8px;border-radius:2px;pointer-events:none;z-index:999;animation:confettiFall linear forwards;}
+.center{text-align:center;}
+.mt8{margin-top:8px;}.mt12{margin-top:12px;}.mt16{margin-top:16px;}.mt20{margin-top:20px;}.mt24{margin-top:24px;}.mt32{margin-top:32px;}
+.mb8{margin-bottom:8px;}.mb12{margin-bottom:12px;}.mb16{margin-bottom:16px;}.mb24{margin-bottom:24px;}.mb32{margin-bottom:32px;}
+.label{font-size:13px;color:#94a3b8;margin-bottom:8px;display:block;letter-spacing:0.5px;}
+.muted{color:#64748b;}
+.flex{display:flex;}.flex-center{display:flex;align-items:center;}
+.gap8{gap:8px;}.gap12{gap:12px;}.gap16{gap:16px;}
+.flex1{flex:1;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+@media(max-width:600px){.grid2{grid-template-columns:1fr;}}
+.leaderboard-row{display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(255,255,255,0.03);border-radius:12px;border:1px solid rgba(255,255,255,0.05);margin-bottom:8px;}
+.scroll-box{max-height:320px;overflow-y:auto;}
+.scroll-box::-webkit-scrollbar{width:3px;}
+.scroll-box::-webkit-scrollbar-thumb{background:#a855f740;border-radius:2px;}
+.pin-display{font-family:'Orbitron',monospace;font-size:28px;color:#a855f7;letter-spacing:4px;text-align:center;margin-top:8px;}
+.status-dot{width:10px;height:10px;border-radius:50%;background:#22c55e;display:inline-block;margin-right:8px;animation:pulse 1.5s ease infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+
+/* ── PILL SELECTORS (game settings) ── */
+.pill-group{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;}
+.pill{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#94a3b8;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;transition:all 0.2s;font-family:'DM Sans',sans-serif;}
+.pill.active{background:rgba(168,85,247,0.2);border-color:#a855f7;color:#a855f7;box-shadow:0 0 10px #a855f720;}
+.pill:hover:not(.active){background:rgba(255,255,255,0.09);}
+
+/* ── ADMIN TABS ── */
+.admin-tabs{display:flex;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:20px;gap:4px;}
+.admin-tab{background:none;border:none;border-bottom:2px solid transparent;color:#64748b;padding:10px 18px;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif;font-weight:500;transition:all 0.2s;margin-bottom:-1px;}
+.admin-tab.active{color:#a855f7;border-bottom-color:#a855f7;}
+.admin-tab:hover:not(.active){color:#94a3b8;}
+.admin-tab-panel{display:none;}
+.admin-tab-panel.active{display:block;}
+
+/* ── QUESTION MANAGER ── */
+.q-row{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px 16px;margin-bottom:8px;transition:border-color 0.2s;}
+.q-row:hover{border-color:rgba(168,85,247,0.3);}
+.q-edit-btn{background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.3);color:#a855f7;padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.2s;}
+.q-edit-btn:hover{background:rgba(168,85,247,0.2);}
+.q-del-btn{background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#ef4444;padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.2s;}
+.q-del-btn:hover{background:rgba(239,68,68,0.2);}
+.qf-answer-pill{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#94a3b8;padding:7px 16px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Orbitron',monospace;transition:all 0.2s;}
+.qf-answer-pill.active{background:rgba(34,197,94,0.2);border-color:#22c55e;color:#4ade80;}
+
+/* ── LIGHTNING TIMER ── */
+.q-timer-wrap{display:flex;flex-direction:column;align-items:center;min-width:80px;}
+.q-timer-bar-wrap{height:4px;background:rgba(255,255,255,0.05);width:60px;border-radius:2px;overflow:hidden;margin-top:4px;}
+.q-timer-bar-fill{height:100%;background:#eab308;transition:width 0.1s linear,background 0.1s;}
+
+/* ── MODE TAGS ── */
+.mode-tag{display:inline-block;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;}
+.mode-classic{background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);color:#60a5fa;}
+.mode-lightning{background:rgba(234,179,8,0.15);border:1px solid rgba(234,179,8,0.3);color:#fbbf24;}
+.mode-survival{background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#f87171;}
+
+/* ── SETTINGS SUMMARY CHIPS ── */
+.setting-chip{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:5px 10px;font-size:12px;color:#94a3b8;}
+
+/* ── DEFAULT Q ACCORDION ── */
+details>summary{list-style:none;cursor:pointer;color:#64748b;font-size:13px;padding:8px 0;user-select:none;}
+details>summary::-webkit-details-marker{display:none;}
+details>summary::before{content:'▶ ';font-size:10px;}
+details[open]>summary::before{content:'▼ ';font-size:10px;}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- PARTICLES -->
+<div id="particles" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0;"></div>
+<div id="confetti-container" style="position:fixed;inset:0;pointer-events:none;z-index:999;"></div>
+
+<!-- ═══ LANDING PAGE ═══ -->
+<div id="page-landing" class="page active" style="z-index:1;">
+  <div class="fade-in center" style="max-width:480px;width:100%;">
+    <div class="flex-center gap12" style="justify-content:center;margin-bottom:32px;">
+      <div style="width:56px;height:56px;background:linear-gradient(135deg,#7c3aed,#ec4899);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 0 30px #a855f760;">✝</div>
+      <span class="orbitron neon-text" style="font-size:30px;letter-spacing:2px;">BIBLE BLITZ</span>
+    </div>
+    <p style="color:#94a3b8;font-size:17px;line-height:1.6;margin-bottom:40px;">The ultimate multiplayer Bible quiz — play with friends anywhere in the world!</p>
+    <div style="display:flex;flex-direction:column;gap:14px;max-width:320px;margin:0 auto;">
+      <button class="btn-primary" style="font-size:18px;padding:18px;" onclick="showPage('host-setup')">🎮 Host a Game</button>
+      <button class="btn-secondary" style="font-size:18px;padding:18px;" onclick="showPage('join')">✋ Join a Game</button>
+    </div>
+    <div class="flex-center gap8" style="justify-content:center;margin-top:48px;gap:40px;">
+      <div class="center"><div class="orbitron neon-text" style="font-size:28px;">10-40</div><div style="font-size:13px;color:#64748b;margin-top:4px;">Questions</div></div>
+      <div class="center"><div class="orbitron neon-text" style="font-size:28px;">3</div><div style="font-size:13px;color:#64748b;margin-top:4px;">Game Modes</div></div>
+      <div class="center"><div class="orbitron neon-text" style="font-size:28px;">∞</div><div style="font-size:13px;color:#64748b;margin-top:4px;">Players</div></div>
+    </div>
+    <div style="margin-top:24px;display:flex;justify-content:center;gap:8px;flex-wrap:wrap;">
+      <span class="mode-tag mode-classic">🎮 Classic</span>
+      <span class="mode-tag mode-lightning">⚡ Lightning</span>
+      <span class="mode-tag mode-survival">💀 Survival</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ HOST SETUP ═══ -->
+<div id="page-host-setup" class="page" style="z-index:1;padding:24px 20px 60px;justify-content:flex-start;align-items:center;">
+  <div class="fade-in" style="width:100%;max-width:500px;margin-top:20px;">
+    <button onclick="showPage('landing')" style="background:none;border:none;color:#64748b;cursor:pointer;margin-bottom:24px;font-size:14px;font-family:'DM Sans',sans-serif;">← Back</button>
+    <div class="flex-center gap12 mb32">
+      <div style="width:36px;height:36px;background:linear-gradient(135deg,#7c3aed,#ec4899);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">✝</div>
+      <span class="orbitron neon-text" style="font-size:20px;letter-spacing:2px;">BIBLE BLITZ</span>
+    </div>
+
+    <!-- Room Info -->
+    <div class="card mb16">
+      <h2 style="font-size:22px;font-weight:700;margin-bottom:6px;">Create Game Room</h2>
+      <p class="muted mb24" style="font-size:14px;">Set a PIN — players will use this to join</p>
+      <span class="label">YOUR NAME (HOST)</span>
+      <input class="input-field mb16" id="host-name" placeholder="e.g. Pastor John" maxlength="20"/>
+      <span class="label">GAME PIN (you choose)</span>
+      <input class="input-field" id="host-pin" placeholder="e.g. NEXUS24" maxlength="12" oninput="this.value=this.value.toUpperCase()" style="font-size:22px;letter-spacing:4px;text-align:center;font-family:'Orbitron',monospace;"/>
+      <div class="error-box" id="host-error"></div>
+    </div>
+
+    <!-- Game Settings -->
+    <div class="card mb16" style="max-width:500px;">
+      <h3 style="font-size:16px;font-weight:700;margin-bottom:20px;">⚙️ Game Settings</h3>
+
+      <span class="label">NUMBER OF QUESTIONS</span>
+      <div class="pill-group" id="setting-count">
+        <button class="pill" data-value="10" onclick="selectPill('setting-count','10')">10</button>
+        <button class="pill active" data-value="20" onclick="selectPill('setting-count','20')">20</button>
+        <button class="pill" data-value="30" onclick="selectPill('setting-count','30')">30</button>
+        <button class="pill" data-value="40" onclick="selectPill('setting-count','40')">40</button>
+      </div>
+
+      <span class="label">GAME TIMER</span>
+      <div class="pill-group" id="setting-timer">
+        <button class="pill" data-value="60" onclick="selectPill('setting-timer','60')">1 min</button>
+        <button class="pill active" data-value="120" onclick="selectPill('setting-timer','120')">2 min</button>
+        <button class="pill" data-value="180" onclick="selectPill('setting-timer','180')">3 min</button>
+        <button class="pill" data-value="300" onclick="selectPill('setting-timer','300')">5 min</button>
+        <button class="pill" data-value="600" onclick="selectPill('setting-timer','600')">10 min</button>
+      </div>
+      <p style="font-size:12px;color:#475569;margin-top:-10px;margin-bottom:16px;">⚡ Lightning mode uses per-question timer instead</p>
+
+      <span class="label">GAME MODE</span>
+      <div class="pill-group" id="setting-mode">
+        <button class="pill active" data-value="classic" onclick="selectPill('setting-mode','classic')">🎮 Classic</button>
+        <button class="pill" data-value="lightning" onclick="selectPill('setting-mode','lightning')">⚡ Lightning</button>
+        <button class="pill" data-value="survival" onclick="selectPill('setting-mode','survival')">💀 Survival</button>
+      </div>
+      <div id="mode-desc" style="font-size:12px;color:#64748b;margin-top:-8px;margin-bottom:16px;padding:8px 12px;background:rgba(255,255,255,0.02);border-radius:8px;"></div>
+
+      <span class="label">SCORING</span>
+      <div class="pill-group" id="setting-scoring">
+        <button class="pill active" data-value="standard" onclick="selectPill('setting-scoring','standard')">📊 Standard</button>
+        <button class="pill" data-value="speed" onclick="selectPill('setting-scoring','speed')">⚡ Speed Bonus</button>
+      </div>
+      <p style="font-size:12px;color:#475569;margin-top:-10px;">Speed Bonus: faster answers earn more points</p>
+    </div>
+
+    <button class="btn-primary" id="host-create-btn" onclick="createGame()" style="max-width:500px;">Create Game Room →</button>
+    <p class="center muted mt16" style="font-size:13px;">After creating, share the PIN with your players</p>
+  </div>
+</div>
+
+<!-- ═══ JOIN PAGE ═══ -->
+<div id="page-join" class="page" style="z-index:1;">
+  <div class="fade-in" style="width:100%;max-width:460px;">
+    <button onclick="showPage('landing')" style="background:none;border:none;color:#64748b;cursor:pointer;margin-bottom:24px;font-size:14px;font-family:'DM Sans',sans-serif;">← Back</button>
+    <div class="flex-center gap12 mb32">
+      <div style="width:36px;height:36px;background:linear-gradient(135deg,#7c3aed,#ec4899);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">✝</div>
+      <span class="orbitron neon-text" style="font-size:20px;letter-spacing:2px;">BIBLE BLITZ</span>
+    </div>
+    <div class="card">
+      <h2 style="font-size:24px;font-weight:700;margin-bottom:28px;">Join a Game</h2>
+      <span class="label">YOUR NICKNAME</span>
+      <input class="input-field mb16" id="join-nickname" placeholder="e.g. BibleChamp99" maxlength="20"/>
+      <span class="label">GAME PIN (ask your host)</span>
+      <input class="input-field" id="join-pin" placeholder="Enter PIN here" maxlength="12" oninput="this.value=this.value.toUpperCase()" style="font-size:20px;letter-spacing:3px;text-align:center;font-family:'Orbitron',monospace;"/>
+      <div class="error-box" id="join-error"></div>
+      <button class="btn-primary mt24" id="join-btn" onclick="joinGame()">Join Game →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ LOBBY (PLAYER WAITING) ═══ -->
+<div id="page-lobby" class="page" style="z-index:1;">
+  <div class="fade-in center" style="width:100%;max-width:480px;">
+    <div class="flex-center gap12 mb32" style="justify-content:center;">
+      <div style="width:36px;height:36px;background:linear-gradient(135deg,#7c3aed,#ec4899);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">✝</div>
+      <span class="orbitron neon-text" style="font-size:20px;letter-spacing:2px;">BIBLE BLITZ</span>
+    </div>
+    <div class="card" style="max-width:100%;">
+      <div class="mb24">
+        <div class="label center">JOINED AS</div>
+        <div style="font-size:22px;font-weight:700;" id="lobby-name"></div>
+      </div>
+      <div id="lobby-mode-badge" style="display:flex;justify-content:center;gap:8px;margin-bottom:16px;"></div>
+      <div class="flex-center gap8 mb28" style="justify-content:center;">
+        <span class="status-dot"></span>
+        <span style="color:#94a3b8;font-size:15px;">Waiting for host to start...</span>
+      </div>
+      <div style="text-align:left;">
+        <div class="label" id="lobby-count">PLAYERS IN LOBBY (0)</div>
+        <div id="lobby-players" class="scroll-box"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ QUIZ SCREEN ═══ -->
+<div id="page-quiz" class="page" style="z-index:1;padding:0;justify-content:flex-start;align-items:stretch;">
+  <div style="width:100%;z-index:1;">
+    <!-- Header -->
+    <div style="padding:16px 24px;display:flex;align-items:center;gap:16px;border-bottom:1px solid rgba(255,255,255,0.06);">
+      <div style="flex:1;">
+        <div style="font-size:12px;color:#64748b;margin-bottom:4px;" id="quiz-progress-label">Question 1 of 20</div>
+        <div class="progress-bar"><div class="progress-fill" id="quiz-progress-bar" style="width:0%;background:linear-gradient(90deg,#7c3aed,#a855f7);"></div></div>
+      </div>
+      <!-- Global timer (Classic/Survival) -->
+      <div id="quiz-global-timer" class="center" style="min-width:80px;">
+        <div class="orbitron neon-text" style="font-size:30px;font-weight:900;line-height:1;" id="quiz-timer">120</div>
+        <div style="font-size:11px;color:#475569;">seconds</div>
+      </div>
+      <!-- Per-question timer (Lightning) -->
+      <div id="quiz-q-timer" class="q-timer-wrap" style="display:none;">
+        <div id="quiz-q-timer-val" style="font-family:'Orbitron',monospace;font-size:30px;font-weight:900;line-height:1;color:#eab308;">15</div>
+        <div style="font-size:11px;color:#475569;">per Q</div>
+        <div class="q-timer-bar-wrap"><div class="q-timer-bar-fill" id="quiz-q-timer-bar" style="width:100%;"></div></div>
+      </div>
+      <!-- Score -->
+      <div style="min-width:60px;text-align:right;">
+        <div class="neon-green" style="font-weight:700;font-size:18px;" id="quiz-score">0</div>
+        <div style="font-size:11px;color:#475569;">points</div>
+      </div>
+    </div>
+    <!-- Timer bar -->
+    <div class="timer-bar"><div class="timer-fill" id="quiz-timer-bar" style="width:100%;"></div></div>
+    <!-- Survival lives indicator -->
+    <div id="quiz-lives" style="display:none;text-align:center;padding:6px;background:rgba(239,68,68,0.1);font-size:13px;color:#f87171;">
+      💀 Survival Mode — one wrong answer and you're out!
+    </div>
+    <!-- Question -->
+    <div style="display:flex;align-items:center;justify-content:center;padding:24px 20px;min-height:calc(100vh - 80px);">
+      <div style="width:100%;max-width:600px;">
+        <div class="glass glow-border" style="border-radius:20px;padding:32px;margin-bottom:20px;text-align:center;">
+          <div style="font-size:12px;color:#64748b;margin-bottom:12px;letter-spacing:2px;" id="quiz-q-num">QUESTION 1</div>
+          <h2 style="font-size:22px;font-weight:700;line-height:1.4;color:#f1f5f9;" id="quiz-question"></h2>
+        </div>
+        <div id="quiz-options"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ELIMINATED SCREEN (Survival Mode) ═══ -->
+<div id="page-eliminated" class="page" style="z-index:1;">
+  <div class="fade-in center" style="max-width:420px;width:100%;">
+    <div style="font-size:80px;animation:elimPulse 1s ease infinite;margin-bottom:16px;">💀</div>
+    <h1 class="orbitron" style="font-size:28px;color:#ef4444;margin-bottom:8px;">Eliminated!</h1>
+    <p style="color:#94a3b8;margin-bottom:24px;">One wrong answer was all it took...</p>
+    <div class="glass glow-border" style="border-radius:16px;padding:24px;margin-bottom:16px;">
+      <div style="font-size:13px;color:#64748b;margin-bottom:4px;">Your score before elimination</div>
+      <div class="orbitron" style="font-size:48px;font-weight:900;color:#a855f7;" id="eliminated-score">0</div>
+      <div style="font-size:13px;color:#64748b;margin-top:4px;" id="eliminated-correct">0/0 correct</div>
+    </div>
+    <p style="font-size:13px;color:#475569;">Taking you to results...</p>
+  </div>
+</div>
+
+<!-- ═══ RESULTS SCREEN ═══ -->
+<div id="page-results" class="page" style="z-index:1;padding:24px 20px 60px;justify-content:flex-start;align-items:center;">
+  <div class="fade-in" style="width:100%;max-width:520px;">
+    <div class="flex-center gap12 mb32" style="justify-content:center;">
+      <div style="width:36px;height:36px;background:linear-gradient(135deg,#7c3aed,#ec4899);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">✝</div>
+      <span class="orbitron neon-text" style="font-size:20px;letter-spacing:2px;">BIBLE BLITZ</span>
+    </div>
+    <div class="center mb24">
+      <div style="font-size:40px;">🏁</div>
+      <h1 class="orbitron neon-text" style="font-size:28px;margin-top:8px;">Game Over!</h1>
+    </div>
+    <div id="my-result-card" class="glass glow-border" style="border-radius:20px;padding:28px;margin-bottom:24px;text-align:center;"></div>
+    <div class="glass glow-border" style="border-radius:20px;padding:24px;">
+      <div class="label">🏆 FINAL LEADERBOARD</div>
+      <div id="results-leaderboard" class="scroll-box"></div>
+    </div>
+    <button class="btn-secondary mt20" onclick="showPage('landing')">🔄 Play Again</button>
+  </div>
+</div>
+
+<!-- ═══ ADMIN DASHBOARD ═══ -->
+<div id="page-admin" class="page-top" style="z-index:1;">
+  <div style="max-width:960px;margin:0 auto;">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;flex-wrap:wrap;">
+      <div class="flex-center gap12">
+        <div style="width:32px;height:32px;background:linear-gradient(135deg,#7c3aed,#ec4899);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;">✝</div>
+        <span class="orbitron neon-text" style="font-size:18px;letter-spacing:2px;">BIBLE BLITZ</span>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn-primary btn-sm" id="admin-start-btn" onclick="adminStartGame()" style="background:linear-gradient(135deg,#15803d,#22c55e);">▶ Start Game</button>
+        <button class="btn-danger" id="admin-end-btn" onclick="adminEndGame()" style="display:none;">⏹ End Game</button>
+        <button class="btn-secondary btn-sm" onclick="adminReset()">↺ Reset</button>
+      </div>
+    </div>
+
+    <!-- Stats row -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:12px;">
+      <div class="stat-card"><div class="label" style="margin-bottom:4px;">STATUS</div><div style="font-size:16px;font-weight:700;" id="admin-status">Lobby Open</div></div>
+      <div class="stat-card"><div class="label" style="margin-bottom:4px;">GAME PIN</div><div class="orbitron" style="font-size:20px;color:#a855f7;" id="admin-pin-display">—</div></div>
+      <div class="stat-card"><div class="label" style="margin-bottom:4px;">PLAYERS</div><div style="font-size:20px;font-weight:700;color:#3b82f6;" id="admin-player-count">0</div></div>
+      <div class="stat-card"><div class="label" style="margin-bottom:4px;">TIME LEFT</div><div class="orbitron" style="font-size:18px;" id="admin-timer">—</div></div>
+    </div>
+
+    <!-- Settings summary -->
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">
+      <span class="setting-chip" id="admin-mode-chip">🎮 Classic</span>
+      <span class="setting-chip" id="admin-qcount-chip">20 Questions</span>
+      <span class="setting-chip" id="admin-timer-chip">2 min timer</span>
+      <span class="setting-chip" id="admin-scoring-chip">📊 Standard</span>
+    </div>
+
+    <!-- Timer bar -->
+    <div class="timer-bar mb16" style="display:none;" id="admin-timer-bar-wrap"><div class="timer-fill" id="admin-timer-bar" style="width:100%;"></div></div>
+
+    <!-- Share PIN box -->
+    <div id="admin-share-box" class="glass glow-border" style="border-radius:16px;padding:20px;margin-bottom:20px;text-align:center;">
+      <div style="font-size:13px;color:#64748b;margin-bottom:4px;">📱 SHARE THIS LINK + PIN WITH PLAYERS</div>
+      <div style="font-size:13px;color:#94a3b8;margin-bottom:8px;word-break:break-all;" id="admin-share-url"></div>
+      <div class="pin-display" id="admin-pin-big"></div>
+      <div style="font-size:12px;color:#475569;margin-top:8px;">Players open that link → click Join → enter PIN</div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="admin-tabs">
+      <button class="admin-tab active" id="atab-dashboard" onclick="showAdminTab('dashboard')">📊 Dashboard</button>
+      <button class="admin-tab" id="atab-questions" onclick="showAdminTab('questions')">📝 Questions</button>
+    </div>
+
+    <!-- TAB: Dashboard -->
+    <div class="admin-tab-panel active" id="admin-tp-dashboard">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;" class="admin-grid">
+        <div class="glass glow-border" style="border-radius:20px;padding:24px;">
+          <div class="label">🏆 LIVE LEADERBOARD</div>
+          <div id="admin-leaderboard" class="scroll-box"></div>
+          <div id="admin-winner-box" style="display:none;margin-top:16px;padding:14px;background:rgba(234,179,8,0.1);border-radius:12px;border:1px solid #eab30840;text-align:center;">
+            <div style="font-size:20px;">👑</div>
+            <div style="font-weight:700;color:#eab308;" id="admin-winner-name"></div>
+            <div style="font-size:13px;color:#64748b;" id="admin-winner-score"></div>
+          </div>
+        </div>
+        <div class="glass glow-border" style="border-radius:20px;padding:24px;">
+          <div class="label" id="admin-players-label">👥 CONNECTED PLAYERS (0)</div>
+          <div id="admin-players-list" class="scroll-box">
+            <div class="center" style="padding:32px 0;">
+              <div style="font-size:32px;margin-bottom:8px;">⏳</div>
+              <p style="color:#475569;font-size:14px;">Waiting for players to join...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: Questions -->
+    <div class="admin-tab-panel" id="admin-tp-questions">
+      <div class="glass glow-border" style="border-radius:20px;padding:24px;">
+        <!-- Summary bar -->
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
+          <div>
+            <div style="font-weight:700;font-size:16px;margin-bottom:4px;">Custom Question Manager</div>
+            <div style="font-size:12px;color:#64748b;" id="qm-summary">Loading...</div>
+          </div>
+          <button class="btn-primary btn-sm" onclick="showQuestionForm(null)" style="width:auto;padding:10px 20px;">+ Add Question</button>
+        </div>
+
+        <!-- Add / Edit form -->
+        <div id="question-form" style="display:none;background:rgba(168,85,247,0.05);border:1px solid rgba(168,85,247,0.2);border-radius:14px;padding:20px;margin-bottom:20px;">
+          <h4 style="font-size:14px;font-weight:700;margin-bottom:16px;" id="qf-title">Add New Question</h4>
+          <span class="label">QUESTION TEXT</span>
+          <textarea class="input-field mb12" id="qf-text" placeholder="Type your Bible question here..." rows="2" style="resize:vertical;"></textarea>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+            <div><span class="label">OPTION A</span><input class="input-field" id="qf-opt0" placeholder="Option A"/></div>
+            <div><span class="label">OPTION B</span><input class="input-field" id="qf-opt1" placeholder="Option B"/></div>
+            <div><span class="label">OPTION C</span><input class="input-field" id="qf-opt2" placeholder="Option C"/></div>
+            <div><span class="label">OPTION D</span><input class="input-field" id="qf-opt3" placeholder="Option D"/></div>
+          </div>
+          <span class="label">CORRECT ANSWER</span>
+          <div style="display:flex;gap:8px;margin-bottom:16px;">
+            <button class="qf-answer-pill active" data-idx="0" onclick="selectAnswerPill(0)">A</button>
+            <button class="qf-answer-pill" data-idx="1" onclick="selectAnswerPill(1)">B</button>
+            <button class="qf-answer-pill" data-idx="2" onclick="selectAnswerPill(2)">C</button>
+            <button class="qf-answer-pill" data-idx="3" onclick="selectAnswerPill(3)">D</button>
+          </div>
+          <div id="qf-error" style="display:none;background:rgba(239,68,68,0.15);border:1px solid #ef444440;border-radius:8px;padding:10px;color:#f87171;font-size:13px;margin-bottom:12px;"></div>
+          <div style="display:flex;gap:10px;">
+            <button class="btn-primary btn-sm" id="qf-save-btn" onclick="saveQuestion()" style="flex:1;">+ Add Question</button>
+            <button class="btn-secondary btn-sm" onclick="hideQuestionForm()" style="width:auto;">Cancel</button>
+          </div>
+        </div>
+
+        <!-- Custom questions list -->
+        <div id="custom-questions-list"></div>
+
+        <!-- Default questions (read-only accordion) -->
+        <details style="margin-top:16px;">
+          <summary>View 20 built-in default questions</summary>
+          <div id="default-questions-list" style="margin-top:10px;"></div>
+        </details>
+      </div>
+    </div>
+
+  </div><!-- end max-width wrapper -->
+</div>
+
+</div><!-- end #app -->
+
+<script>
+// ══════════════════════════════════════════
+// FIREBASE CONFIG
+// ══════════════════════════════════════════
+const firebaseConfig={databaseURL:"https://bible-blitz-default-rtdb.firebaseio.com/"};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.database();
+
+// ══════════════════════════════════════════
+// DEFAULT QUESTIONS (20 built-in)
+// ══════════════════════════════════════════
+const DEFAULT_QUESTIONS=[
+  {q:"Who built the ark?",options:["Moses","Noah","Abraham","David"],answer:1},
+  {q:"How many days did God take to create the world?",options:["5","6","7","8"],answer:1},
+  {q:"What was the first miracle Jesus performed?",options:["Healing the blind","Turning water into wine","Walking on water","Feeding 5000"],answer:1},
+  {q:"Who was swallowed by a great fish?",options:["Elijah","Jonah","Isaiah","Daniel"],answer:1},
+  {q:"In which city was Jesus born?",options:["Jerusalem","Nazareth","Bethlehem","Jericho"],answer:2},
+  {q:"Who betrayed Jesus for 30 pieces of silver?",options:["Peter","Thomas","Judas","Matthew"],answer:2},
+  {q:"What river was Jesus baptized in?",options:["Nile","Euphrates","Tigris","Jordan"],answer:3},
+  {q:"How many apostles did Jesus have?",options:["10","11","12","13"],answer:2},
+  {q:"Who wrote most of the New Testament letters?",options:["Peter","Paul","John","James"],answer:1},
+  {q:"Which book comes first in the New Testament?",options:["Mark","Luke","Matthew","John"],answer:2},
+  {q:"How many books are in the Bible?",options:["60","63","66","69"],answer:2},
+  {q:"Who was the first king of Israel?",options:["David","Solomon","Saul","Samuel"],answer:2},
+  {q:"What did Moses receive on Mount Sinai?",options:["The Ark","Ten Commandments","The Psalms","Manna"],answer:1},
+  {q:"Who killed Goliath?",options:["Saul","Jonathan","David","Samson"],answer:2},
+  {q:"In which book is the story of creation found?",options:["Exodus","Genesis","Leviticus","Numbers"],answer:1},
+  {q:"How many days was Jesus in the wilderness?",options:["20","30","40","50"],answer:2},
+  {q:"What is the shortest verse in the Bible?",options:["God is love","Jesus wept","Fear not","Be still"],answer:1},
+  {q:"Who was Daniel thrown in with?",options:["Wolves","Bears","Lions","Serpents"],answer:2},
+  {q:"What fruit did Eve eat in the Garden of Eden?",options:["Apple (forbidden fruit)","Pomegranate","Fig","Grape"],answer:0},
+  {q:"On which day did God rest from creation?",options:["5th","6th","7th","8th"],answer:2},
+];
+
+const LIGHTNING_Q_DURATION=15;
+const COLORS=["#a855f7","#3b82f6","#ec4899","#22c55e","#eab308","#f97316","#06b6d4","#8b5cf6"];
+const MEDAL_COLORS=["#eab308","#94a3b8","#f97316"];
+const MEDAL_EMOJIS=["🥇","🥈","🥉"];
+const MODE_DESCS={
+  classic:"Standard quiz with a shared countdown timer. Answer all questions before time runs out.",
+  lightning:"Each question has a 15-second per-question timer. Speed earns bonus points (3/2/1).",
+  survival:"One wrong answer and you're eliminated! Last player standing wins."
+};
+
+// ══════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════
+let myPlayerId=null,myNickname=null,myPin=null,isHost=false;
+let gameSettings={questionCount:20,timerDuration:120,gameMode:'classic',scoringMode:'standard'};
+let activeQuestions=[];
+let customQuestions=[];
+let quizState={current:0,score:0,correctCount:0,answers:{},selected:null,finished:false,eliminated:false,questionStartTime:0};
+let gameStartTime=0;
+let quizTimerInterval=null,adminTimerInterval=null,questionTimerInterval=null;
+let gameRef=null,playersRef=null;
+let editingQId=null;
+
+// ══════════════════════════════════════════
+// UTILITIES
+// ══════════════════════════════════════════
+function showPage(id){
+  document.querySelectorAll('.page,.page-top').forEach(p=>p.classList.remove('active'));
+  const el=document.getElementById('page-'+id);
+  if(el) el.classList.add('active');
+}
+
+function avatarColor(name){
+  let h=0;for(let c of name)h=(h*31+c.charCodeAt(0))%COLORS.length;return COLORS[h];
+}
+
+function escHtml(s){
+  return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function toArray(val){
+  if(!val)return[];
+  if(Array.isArray(val))return val;
+  return Object.values(val);
+}
+
+function formatTime(secs){
+  if(secs<60)return secs+'s';
+  const m=Math.floor(secs/60),s=secs%60;
+  return s>0?m+'m '+s+'s':m+' min';
+}
+
+function seededShuffle(arr,seed){
+  const a=[...arr];
+  let s=Math.abs(Math.floor(seed))%2147483647||1;
+  for(let i=a.length-1;i>0;i--){
+    s=(s*1664525+1013904223)&0x7fffffff;
+    const j=s%(i+1);
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+
+// ══════════════════════════════════════════
+// PILL SELECTOR
+// ══════════════════════════════════════════
+function selectPill(groupId,value){
+  const g=document.getElementById(groupId);
+  if(!g)return;
+  g.querySelectorAll('.pill').forEach(p=>p.classList.toggle('active',p.dataset.value===value));
+  if(groupId==='setting-mode'){
+    const desc=document.getElementById('mode-desc');
+    if(desc)desc.textContent=MODE_DESCS[value]||'';
+  }
+}
+
+function getSelectedPill(groupId){
+  const g=document.getElementById(groupId);
+  if(!g)return null;
+  const a=g.querySelector('.pill.active');
+  return a?a.dataset.value:null;
+}
+
+// ══════════════════════════════════════════
+// ADMIN TABS
+// ══════════════════════════════════════════
+function showAdminTab(tab){
+  document.querySelectorAll('.admin-tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.admin-tab').forEach(t=>t.classList.remove('active'));
+  const panel=document.getElementById('admin-tp-'+tab);
+  if(panel)panel.classList.add('active');
+  const btn=document.getElementById('atab-'+tab);
+  if(btn)btn.classList.add('active');
+  if(tab==='questions')renderQuestionManager();
+}
+
+// ══════════════════════════════════════════
+// HOST — CREATE GAME
+// ══════════════════════════════════════════
+async function createGame(){
+  const name=document.getElementById('host-name').value.trim();
+  const pin=document.getElementById('host-pin').value.trim().toUpperCase();
+  const errEl=document.getElementById('host-error');
+  errEl.classList.remove('show');
+  if(!name){errEl.textContent='Please enter your name';errEl.classList.add('show');return;}
+  if(pin.length<4){errEl.textContent='PIN must be at least 4 characters';errEl.classList.add('show');return;}
+
+  const settings={
+    questionCount:parseInt(getSelectedPill('setting-count'))||20,
+    timerDuration:parseInt(getSelectedPill('setting-timer'))||120,
+    gameMode:getSelectedPill('setting-mode')||'classic',
+    scoringMode:getSelectedPill('setting-scoring')||'standard'
+  };
+
+  const btn=document.getElementById('host-create-btn');
+  btn.disabled=true;btn.textContent='Creating...';
+  try{
+    await db.ref('games/'+pin).set({
+      pin,status:'lobby',hostName:name,settings,
+      startTime:null,createdAt:Date.now()
+    });
+    await db.ref('games/'+pin+'/players').remove();
+    myPin=pin;isHost=true;gameSettings=settings;customQuestions=[];
+    setupAdminDashboard();
+    showPage('admin');
+    showAdminTab('dashboard');
+  }catch(e){
+    errEl.textContent='Error: '+e.message;errEl.classList.add('show');
+  }
+  btn.disabled=false;btn.textContent='Create Game Room →';
+}
+
+// ══════════════════════════════════════════
+// HOST — ADMIN DASHBOARD
+// ══════════════════════════════════════════
+function setupAdminDashboard(){
+  document.getElementById('admin-pin-display').textContent=myPin;
+  document.getElementById('admin-pin-big').textContent=myPin;
+  document.getElementById('admin-share-url').textContent=window.location.href;
+  updateAdminSettingChips();
+
+  gameRef=db.ref('games/'+myPin);
+  playersRef=db.ref('games/'+myPin+'/players');
+  gameRef.on('value',snap=>{
+    const g=snap.val();
+    if(!g)return;
+    if(g.settings)gameSettings=g.settings;
+    updateAdminStatus(g);
+  });
+  playersRef.on('value',snap=>{
+    updateAdminPlayers(snap.val()||{});
+  });
+}
+
+function updateAdminSettingChips(){
+  const modeLabels={classic:'🎮 Classic',lightning:'⚡ Lightning',survival:'💀 Survival'};
+  document.getElementById('admin-mode-chip').textContent=modeLabels[gameSettings.gameMode]||'🎮 Classic';
+  document.getElementById('admin-qcount-chip').textContent=gameSettings.questionCount+' Questions';
+  document.getElementById('admin-timer-chip').textContent=formatTime(gameSettings.timerDuration)+' timer';
+  document.getElementById('admin-scoring-chip').textContent=gameSettings.scoringMode==='speed'?'⚡ Speed Bonus':'📊 Standard';
+}
+
+function updateAdminStatus(g){
+  const statusMap={lobby:'🟢 Lobby Open',active:'🔴 LIVE',ended:'⚫ Game Over'};
+  const colorMap={lobby:'#22c55e',active:'#ef4444',ended:'#64748b'};
+  document.getElementById('admin-status').textContent=statusMap[g.status]||g.status;
+  document.getElementById('admin-status').style.color=colorMap[g.status]||'white';
+  const startBtn=document.getElementById('admin-start-btn');
+  const endBtn=document.getElementById('admin-end-btn');
+
+  if(g.status==='lobby'){
+    startBtn.style.display='';endBtn.style.display='none';
+    document.getElementById('admin-timer').textContent='—';
+    document.getElementById('admin-timer-bar-wrap').style.display='none';
+    clearInterval(adminTimerInterval);
+  }else if(g.status==='active'){
+    startBtn.style.display='none';endBtn.style.display='';
+    document.getElementById('admin-share-box').style.display='none';
+    clearInterval(adminTimerInterval);
+    const dur=gameSettings.timerDuration||120;
+
+    if(gameSettings.gameMode==='lightning'){
+      document.getElementById('admin-timer-bar-wrap').style.display='none';
+      document.getElementById('admin-timer').textContent='⚡ Per Q';
+      document.getElementById('admin-timer').style.color='#eab308';
+    }else{
+      document.getElementById('admin-timer-bar-wrap').style.display='block';
+      const startT=g.startTime;
+      adminTimerInterval=setInterval(()=>{
+        const elapsed=(Date.now()-startT)/1000;
+        const tl=Math.max(0,dur-elapsed);
+        document.getElementById('admin-timer').textContent=Math.round(tl)+'s';
+        document.getElementById('admin-timer').style.color=tl<20?'#ef4444':tl<40?'#f97316':'#a855f7';
+        document.getElementById('admin-timer-bar').style.width=(tl/dur*100)+'%';
+        document.getElementById('admin-timer-bar').style.background=tl<20?'#ef4444':tl<40?'#f97316':'#a855f7';
+        if(tl<=0){clearInterval(adminTimerInterval);adminEndGame();}
+      },500);
+    }
+  }else if(g.status==='ended'){
+    startBtn.style.display='none';endBtn.style.display='none';
+    clearInterval(adminTimerInterval);
+    document.getElementById('admin-timer').textContent='Done';
+    showConfetti();
+  }
+}
+
+function updateAdminPlayers(players){
+  const list=Object.values(players).sort((a,b)=>b.score-a.score||(a.finishedAt||9e15)-(b.finishedAt||9e15));
+  const qCount=gameSettings.questionCount||20;
+  document.getElementById('admin-player-count').textContent=list.length;
+  document.getElementById('admin-players-label').textContent='👥 CONNECTED PLAYERS ('+list.length+')';
+
+  // Leaderboard
+  const lb=document.getElementById('admin-leaderboard');
+  if(list.length===0){
+    lb.innerHTML='<p style="color:#475569;font-size:14px;">No players yet</p>';
+  }else{
+    lb.innerHTML=list.slice(0,15).map((p,i)=>`
+      <div class="leaderboard-row ${i===0?'winner-glow':''}">
+        <div class="rank-badge" style="background:${i<3?MEDAL_COLORS[i]+'20':'rgba(255,255,255,0.05)'};color:${i<3?MEDAL_COLORS[i]:'#64748b'}">${i<3?MEDAL_EMOJIS[i]:i+1}</div>
+        <div class="avatar" style="width:28px;height:28px;background:${avatarColor(p.nickname)}30;color:${avatarColor(p.nickname)};font-size:12px;">${p.nickname[0].toUpperCase()}</div>
+        <span style="flex:1;font-size:14px;font-weight:500;">${escHtml(p.nickname)}${p.eliminated?'<span style="color:#ef4444;font-size:11px;margin-left:4px;">💀</span>':''}</span>
+        ${p.finished?'<span style="font-size:11px;color:#22c55e;">✓</span>':''}
+        <span class="orbitron" style="font-size:15px;color:#a855f7;">${p.score}</span>
+      </div>`).join('');
+  }
+
+  // Players list
+  const pl=document.getElementById('admin-players-list');
+  if(list.length===0){
+    pl.innerHTML=`<div class="center" style="padding:32px 0;"><div style="font-size:32px;margin-bottom:8px;">⏳</div><p style="color:#475569;font-size:14px;">Waiting for players to join...</p></div>`;
+  }else{
+    pl.innerHTML=list.map(p=>`
+      <div class="player-chip" style="${p.eliminated?'opacity:0.5;':''}">
+        <div class="avatar" style="background:${avatarColor(p.nickname)}30;color:${avatarColor(p.nickname)}">${p.nickname[0].toUpperCase()}</div>
+        <div style="flex:1;">
+          <div style="font-weight:500;font-size:14px;">${escHtml(p.nickname)}${p.eliminated?' 💀':''}</div>
+          <div style="font-size:12px;color:#475569;">${p.answers?Object.keys(p.answers).length:0}/${qCount} answered</div>
+        </div>
+        ${p.finished?'<span style="font-size:18px;">✅</span>':''}
+      </div>`).join('');
+  }
+
+  if(list.length>0){
+    const w=list[0];
+    document.getElementById('admin-winner-name').textContent='👑 '+w.nickname+' leads!';
+    document.getElementById('admin-winner-score').textContent='Score: '+w.score;
+  }
+}
+
+async function adminStartGame(){
+  const btn=document.getElementById('admin-start-btn');
+  btn.disabled=true;btn.textContent='Starting...';
+  try{
+    // Load custom questions
+    const snap=await db.ref('games/'+myPin+'/customQuestions').get();
+    const custom=snap.val()?Object.values(snap.val()):[];
+    // Build pool: custom first, then defaults
+    const pool=[...custom,...DEFAULT_QUESTIONS];
+    const seed=Date.now();
+    const shuffled=seededShuffle(pool,seed);
+    const qCount=gameSettings.questionCount||20;
+    const active=shuffled.slice(0,Math.min(qCount,pool.length));
+    const now=Date.now();
+    await db.ref('games/'+myPin).update({
+      status:'active',startTime:now,activeQuestions:active
+    });
+  }catch(e){
+    alert('Error starting game: '+e.message);
+  }
+  btn.disabled=false;btn.textContent='▶ Start Game';
+}
+
+async function adminEndGame(){
+  clearInterval(adminTimerInterval);
+  await db.ref('games/'+myPin).update({status:'ended'});
+  document.getElementById('admin-winner-box').style.display='block';
+}
+
+async function adminReset(){
+  clearInterval(adminTimerInterval);
+  await db.ref('games/'+myPin).update({status:'lobby',startTime:null,activeQuestions:null});
+  await db.ref('games/'+myPin+'/players').remove();
+  document.getElementById('admin-share-box').style.display='block';
+  document.getElementById('admin-winner-box').style.display='none';
+  document.getElementById('admin-timer-bar-wrap').style.display='none';
+  document.getElementById('admin-start-btn').style.display='';
+  document.getElementById('admin-end-btn').style.display='none';
+  document.getElementById('admin-timer').textContent='—';
+  document.getElementById('admin-timer').style.color='';
+}
+
+// ══════════════════════════════════════════
+// ADMIN — QUESTION MANAGER
+// ══════════════════════════════════════════
+function renderQuestionManager(){
+  db.ref('games/'+myPin+'/customQuestions').get().then(snap=>{
+    customQuestions=snap.val()?Object.values(snap.val()):[];
+    renderCustomQuestionList();
+    renderDefaultQuestionList();
+    updateQCountDisplay();
+  });
+}
+
+function updateQCountDisplay(){
+  const total=customQuestions.length+DEFAULT_QUESTIONS.length;
+  const qCount=gameSettings.questionCount;
+  const willUse=Math.min(qCount,total);
+  const customUsed=Math.min(customQuestions.length,qCount);
+  let msg=`${customQuestions.length} custom + ${DEFAULT_QUESTIONS.length} default = ${total} available`;
+  if(total<qCount)msg+=` ⚠️ Only ${total} questions available (need ${qCount})`;
+  else msg+=` — game will use ${willUse}`;
+  document.getElementById('qm-summary').textContent=msg;
+}
+
+function renderCustomQuestionList(){
+  const c=document.getElementById('custom-questions-list');
+  if(customQuestions.length===0){
+    c.innerHTML=`<div class="center" style="padding:32px 0;color:#475569;">
+      <div style="font-size:36px;margin-bottom:8px;">📝</div>
+      <p>No custom questions yet.</p>
+      <p style="font-size:13px;margin-top:4px;">Add questions above to include them in the game!</p>
+    </div>`;
+    return;
+  }
+  c.innerHTML=`<div style="font-size:12px;color:#64748b;margin-bottom:8px;font-weight:600;">CUSTOM QUESTIONS (${customQuestions.length})</div>`+
+  customQuestions.map((q,i)=>`
+    <div class="q-row">
+      <div style="display:flex;align-items:flex-start;gap:10px;">
+        <span style="font-size:12px;color:#64748b;padding-top:4px;min-width:24px;">${i+1}.</span>
+        <div style="flex:1;">
+          <div style="font-weight:500;font-size:14px;margin-bottom:8px;">${escHtml(q.q)}</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">
+            ${(q.options||[]).map((opt,oi)=>`
+              <div style="font-size:12px;padding:4px 8px;border-radius:6px;background:${oi===q.answer?'rgba(34,197,94,0.15)':'rgba(255,255,255,0.03)'};border:1px solid ${oi===q.answer?'#22c55e40':'rgba(255,255,255,0.06)'};color:${oi===q.answer?'#4ade80':'#94a3b8'};">
+                <b>${'ABCD'[oi]}.</b> ${escHtml(opt)}${oi===q.answer?' ✓':''}
+              </div>`).join('')}
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          <button class="q-edit-btn" onclick="showQuestionForm('${q.id}')">Edit</button>
+          <button class="q-del-btn" onclick="deleteQuestion('${q.id}')">Del</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function renderDefaultQuestionList(){
+  const c=document.getElementById('default-questions-list');
+  c.innerHTML=DEFAULT_QUESTIONS.map((q,i)=>`
+    <div class="q-row" style="opacity:0.6;">
+      <div style="display:flex;align-items:flex-start;gap:10px;">
+        <span style="font-size:12px;color:#64748b;padding-top:4px;min-width:24px;">${i+1}.</span>
+        <div style="flex:1;">
+          <div style="font-weight:500;font-size:13px;margin-bottom:6px;">${escHtml(q.q)}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            ${q.options.map((opt,oi)=>`
+              <span style="font-size:11px;color:${oi===q.answer?'#4ade80':'#64748b'}">${'ABCD'[oi]}.${escHtml(opt)}${oi===q.answer?' ✓':''}</span>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function showQuestionForm(editId){
+  editingQId=editId||null;
+  const form=document.getElementById('question-form');
+  form.style.display='block';
+  document.getElementById('qf-error').style.display='none';
+
+  if(editId){
+    const q=customQuestions.find(x=>x.id===editId);
+    if(!q)return;
+    document.getElementById('qf-title').textContent='Edit Question';
+    document.getElementById('qf-text').value=q.q||'';
+    (q.options||[]).forEach((v,i)=>{
+      const el=document.getElementById('qf-opt'+i);
+      if(el)el.value=v;
+    });
+    document.querySelectorAll('.qf-answer-pill').forEach(b=>b.classList.toggle('active',parseInt(b.dataset.idx)===q.answer));
+    document.getElementById('qf-save-btn').textContent='✓ Update Question';
+  }else{
+    document.getElementById('qf-title').textContent='Add New Question';
+    document.getElementById('qf-text').value='';
+    ['qf-opt0','qf-opt1','qf-opt2','qf-opt3'].forEach(id=>{
+      const el=document.getElementById(id);if(el)el.value='';
+    });
+    document.querySelectorAll('.qf-answer-pill').forEach((b,i)=>b.classList.toggle('active',i===0));
+    document.getElementById('qf-save-btn').textContent='+ Add Question';
+  }
+  form.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function hideQuestionForm(){
+  document.getElementById('question-form').style.display='none';
+  editingQId=null;
+}
+
+function selectAnswerPill(idx){
+  document.querySelectorAll('.qf-answer-pill').forEach(b=>b.classList.toggle('active',parseInt(b.dataset.idx)===idx));
+}
+
+async function saveQuestion(){
+  const text=document.getElementById('qf-text').value.trim();
+  const opts=[
+    document.getElementById('qf-opt0').value.trim(),
+    document.getElementById('qf-opt1').value.trim(),
+    document.getElementById('qf-opt2').value.trim(),
+    document.getElementById('qf-opt3').value.trim(),
+  ];
+  const activePill=document.querySelector('.qf-answer-pill.active');
+  const answer=activePill?parseInt(activePill.dataset.idx):0;
+  const errEl=document.getElementById('qf-error');
+  errEl.style.display='none';
+
+  if(!text){errEl.textContent='Question text is required';errEl.style.display='block';return;}
+  if(opts.some(o=>!o)){errEl.textContent='All 4 options are required';errEl.style.display='block';return;}
+
+  const saveBtn=document.getElementById('qf-save-btn');
+  saveBtn.disabled=true;saveBtn.textContent='Saving...';
+
+  try{
+    if(editingQId){
+      const idx=customQuestions.findIndex(q=>q.id===editingQId);
+      if(idx!==-1){
+        customQuestions[idx]={...customQuestions[idx],q:text,options:opts,answer};
+        await db.ref('games/'+myPin+'/customQuestions/'+editingQId).update({q:text,options:opts,answer});
+      }
+    }else{
+      const id='cq_'+Date.now();
+      const newQ={id,q:text,options:opts,answer};
+      customQuestions.push(newQ);
+      await db.ref('games/'+myPin+'/customQuestions/'+id).set(newQ);
+    }
+    hideQuestionForm();
+    renderCustomQuestionList();
+    updateQCountDisplay();
+  }catch(e){
+    errEl.textContent='Error saving: '+e.message;errEl.style.display='block';
+  }
+  saveBtn.disabled=false;
+  saveBtn.textContent=editingQId?'✓ Update Question':'+ Add Question';
+}
+
+async function deleteQuestion(id){
+  if(!confirm('Delete this question?'))return;
+  customQuestions=customQuestions.filter(q=>q.id!==id);
+  try{
+    await db.ref('games/'+myPin+'/customQuestions/'+id).remove();
+  }catch(e){}
+  renderCustomQuestionList();
+  updateQCountDisplay();
+}
+
+// ══════════════════════════════════════════
+// PLAYER — JOIN GAME
+// ══════════════════════════════════════════
+async function joinGame(){
+  const nick=document.getElementById('join-nickname').value.trim();
+  const pin=document.getElementById('join-pin').value.trim().toUpperCase();
+  const errEl=document.getElementById('join-error');
+  errEl.classList.remove('show');
+  if(!nick){errEl.textContent='Please enter a nickname';errEl.classList.add('show');return;}
+  if(!pin){errEl.textContent='Please enter the game PIN';errEl.classList.add('show');return;}
+  const btn=document.getElementById('join-btn');
+  btn.disabled=true;btn.textContent='Joining...';
+  try{
+    const snap=await db.ref('games/'+pin).get();
+    if(!snap.exists()){
+      errEl.textContent='❌ No game found with that PIN. Check with your host.';
+      errEl.classList.add('show');btn.disabled=false;btn.textContent='Join Game →';return;
+    }
+    const g=snap.val();
+    if(g.status==='ended'){
+      errEl.textContent='❌ This game has already ended.';
+      errEl.classList.add('show');btn.disabled=false;btn.textContent='Join Game →';return;
+    }
+    myPin=pin;myNickname=nick;
+    myPlayerId='player_'+Date.now()+'_'+Math.random().toString(36).substr(2,5);
+    await db.ref('games/'+pin+'/players/'+myPlayerId).set({
+      id:myPlayerId,nickname:nick,score:0,correctCount:0,
+      finished:false,eliminated:false,joinedAt:Date.now(),answers:{}
+    });
+    setupLobby(g);
+    showPage('lobby');
+  }catch(e){
+    errEl.textContent='Connection error: '+e.message;errEl.classList.add('show');
+  }
+  btn.disabled=false;btn.textContent='Join Game →';
+}
+
+// ══════════════════════════════════════════
+// PLAYER — LOBBY
+// ══════════════════════════════════════════
+function setupLobby(initialGame){
+  document.getElementById('lobby-name').textContent=myNickname;
+
+  // Show mode badge if settings available
+  if(initialGame&&initialGame.settings){
+    const s=initialGame.settings;
+    const modeLabel={classic:'🎮 Classic',lightning:'⚡ Lightning',survival:'💀 Survival'};
+    const modeClass={classic:'mode-classic',lightning:'mode-lightning',survival:'mode-survival'};
+    const m=s.gameMode||'classic';
+    document.getElementById('lobby-mode-badge').innerHTML=`
+      <span class="mode-tag ${modeClass[m]}">${modeLabel[m]||m}</span>
+      <span class="setting-chip">${s.questionCount||20} Questions</span>
+      <span class="setting-chip">${formatTime(s.timerDuration||120)}</span>
+    `;
+  }
+
+  db.ref('games/'+myPin+'/players').on('value',snap=>{
+    const players=Object.values(snap.val()||{});
+    document.getElementById('lobby-count').textContent='PLAYERS IN LOBBY ('+players.length+')';
+    document.getElementById('lobby-players').innerHTML=players.map(p=>`
+      <div class="player-chip">
+        <div class="avatar" style="background:${avatarColor(p.nickname)}30;color:${avatarColor(p.nickname)}">${p.nickname[0].toUpperCase()}</div>
+        <span style="font-weight:${p.id===myPlayerId?700:400};">${escHtml(p.nickname)}</span>
+        ${p.id===myPlayerId?'<span style="margin-left:auto;font-size:12px;color:#64748b;">you</span>':''}
+      </div>`).join('');
+  });
+
+  db.ref('games/'+myPin).on('value',snap=>{
+    const g=snap.val();
+    if(!g)return;
+    if(g.status==='active'&&g.activeQuestions)startQuiz(g);
+    if(g.status==='ended')goToResults();
+  });
+}
+
+// ══════════════════════════════════════════
+// PLAYER — QUIZ
+// ══════════════════════════════════════════
+async function startQuiz(gameData){
+  db.ref('games/'+myPin).off();
+  db.ref('games/'+myPin+'/players').off();
+
+  gameSettings=gameData.settings||{questionCount:20,timerDuration:120,gameMode:'classic',scoringMode:'standard'};
+  activeQuestions=toArray(gameData.activeQuestions)||DEFAULT_QUESTIONS.slice(0,gameSettings.questionCount);
+  gameStartTime=gameData.startTime;
+
+  quizState={current:0,score:0,correctCount:0,answers:{},selected:null,finished:false,eliminated:false,questionStartTime:Date.now()};
+
+  showPage('quiz');
+
+  // Configure header based on game mode
+  const isLightning=gameSettings.gameMode==='lightning';
+  const isSurvival=gameSettings.gameMode==='survival';
+  document.getElementById('quiz-global-timer').style.display=isLightning?'none':'flex';
+  document.getElementById('quiz-q-timer').style.display=isLightning?'flex':'none';
+  document.getElementById('quiz-lives').style.display=isSurvival?'block':'none';
+
+  renderQuestion();
+
+  if(isLightning){
+    startQuestionTimer();
+  }else{
+    startGlobalTimer(gameData.startTime);
+  }
+
+  // Watch for host force-ending game
+  db.ref('games/'+myPin+'/status').on('value',snap=>{
+    if(snap.val()==='ended'&&!quizState.finished)finishQuiz();
+  });
+}
+
+function startGlobalTimer(startTime){
+  const dur=gameSettings.timerDuration||120;
+  clearInterval(quizTimerInterval);
+  quizTimerInterval=setInterval(()=>{
+    const elapsed=(Date.now()-startTime)/1000;
+    const tl=Math.max(0,dur-elapsed);
+    const tlr=Math.round(tl);
+    const el=document.getElementById('quiz-timer');
+    el.textContent=tlr;
+    el.className='orbitron '+(tl<20?'timer-critical':'neon-text');
+    el.style.cssText='font-size:30px;font-weight:900;line-height:1;';
+    document.getElementById('quiz-timer-bar').style.width=(tl/dur*100)+'%';
+    document.getElementById('quiz-timer-bar').style.background=tl<20?'#ef4444':tl<40?'#f97316':'#a855f7';
+    if(tl<=0&&!quizState.finished)finishQuiz();
+  },300);
+}
+
+function startQuestionTimer(){
+  clearInterval(questionTimerInterval);
+  const dur=LIGHTNING_Q_DURATION;
+  quizState.questionStartTime=Date.now();
+  document.getElementById('quiz-q-timer-val').textContent=dur;
+  document.getElementById('quiz-q-timer-bar').style.width='100%';
+
+  questionTimerInterval=setInterval(()=>{
+    const elapsed=(Date.now()-quizState.questionStartTime)/1000;
+    const tl=Math.max(0,dur-elapsed);
+    const tlr=Math.ceil(tl);
+    const el=document.getElementById('quiz-q-timer-val');
+    el.textContent=tlr;
+    el.style.color=tl<5?'#ef4444':tl<8?'#f97316':'#eab308';
+    document.getElementById('quiz-q-timer-bar').style.width=(tl/dur*100)+'%';
+    document.getElementById('quiz-q-timer-bar').style.background=tl<5?'#ef4444':tl<8?'#f97316':'#eab308';
+    if(tl<=0&&quizState.selected===null&&!quizState.finished)timeoutQuestion();
+  },100);
+}
+
+async function timeoutQuestion(){
+  if(quizState.selected!==null||quizState.finished)return;
+  clearInterval(questionTimerInterval);
+  quizState.selected=-1;
+  const q=activeQuestions[quizState.current];
+  document.querySelectorAll('.answer-btn').forEach(b=>b.disabled=true);
+  if(q)document.getElementById('opt-'+q.answer).classList.add('correct');
+  quizState.answers[quizState.current]={chosen:-1,correct:false};
+  try{
+    await db.ref('games/'+myPin+'/players/'+myPlayerId).update({
+      score:quizState.score,correctCount:quizState.correctCount,answers:quizState.answers
+    });
+  }catch(e){}
+  setTimeout(()=>{
+    const next=quizState.current+1;
+    if(next>=activeQuestions.length){finishQuiz();return;}
+    quizState.current=next;quizState.selected=null;
+    renderQuestion();startQuestionTimer();
+  },900);
+}
+
+function renderQuestion(){
+  const i=quizState.current;
+  const q=activeQuestions[i];
+  if(!q)return;
+  const total=activeQuestions.length;
+  document.getElementById('quiz-progress-label').textContent='Question '+(i+1)+' of '+total;
+  document.getElementById('quiz-progress-bar').style.width=(i/total*100)+'%';
+  document.getElementById('quiz-q-num').textContent='QUESTION '+(i+1);
+  document.getElementById('quiz-question').textContent=q.q;
+  document.getElementById('quiz-score').textContent=quizState.score;
+  document.getElementById('quiz-options').innerHTML=q.options.map((opt,idx)=>
+    `<button class="answer-btn" id="opt-${idx}" onclick="handleAnswer(${idx})">
+      <span style="font-size:12px;color:#64748b;margin-right:8px;">${['A','B','C','D'][idx]}</span>${escHtml(opt)}
+    </button>`
+  ).join('');
+  quizState.questionStartTime=Date.now();
+}
+
+async function handleAnswer(idx){
+  if(quizState.selected!==null||quizState.finished)return;
+  quizState.selected=idx;
+  clearInterval(questionTimerInterval);
+
+  const q=activeQuestions[quizState.current];
+  const correct=idx===q.answer;
+  const timeSpent=(Date.now()-quizState.questionStartTime)/1000;
+
+  // Calculate points
+  let points=0;
+  if(correct){
+    quizState.correctCount++;
+    if(gameSettings.gameMode==='lightning'){
+      // Speed tiers: <5s = 3pts, <10s = 2pts, else = 1pt
+      points=timeSpent<=5?3:timeSpent<=10?2:1;
+    }else if(gameSettings.scoringMode==='speed'){
+      // Classic speed bonus: faster = more points (scaled by game timer)
+      const dur=gameSettings.timerDuration||120;
+      const elapsed=(Date.now()-gameStartTime)/1000;
+      const frac=elapsed/dur;
+      points=frac<0.25?3:frac<0.5?2:1;
+    }else{
+      points=1;
+    }
+    quizState.score+=points;
+  }
+
+  // Visual feedback
+  document.querySelectorAll('.answer-btn').forEach(b=>b.disabled=true);
+  document.getElementById('opt-'+idx).classList.add(correct?'correct':'wrong');
+  if(!correct)document.getElementById('opt-'+q.answer).classList.add('correct');
+  document.getElementById('quiz-score').textContent=quizState.score;
+  quizState.answers[quizState.current]={chosen:idx,correct};
+
+  // Survival mode: wrong answer = eliminated
+  if(!correct&&gameSettings.gameMode==='survival'){
+    try{
+      await db.ref('games/'+myPin+'/players/'+myPlayerId).update({
+        score:quizState.score,correctCount:quizState.correctCount,
+        answers:quizState.answers,eliminated:true
+      });
+    }catch(e){}
+    setTimeout(()=>eliminatePlayer(),1200);
+    return;
+  }
+
+  // Save to Firebase
+  try{
+    await db.ref('games/'+myPin+'/players/'+myPlayerId).update({
+      score:quizState.score,correctCount:quizState.correctCount,answers:quizState.answers
+    });
+  }catch(e){}
+
+  setTimeout(()=>{
+    const next=quizState.current+1;
+    if(next>=activeQuestions.length){finishQuiz();return;}
+    quizState.current=next;quizState.selected=null;
+    renderQuestion();
+    if(gameSettings.gameMode==='lightning')startQuestionTimer();
+  },900);
+}
+
+function eliminatePlayer(){
+  quizState.eliminated=true;
+  clearInterval(quizTimerInterval);
+  clearInterval(questionTimerInterval);
+  db.ref('games/'+myPin+'/status').off();
+  showPage('eliminated');
+  document.getElementById('eliminated-score').textContent=quizState.score;
+  document.getElementById('eliminated-correct').textContent=quizState.correctCount+'/'+activeQuestions.length+' correct';
+  setTimeout(()=>goToResults(),3000);
+}
+
+async function finishQuiz(){
+  if(quizState.finished)return;
+  quizState.finished=true;
+  clearInterval(quizTimerInterval);
+  clearInterval(questionTimerInterval);
+  db.ref('games/'+myPin+'/status').off();
+  try{
+    await db.ref('games/'+myPin+'/players/'+myPlayerId).update({
+      score:quizState.score,correctCount:quizState.correctCount,
+      finished:true,finishedAt:Date.now()
+    });
+  }catch(e){}
+  goToResults();
+}
+
+// ══════════════════════════════════════════
+// RESULTS
+// ══════════════════════════════════════════
+async function goToResults(){
+  showPage('results');
+  const snap=await db.ref('games/'+myPin+'/players').get();
+  const players=Object.values(snap.val()||{}).sort((a,b)=>b.score-a.score||(a.finishedAt||9e15)-(b.finishedAt||9e15));
+  const me=players.find(p=>p.id===myPlayerId)||{nickname:myNickname,score:quizState.score,correctCount:quizState.correctCount};
+  const myRank=players.findIndex(p=>p.id===myPlayerId)+1||1;
+  const isWinner=myRank===1&&!quizState.eliminated;
+  const total=activeQuestions.length||gameSettings.questionCount||20;
+
+  if(isWinner)showConfetti();
+
+  document.getElementById('my-result-card').innerHTML=`
+    ${isWinner?'<div style="font-size:32px;margin-bottom:8px;">👑</div>':quizState.eliminated?'<div style="font-size:32px;margin-bottom:8px;">💀</div>':''}
+    <div style="font-size:14px;color:#64748b;margin-bottom:4px;">${escHtml(me.nickname)}</div>
+    <div class="orbitron" style="font-size:52px;font-weight:900;color:${isWinner?'#eab308':'#a855f7'};line-height:1;">${me.score}</div>
+    <div style="font-size:13px;color:#94a3b8;margin-top:4px;">points</div>
+    <div style="font-size:14px;color:#94a3b8;margin-top:6px;">${me.correctCount||0} / ${total} correct</div>
+    <div style="font-size:14px;color:#94a3b8;margin-top:4px;">Rank #${myRank} of ${players.length}</div>
+    ${quizState.eliminated?'<div style="margin-top:8px;font-size:13px;color:#f87171;">Eliminated in Survival Mode</div>':''}
+  `;
+
+  document.getElementById('results-leaderboard').innerHTML=players.slice(0,10).map((p,i)=>`
+    <div class="leaderboard-row ${i===0?'winner-glow':''}">
+      <div class="rank-badge" style="background:${i<3?MEDAL_COLORS[i]+'20':'rgba(255,255,255,0.05)'};color:${i<3?MEDAL_COLORS[i]:'#64748b'}">${i<3?MEDAL_EMOJIS[i]:i+1}</div>
+      <div class="avatar" style="width:28px;height:28px;background:${avatarColor(p.nickname)}30;color:${avatarColor(p.nickname)};font-size:12px;">${p.nickname[0].toUpperCase()}</div>
+      <span style="flex:1;font-size:14px;font-weight:${p.id===myPlayerId?700:400};">${escHtml(p.nickname)}${p.id===myPlayerId?' (you)':''}${p.eliminated?' 💀':''}</span>
+      <span class="orbitron" style="font-size:15px;color:#a855f7;">${p.score}</span>
+    </div>`).join('');
+}
+
+// ══════════════════════════════════════════
+// CONFETTI
+// ══════════════════════════════════════════
+function showConfetti(){
+  const c=document.getElementById('confetti-container');
+  for(let i=0;i<60;i++){
+    const d=document.createElement('div');
+    d.className='confetti-p';
+    d.style.cssText=`left:${Math.random()*100}%;background:${COLORS[i%COLORS.length]};animation-delay:${Math.random()*2}s;animation-duration:${2+Math.random()*3}s;`;
+    c.appendChild(d);
+    setTimeout(()=>d.remove(),5000);
+  }
+}
+
+// ══════════════════════════════════════════
+// PARTICLES
+// ══════════════════════════════════════════
+function initParticles(){
+  const c=document.getElementById('particles');
+  for(let i=0;i<12;i++){
+    const d=document.createElement('div');
+    d.className='particle';
+    d.style.cssText=`left:${Math.random()*100}%;width:${2+Math.random()*4}px;height:${2+Math.random()*4}px;background:${COLORS[i%COLORS.length]}60;animation-duration:${8+Math.random()*12}s;animation-delay:${Math.random()*10}s;`;
+    c.appendChild(d);
+  }
+}
+initParticles();
+
+// Set initial mode description on setup page
+selectPill('setting-mode','classic');
+</script>
+</body>
+</html>
