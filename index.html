@@ -890,13 +890,17 @@ async function adminStartGame(){
   btn.disabled=false;btn.textContent='▶ Start Game';
 }
 
+let adminGameEnded=false;
 async function adminEndGame(){
+  if(adminGameEnded)return;
+  adminGameEnded=true;
   clearInterval(adminTimerInterval);
   await db.ref('games/'+myPin).update({status:'ended'});
   document.getElementById('admin-winner-box').style.display='block';
 }
 
 async function adminReset(){
+  adminGameEnded=false;
   clearInterval(adminTimerInterval);
   await db.ref('games/'+myPin).update({status:'lobby',startTime:null,activeQuestions:null});
   await db.ref('games/'+myPin+'/players').remove();
@@ -1181,11 +1185,12 @@ function setupLobby(initialGame){
       </div>`).join('');
   });
 
+  let gameStarted=false;
   db.ref('games/'+myPin).on('value',snap=>{
     const g=snap.val();
     if(!g)return;
-    if(g.status==='active'&&g.activeQuestions)startQuiz(g);
-    if(g.status==='ended')goToResults();
+    if(g.status==='active'&&g.activeQuestions&&!gameStarted){gameStarted=true;startQuiz(g);}
+    if(g.status==='ended'&&!gameStarted)goToResults();
   });
 }
 
@@ -1200,6 +1205,12 @@ async function startQuiz(gameData){
   activeQuestions=toArray(gameData.activeQuestions)||DEFAULT_QUESTIONS.slice(0,gameSettings.questionCount);
   gameStartTime=gameData.startTime;
 
+  // Guard: if no questions loaded, don't start
+  if(!activeQuestions||activeQuestions.length===0){
+    alert('No questions loaded. Please ask the host to restart the game.');
+    return;
+  }
+
   quizState={current:0,score:0,correctCount:0,answers:{},selected:null,finished:false,eliminated:false,questionStartTime:Date.now()};
 
   showPage('quiz');
@@ -1207,7 +1218,8 @@ async function startQuiz(gameData){
   // Configure header based on game mode
   const isLightning=gameSettings.gameMode==='lightning';
   const isSurvival=gameSettings.gameMode==='survival';
-  document.getElementById('quiz-global-timer').style.display=isLightning?'none':'flex';
+  // Survival: hide the global countdown timer (survival ends on wrong answer, not timer)
+  document.getElementById('quiz-global-timer').style.display=(isLightning||isSurvival)?'none':'flex';
   document.getElementById('quiz-q-timer').style.display=isLightning?'flex':'none';
   document.getElementById('quiz-lives').style.display=isSurvival?'block':'none';
 
@@ -1219,17 +1231,22 @@ async function startQuiz(gameData){
     startGlobalTimer(gameData.startTime);
   }
 
-  // Watch for host force-ending game
-  db.ref('games/'+myPin+'/status').on('value',snap=>{
-    if(snap.val()==='ended'&&!quizState.finished)finishQuiz();
-  });
+  // Watch for host force-ending game (delay attach by 2s to avoid instant trigger on join)
+  setTimeout(()=>{
+    db.ref('games/'+myPin+'/status').on('value',snap=>{
+      if(snap.val()==='ended'&&!quizState.finished)finishQuiz();
+    });
+  },2000);
 }
 
 function startGlobalTimer(startTime){
   const dur=gameSettings.timerDuration||120;
   clearInterval(quizTimerInterval);
+  // Always count down from full duration starting NOW on the player's device.
+  // This avoids ANY clock skew between host and player ever ending the game instantly.
+  const localCountdownStart=Date.now();
   quizTimerInterval=setInterval(()=>{
-    const elapsed=(Date.now()-startTime)/1000;
+    const elapsed=(Date.now()-localCountdownStart)/1000;
     const tl=Math.max(0,dur-elapsed);
     const tlr=Math.round(tl);
     const el=document.getElementById('quiz-timer');
@@ -1238,7 +1255,8 @@ function startGlobalTimer(startTime){
     el.style.cssText='font-size:30px;font-weight:900;line-height:1;';
     document.getElementById('quiz-timer-bar').style.width=(tl/dur*100)+'%';
     document.getElementById('quiz-timer-bar').style.background=tl<20?'#ef4444':tl<40?'#f97316':'#a855f7';
-    if(tl<=0&&!quizState.finished)finishQuiz();
+    // Survival mode: timer expiry doesn't end the game — wrong answer does.
+    if(tl<=0&&!quizState.finished&&gameSettings.gameMode!=='survival')finishQuiz();
   },300);
 }
 
@@ -1279,9 +1297,16 @@ async function timeoutQuestion(){
   quizState.answers[quizState.current]={chosen:-1,correct:false,timedOut:true};
   try{
     await db.ref('games/'+myPin+'/players/'+myPlayerId).update({
-      score:quizState.score,correctCount:quizState.correctCount,answers:quizState.answers
+      score:quizState.score,correctCount:quizState.correctCount,
+      answers:quizState.answers,
+      ...(gameSettings.gameMode==='survival'?{eliminated:true}:{})
     });
   }catch(e){}
+  // Survival: timeout = eliminated (no answer = wrong answer)
+  if(gameSettings.gameMode==='survival'){
+    setTimeout(()=>eliminatePlayer(),1200);
+    return;
+  }
   setTimeout(()=>{
     const next=quizState.current+1;
     if(next>=activeQuestions.length){finishQuiz();return;}
@@ -1305,7 +1330,9 @@ function renderQuestion(){
       <span style="font-size:12px;color:#64748b;margin-right:8px;">${['A','B','C','D'][idx]}</span>${escHtml(opt)}
     </button>`
   ).join('');
-  quizState.questionStartTime=Date.now();
+  // Only set questionStartTime here for non-lightning modes.
+  // Lightning mode sets it in startQuestionTimer() to avoid double-setting.
+  if(gameSettings.gameMode!=='lightning') quizState.questionStartTime=Date.now();
 }
 
 async function handleAnswer(idx){
@@ -1373,6 +1400,7 @@ async function handleAnswer(idx){
 
 async function eliminatePlayer(){
   quizState.eliminated=true;
+  quizState.finished=true; // prevent finishQuiz() from firing on eliminated player
   clearInterval(quizTimerInterval);
   clearInterval(questionTimerInterval);
   db.ref('games/'+myPin+'/status').off();
@@ -1389,6 +1417,14 @@ async function eliminatePlayer(){
   document.getElementById('eliminated-score').textContent=quizState.score;
   document.getElementById('eliminated-correct').textContent=quizState.correctCount+'/'+activeQuestions.length+' correct';
   startSpectatorMode();
+  // If all players are now eliminated, auto-end the game
+  try{
+    const snap=await db.ref('games/'+myPin+'/players').get();
+    const allPlayers=Object.values(snap.val()||{});
+    if(allPlayers.length>0&&allPlayers.every(p=>p.eliminated||p.finished)){
+      await db.ref('games/'+myPin).update({status:'ended'});
+    }
+  }catch(e){}
 }
 
 function startSpectatorMode(){
@@ -1442,6 +1478,7 @@ async function goToResults(){
   const myRank=players.findIndex(p=>p.id===myPlayerId)+1||1;
   const isWinner=myRank===1&&!quizState.eliminated;
   const total=activeQuestions.length||gameSettings.questionCount||20;
+  if(!myPlayerId)return; // safety: not fully joined yet
 
   if(isWinner)showConfetti();
 
@@ -1689,8 +1726,8 @@ if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.s
       document.getElementById('quiz-q-timer').style.display=isLightning?'flex':'none';
       document.getElementById('quiz-lives').style.display=gameSettings.gameMode==='survival'?'block':'none';
       renderQuestion();
-      if(isLightning)startQuestionTimer();else startGlobalTimer(g.startTime);
-      db.ref('games/'+myPin+'/status').on('value',snap=>{if(snap.val()==='ended'&&!quizState.finished)finishQuiz();});
+      if(isLightning)startQuestionTimer();else startGlobalTimer(Date.now());
+      setTimeout(()=>{db.ref('games/'+myPin+'/status').on('value',snap=>{if(snap.val()==='ended'&&!quizState.finished)finishQuiz();});},2000);
     }else{
       // Back to lobby
       setupLobby(g);
