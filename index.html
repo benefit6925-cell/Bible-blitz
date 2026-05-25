@@ -362,7 +362,85 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
       <div class="label">🏆 FINAL LEADERBOARD</div>
       <div id="results-leaderboard" class="scroll-box"></div>
     </div>
-    <button class="btn-secondary mt20" onclick="showPage(&#39;landing&#39;)">🔄 Play Again</button>
+    <div id="results-next-round-banner" style="display:none;margin-top:16px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:14px;padding:18px;text-align:center;">
+      <div style="font-size:24px;margin-bottom:6px;animation:pulse 1.5s ease infinite;">🔄</div>
+      <div style="font-weight:700;color:#4ade80;margin-bottom:4px;">New Round Starting!</div>
+      <div style="font-size:13px;color:#94a3b8;">The host is setting up the next round. You'll be sent to the lobby shortly...</div>
+    </div>
+    <button class="btn-secondary mt20" onclick="showPage('landing')">🔄 Play Again</button>
+  </div>
+</div>
+
+<!-- ═══ WAITING ROOM (late joiners during active game) ═══ -->
+<div id="page-waiting" class="page" style="z-index:1;">
+  <div class="fade-in center" style="width:100%;max-width:480px;">
+    <div class="flex-center gap12 mb32" style="justify-content:center;">
+      <div style="width:36px;height:36px;background:linear-gradient(135deg,#7c3aed,#ec4899);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">🎮</div>
+      <span class="orbitron neon-text" style="font-size:20px;letter-spacing:2px;">QUIZ MATE</span>
+    </div>
+    <div class="card" style="max-width:100%;text-align:center;">
+      <div style="font-size:52px;margin-bottom:16px;animation:pulse 1.5s ease infinite;">⏳</div>
+      <h2 style="font-size:22px;font-weight:700;margin-bottom:10px;">Game in Progress</h2>
+      <p style="color:#94a3b8;font-size:15px;margin-bottom:20px;">A game is already underway in this room.<br>You'll join automatically when the next round starts!</p>
+      <div style="background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);border-radius:12px;padding:16px;margin-bottom:20px;">
+        <div style="font-size:12px;color:#64748b;margin-bottom:4px;">JOINED AS</div>
+        <div style="font-size:20px;font-weight:700;" id="waiting-name"></div>
+        <div style="font-size:12px;color:#64748b;margin-top:6px;">Room PIN: <span class="orbitron" style="color:#a855f7;" id="waiting-pin"></span></div>
+      </div>
+      <div class="flex-center gap8" style="justify-content:center;margin-bottom:16px;">
+        <span class="status-dot"></span>
+        <span style="color:#94a3b8;font-size:14px;">Waiting for next round...</span>
+      </div>
+      <div id="waiting-live-lb" style="text-align:left;margin-bottom:16px;display:none;">
+        <div class="label" style="margin-bottom:8px;">📊 CURRENT GAME — LIVE SCORES</div>
+        <div id="waiting-leaderboard" class="scroll-box" style="max-height:200px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ NEXT ROUND MODAL (admin) ═══ -->
+<div id="next-round-modal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;padding:20px;">
+  <div class="glass glow-border fade-in" style="border-radius:20px;padding:32px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;">
+    <h2 class="orbitron neon-text" style="font-size:20px;margin-bottom:6px;">🔄 Start Next Round</h2>
+    <p style="color:#94a3b8;font-size:14px;margin-bottom:24px;">Choose settings for the next round. Players will stay in the room and rejoin automatically.</p>
+
+    <span class="label">NUMBER OF QUESTIONS</span>
+    <div class="pill-group" id="nr-setting-count">
+      <button class="pill" data-value="10" onclick="selectPill('nr-setting-count','10')">10</button>
+      <button class="pill active" data-value="20" onclick="selectPill('nr-setting-count','20')">20</button>
+      <button class="pill" data-value="30" onclick="selectPill('nr-setting-count','30')">30</button>
+      <button class="pill" data-value="40" onclick="selectPill('nr-setting-count','40')">40</button>
+      <button class="pill" data-value="50" onclick="selectPill('nr-setting-count','50')">50</button>
+    </div>
+
+    <span class="label">GAME TIMER</span>
+    <div class="pill-group" id="nr-setting-timer">
+      <button class="pill" data-value="60" onclick="selectPill('nr-setting-timer','60')">1 min</button>
+      <button class="pill active" data-value="120" onclick="selectPill('nr-setting-timer','120')">2 min</button>
+      <button class="pill" data-value="180" onclick="selectPill('nr-setting-timer','180')">3 min</button>
+      <button class="pill" data-value="300" onclick="selectPill('nr-setting-timer','300')">5 min</button>
+      <button class="pill" data-value="600" onclick="selectPill('nr-setting-timer','600')">10 min</button>
+    </div>
+
+    <span class="label">GAME MODE</span>
+    <div class="pill-group" id="nr-setting-mode">
+      <button class="pill active" data-value="classic" onclick="selectNRModePill('classic')">🎮 Classic</button>
+      <button class="pill" data-value="lightning" onclick="selectNRModePill('lightning')">⚡ Lightning</button>
+      <button class="pill" data-value="survival" onclick="selectNRModePill('survival')">💀 Survival</button>
+    </div>
+    <div id="nr-mode-desc" style="font-size:12px;color:#64748b;margin-top:-8px;margin-bottom:16px;padding:8px 12px;background:rgba(255,255,255,0.02);border-radius:8px;">Standard quiz with a shared countdown timer. Answer all questions before time runs out.</div>
+
+    <span class="label">SCORING</span>
+    <div class="pill-group" id="nr-setting-scoring">
+      <button class="pill active" data-value="standard" onclick="selectPill('nr-setting-scoring','standard')">📊 Standard</button>
+      <button class="pill" data-value="speed" onclick="selectPill('nr-setting-scoring','speed')">⚡ Speed Bonus</button>
+    </div>
+
+    <div style="display:flex;gap:12px;margin-top:8px;">
+      <button class="btn-primary" onclick="adminLaunchNextRound()" style="background:linear-gradient(135deg,#15803d,#22c55e);">🚀 Launch Next Round</button>
+      <button class="btn-secondary" onclick="closeNextRoundModal()" style="width:auto;padding:14px 20px;">Cancel</button>
+    </div>
   </div>
 </div>
 
@@ -378,6 +456,7 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
       <div style="margin-left:auto;display:flex;gap:10px;flex-wrap:wrap;">
         <button class="btn-primary btn-sm" id="admin-start-btn" onclick="adminStartGame()" style="background: linear-gradient(135deg, rgb(21, 128, 61), rgb(34, 197, 94)); display: none;">▶ Start Game</button>
         <button class="btn-danger" id="admin-end-btn" onclick="adminEndGame()" style="display:none;">⏹ End Game</button>
+        <button class="btn-primary btn-sm" id="admin-next-round-btn" onclick="openNextRoundModal()" style="display:none;background:linear-gradient(135deg,#15803d,#22c55e);">🔄 Next Round</button>
         <button class="btn-secondary btn-sm" onclick="adminReset()">↺ Reset</button>
         <button class="btn-secondary btn-sm" onclick="adminCloseRoom()" style="border-color:rgba(239,68,68,0.4);color:#f87171;">✕ Close Room</button>
       </div>
@@ -734,6 +813,11 @@ async function createGame(){
   const btn=document.getElementById('host-create-btn');
   btn.disabled=true;btn.textContent='Creating...';
   try{
+    const existing=await db.ref('games/'+pin).get();
+    if(existing.exists()&&existing.val().status!=='ended'){
+      errEl.textContent='❌ PIN "'+pin+'" is already in use by another room. Choose a different one.';
+      errEl.classList.add('show');btn.disabled=false;btn.textContent='Create Game Room →';return;
+    }
     await db.ref('games/'+pin).set({
       pin,status:'lobby',hostName:name,settings,
       startTime:null,createdAt:Date.now()
@@ -789,11 +873,15 @@ function updateAdminStatus(g){
 
   if(g.status==='lobby'){
     startBtn.style.display='';endBtn.style.display='none';
+    const nrBtn=document.getElementById('admin-next-round-btn');
+    if(nrBtn)nrBtn.style.display='none';
     document.getElementById('admin-timer').textContent='—';
     document.getElementById('admin-timer-bar-wrap').style.display='none';
     clearInterval(adminTimerInterval);
   }else if(g.status==='active'){
     startBtn.style.display='none';endBtn.style.display='';
+    const nrBtn=document.getElementById('admin-next-round-btn');
+    if(nrBtn)nrBtn.style.display='none';
     document.getElementById('admin-share-box').style.display='none';
     clearInterval(adminTimerInterval);
     const dur=gameSettings.timerDuration||120;
@@ -817,6 +905,8 @@ function updateAdminStatus(g){
     }
   }else if(g.status==='ended'){
     startBtn.style.display='none';endBtn.style.display='none';
+    const nrBtn=document.getElementById('admin-next-round-btn');
+    if(nrBtn)nrBtn.style.display='';
     clearInterval(adminTimerInterval);
     document.getElementById('admin-timer').textContent='Done';
     showConfetti();
@@ -909,6 +999,8 @@ async function adminReset(){
   document.getElementById('admin-timer-bar-wrap').style.display='none';
   document.getElementById('admin-start-btn').style.display='';
   document.getElementById('admin-end-btn').style.display='none';
+  const nrBtn=document.getElementById('admin-next-round-btn');
+  if(nrBtn)nrBtn.style.display='none';
   document.getElementById('admin-timer').textContent='—';
   document.getElementById('admin-timer').style.color='';
 }
@@ -930,8 +1022,73 @@ async function adminCloseRoom(){
 }
 
 // ══════════════════════════════════════════
-// ADMIN — QUESTION MANAGER
+// ADMIN — NEXT ROUND
 // ══════════════════════════════════════════
+function openNextRoundModal(){
+  // Pre-select current settings
+  const s=gameSettings;
+  selectPill('nr-setting-count',String(s.questionCount||20));
+  selectPill('nr-setting-timer',String(s.timerDuration||120));
+  selectNRModePill(s.gameMode||'classic');
+  selectPill('nr-setting-scoring',s.scoringMode||'standard');
+  const m=document.getElementById('next-round-modal');
+  m.style.display='flex';
+}
+function closeNextRoundModal(){
+  document.getElementById('next-round-modal').style.display='none';
+}
+function selectNRModePill(value){
+  selectPill('nr-setting-mode',value);
+  const desc=document.getElementById('nr-mode-desc');
+  if(desc)desc.textContent=MODE_DESCS[value]||'';
+}
+async function adminLaunchNextRound(){
+  const newSettings={
+    questionCount:parseInt(getSelectedPill('nr-setting-count'))||20,
+    timerDuration:parseInt(getSelectedPill('nr-setting-timer'))||120,
+    gameMode:getSelectedPill('nr-setting-mode')||'classic',
+    scoringMode:getSelectedPill('nr-setting-scoring')||'standard'
+  };
+  closeNextRoundModal();
+  adminGameEnded=false;
+  clearInterval(adminTimerInterval);
+
+  // Signal to all clients that a new round is incoming, then reset
+  await db.ref('games/'+myPin).update({status:'next-round',settings:newSettings,startTime:null,activeQuestions:null});
+  // Small delay so clients can catch the transition
+  await new Promise(r=>setTimeout(r,800));
+  // Reset all player scores but keep them in the room
+  const playersSnap=await db.ref('games/'+myPin+'/players').get();
+  const players=playersSnap.val()||{};
+  const updates={};
+  Object.keys(players).forEach(pid=>{
+    updates[pid]={...players[pid],score:0,correctCount:0,finished:false,eliminated:false,answers:{},finishedAt:null};
+  });
+  // Also add waiting players (who joined mid-game) as full players now
+  const waitingSnap=await db.ref('games/'+myPin+'/waitingPlayers').get();
+  const waiting=waitingSnap.val()||{};
+  Object.keys(waiting).forEach(pid=>{
+    updates[pid]={...waiting[pid],score:0,correctCount:0,finished:false,eliminated:false,answers:{},finishedAt:null};
+  });
+  await db.ref('games/'+myPin+'/players').set(Object.keys(updates).length>0?updates:null);
+  await db.ref('games/'+myPin+'/waitingPlayers').remove();
+  await db.ref('games/'+myPin+'/eliminated').remove();
+  // Now open the lobby
+  await db.ref('games/'+myPin).update({status:'lobby',settings:newSettings});
+  gameSettings=newSettings;
+  updateAdminSettingChips();
+  document.getElementById('admin-share-box').style.display='block';
+  document.getElementById('admin-winner-box').style.display='none';
+  document.getElementById('admin-timer-bar-wrap').style.display='none';
+  document.getElementById('admin-start-btn').style.display='';
+  document.getElementById('admin-end-btn').style.display='none';
+  const nrBtn=document.getElementById('admin-next-round-btn');
+  if(nrBtn)nrBtn.style.display='none';
+  document.getElementById('admin-timer').textContent='—';
+  document.getElementById('admin-timer').style.color='';
+}
+
+
 function renderQuestionManager(){
   db.ref('games/'+myPin+'/customQuestions').get().then(snap=>{
     customQuestions=snap.val()?Object.values(snap.val()):[];
@@ -1117,6 +1274,21 @@ async function joinGame(){
       errEl.classList.add('show');btn.disabled=false;btn.textContent='Join Game →';return;
     }
     myPin=pin;myNickname=nick;
+    // Check if joining mid-game — send to waiting room
+    if(g.status==='active'){
+      myPlayerId='player_'+Date.now()+'_'+Math.random().toString(36).substr(2,5);
+      // Register in waitingPlayers so host's next round picks them up
+      await db.ref('games/'+pin+'/waitingPlayers/'+myPlayerId).set({
+        id:myPlayerId,nickname:nick,joinedAt:Date.now()
+      });
+      sessionStorage.setItem('qm_session',JSON.stringify({pin,nick,playerId:myPlayerId,waiting:true}));
+      document.getElementById('waiting-name').textContent=nick;
+      document.getElementById('waiting-pin').textContent=pin;
+      showPage('waiting');
+      startWaitingMode();
+      btn.disabled=false;btn.textContent='Join Game →';
+      return;
+    }
     // Check if this nickname was already eliminated in this game (survival mode)
     const elimSnap=await db.ref('games/'+pin+'/eliminated/'+nick.replace(/[^a-zA-Z0-9]/g,'_')).get();
     if(elimSnap.exists()&&g.settings&&g.settings.gameMode==='survival'&&g.status==='active'){
@@ -1156,6 +1328,41 @@ async function joinGame(){
 }
 
 // ══════════════════════════════════════════
+// PLAYER — WAITING ROOM (mid-game joiners)
+// ══════════════════════════════════════════
+function startWaitingMode(){
+  // Show live leaderboard so they can watch
+  db.ref('games/'+myPin+'/players').on('value',snap=>{
+    const players=Object.values(snap.val()||{}).sort((a,b)=>b.score-a.score);
+    const lb=document.getElementById('waiting-leaderboard');
+    const lbWrap=document.getElementById('waiting-live-lb');
+    if(!lb)return;
+    if(players.length>0&&lbWrap)lbWrap.style.display='block';
+    lb.innerHTML=players.slice(0,10).map((p,i)=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(255,255,255,0.03);border-radius:10px;margin-bottom:6px;">
+        <span style="font-size:13px;color:#64748b;min-width:20px;">${i+1}</span>
+        <div class="avatar" style="width:28px;height:28px;background:${avatarColor(p.nickname)}30;color:${avatarColor(p.nickname)};font-size:11px;">${p.nickname[0].toUpperCase()}</div>
+        <span style="flex:1;font-size:13px;">${escHtml(p.nickname)}${p.eliminated?' 💀':''}</span>
+        <span style="font-size:14px;font-weight:700;color:#4ade80;">${p.score}</span>
+      </div>`).join('');
+  });
+  // Watch for lobby re-open (next round)
+  db.ref('games/'+myPin+'/status').on('value',snap=>{
+    const st=snap.val();
+    if(st==='lobby'){
+      db.ref('games/'+myPin+'/players').off();
+      db.ref('games/'+myPin+'/status').off();
+      // Fetch fresh game data and go to lobby
+      db.ref('games/'+myPin).get().then(gsnap=>{
+        const g=gsnap.val()||{};
+        setupLobby(g);
+        showPage('lobby');
+      });
+    }
+  });
+}
+
+// ══════════════════════════════════════════
 // PLAYER — LOBBY
 // ══════════════════════════════════════════
 function setupLobby(initialGame){
@@ -1191,6 +1398,18 @@ function setupLobby(initialGame){
     if(!g)return;
     if(g.status==='active'&&g.activeQuestions&&!gameStarted){gameStarted=true;startQuiz(g);}
     if(g.status==='ended'&&!gameStarted)goToResults();
+    // Lobby settings update (e.g. mode badge refresh for next round)
+    if(g.status==='lobby'&&g.settings){
+      gameSettings=g.settings;
+      const modeLabel={classic:'🎮 Classic',lightning:'⚡ Lightning',survival:'💀 Survival'};
+      const modeClass={classic:'mode-classic',lightning:'mode-lightning',survival:'mode-survival'};
+      const m=g.settings.gameMode||'classic';
+      const _lmb=document.getElementById('lobby-mode-badge');if(_lmb)_lmb.innerHTML=`
+        <span class="mode-tag ${modeClass[m]}">${modeLabel[m]||m}</span>
+        <span class="setting-chip">${g.settings.questionCount||20} Questions</span>
+        <span class="setting-chip">${formatTime(g.settings.timerDuration||120)}</span>
+      `;
+    }
   });
 }
 
@@ -1499,6 +1718,28 @@ async function goToResults(){
       <span style="flex:1;font-size:14px;font-weight:${p.id===myPlayerId?700:400};">${escHtml(p.nickname)}${p.id===myPlayerId?' (you)':''}${p.eliminated?' 💀':''}</span>
       <span class="orbitron" style="font-size:15px;color:#a855f7;">${p.score}</span>
     </div>`).join('');
+
+  // Listen for host starting a new round — auto-return to lobby
+  if(myPin&&!isHost){
+    db.ref('games/'+myPin+'/status').on('value',statusSnap=>{
+      const st=statusSnap.val();
+      if(st==='next-round'||st==='lobby'){
+        const banner=document.getElementById('results-next-round-banner');
+        if(banner)banner.style.display='block';
+        if(st==='lobby'){
+          db.ref('games/'+myPin+'/status').off();
+          db.ref('games/'+myPin).get().then(gsnap=>{
+            const g=gsnap.val()||{};
+            quizState={current:0,score:0,correctCount:0,answers:{},selected:null,finished:false,eliminated:false,questionStartTime:0};
+            clearInterval(quizTimerInterval);
+            clearInterval(questionTimerInterval);
+            setupLobby(g);
+            showPage('lobby');
+          });
+        }
+      }
+    });
+  }
 }
 
 // ══════════════════════════════════════════
@@ -1698,6 +1939,30 @@ if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.s
     if(!snap.exists())return;
     const g=snap.val();
     if(g.status==='ended'){sessionStorage.removeItem('qm_session');return;}
+    // If this was a waiting player and the game is now in lobby, join normally
+    if(s.waiting&&g.status==='lobby'){
+      myPin=s.pin;myNickname=s.nick;myPlayerId=s.playerId;
+      // Check if they were promoted to players in last round transition
+      const pSnap=await db.ref('games/'+s.pin+'/players/'+s.playerId).get();
+      if(pSnap.exists()){
+        setupLobby(g);showPage('lobby');return;
+      }
+      // Otherwise register as a normal player
+      await db.ref('games/'+s.pin+'/players/'+s.playerId).set({
+        id:s.playerId,nickname:s.nick,score:0,correctCount:0,
+        finished:false,eliminated:false,joinedAt:Date.now(),answers:{}
+      });
+      setupLobby(g);showPage('lobby');return;
+    }
+    // If still in waiting (game still active)
+    if(s.waiting&&g.status==='active'){
+      myPin=s.pin;myNickname=s.nick;myPlayerId=s.playerId;
+      document.getElementById('waiting-name').textContent=s.nick;
+      document.getElementById('waiting-pin').textContent=s.pin;
+      showPage('waiting');
+      startWaitingMode();
+      return;
+    }
     // Check player record still exists
     const pSnap=await db.ref('games/'+s.pin+'/players/'+s.playerId).get();
     if(!pSnap.exists())return;
