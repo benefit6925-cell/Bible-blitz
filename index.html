@@ -1579,15 +1579,15 @@ async function aiGenerateQuestions(){
   const addBtn=document.getElementById('ai-add-btn');
   genBtn.disabled=true;genBtn.textContent='Generating...';
   statusEl.style.display='block';
-  document.getElementById('ai-status-text').textContent='Claude AI is crafting your questions...';
+  document.getElementById('ai-status-text').textContent='Gemini AI is crafting your questions...';
   const prompt='You are a Bible quiz expert. Generate exactly '+count+' multiple-choice Bible quiz questions about: "'+topic+'". Difficulty: '+difficulty+'. Rules: factually accurate, 4 options per question, only one correct answer, plausible wrong answers, vary question styles. Respond ONLY with a valid JSON array, no other text, no markdown, no backticks: [{"q":"Question?","options":["A","B","C","D"],"answer":0},...] where answer is the 0-based index of the correct option.';
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
+    const res=await fetch('https://aged-bird-2087.benefit6925.workers.dev/',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})
+      body:JSON.stringify({prompt:prompt})
     });
     const data=await res.json();
-    const raw=data.content&&data.content[0]&&data.content[0].text;
+    const raw=data.candidates&&data.candidates[0]&&data.candidates[0].content&&data.candidates[0].content.parts&&data.candidates[0].content.parts[0]&&data.candidates[0].content.parts[0].text;
     if(!raw)throw new Error('No response from AI');
     const cleaned=raw.replace(/```json|```/g,'').trim();
     const questions=JSON.parse(cleaned);
