@@ -1,22 +1,22 @@
-const CACHE_NAME = 'biblebrawl-v3';
-const STATIC_ASSETS = [
-  '/Bible-blitz/',
-  '/Bible-blitz/index.html',
-  '/Bible-blitz/manifest.json',
-  'https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=DM+Sans:wght@400;500;600&display=swap'
+const CACHE_NAME = 'quizmate-v1';
+const ASSETS = [
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/favicon.ico'
 ];
 
-// Install: cache static assets
+// Install — cache all core assets
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(STATIC_ASSETS).catch(() => {});
-    })
+    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
   );
   self.skipWaiting();
 });
 
-// Activate: clean up old caches
+// Activate — delete old caches
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
@@ -26,20 +26,21 @@ self.addEventListener('activate', e => {
   self.clients.claim();
 });
 
-// Fetch: network first, fall back to cache
+// Fetch — network first, fall back to cache
 self.addEventListener('fetch', e => {
-  // Don't intercept Firebase requests — always needs live network
-  if (e.request.url.includes('firebaseio.com') || e.request.url.includes('googleapis.com/identitytoolkit')) {
+  // Don't cache API calls
+  if (e.request.url.includes('workers.dev') ||
+      e.request.url.includes('firebaseio') ||
+      e.request.url.includes('googleapis') ||
+      e.request.url.includes('groq.com')) {
     return;
   }
+
   e.respondWith(
     fetch(e.request)
       .then(res => {
-        // Cache successful responses
-        if (res && res.status === 200 && res.type === 'basic') {
-          const clone = res.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
-        }
+        const clone = res.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
         return res;
       })
       .catch(() => caches.match(e.request))

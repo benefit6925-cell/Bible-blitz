@@ -1,17 +1,12 @@
 {
-  "name": "BibleBrawl",
-  "short_name": "BibleBrawl",
-  "description": "The ultimate multiplayer Bible quiz game. Brawl with friends anywhere in the world!",
-  "start_url": "/Bible-blitz/",
-  "scope": "/Bible-blitz/",
+  "name": "Quiz Mate",
+  "short_name": "Quiz Mate",
+  "description": "The ultimate multiplayer quiz game — any topic, play with friends anywhere!",
+  "start_url": "/",
   "display": "standalone",
-  "orientation": "portrait-primary",
-  "background_color": "#080b14",
+  "background_color": "#0f0f1a",
   "theme_color": "#7c3aed",
-  "categories": [
-    "games",
-    "education"
-  ],
+  "orientation": "portrait",
   "icons": [
     {
       "src": "icon-192.png",
@@ -25,7 +20,5 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ],
-  "screenshots": [],
-  "lang": "en"
+  ]
 }
