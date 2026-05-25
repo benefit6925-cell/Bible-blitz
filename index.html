@@ -509,7 +509,7 @@ Answer: B</pre>
         <!-- AI GENERATE PANEL -->
         <div id="import-panel-ai" style="display:none;background:rgba(168,85,247,0.05);border:1px solid rgba(168,85,247,0.3);border-radius:14px;padding:20px;margin-bottom:16px;">
           <h4 style="font-size:14px;font-weight:700;margin-bottom:4px;color:#a855f7;">✨ AI Question Generator</h4>
-          <p style="font-size:12px;color:#64748b;margin-bottom:14px;">Powered by Gemini AI — generates fresh Bible questions instantly</p>
+          <p style="font-size:12px;color:#64748b;margin-bottom:14px;">Powered by Groq AI — generates fresh Bible questions instantly</p>
           <span class="label">BIBLE TOPIC OR BOOK</span>
           <input class="input-field mb12" id="ai-topic" placeholder="e.g. Book of Daniel, Miracles of Jesus, New Testament, Psalms..."/>
           <div style="display:flex;gap:12px;margin-bottom:12px;align-items:flex-end;">
@@ -1588,8 +1588,8 @@ async function aiGenerateQuestions(){
     });
     const data=await res.json();
     let raw=null;
-    try{raw=data.candidates[0].content.parts[0].text;}catch(ex){raw=null;}
-    if(!raw){console.error('Gemini raw response:',JSON.stringify(data));throw new Error('No response from AI - check console for details');};
+    try{raw=data.choices[0].message.content;}catch(ex){raw=null;}
+    if(!raw){console.error('Groq raw response:',JSON.stringify(data));throw new Error('No response from AI - check console for details');};
     const cleaned=raw.replace(/```json|```/g,'').trim();
     const questions=JSON.parse(cleaned);
     if(!Array.isArray(questions)||questions.length===0)throw new Error('Invalid response format');
