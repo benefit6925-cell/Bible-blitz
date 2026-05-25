@@ -1,24 +1,24 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<!-- saved from url=(0048)file:///C:/Users/user%201/Downloads/index_1.html -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Quiz Mate 🎮 v2</title>
 <!-- PWA Meta Tags -->
-<meta name="application-name" content="Quiz Mate"/>
-<meta name="apple-mobile-web-app-capable" content="yes"/>
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-<meta name="apple-mobile-web-app-title" content="Quiz Mate"/>
-<meta name="description" content="The ultimate multiplayer quiz game. Play with friends anywhere in the world!"/>
-<meta name="theme-color" content="#7c3aed"/>
-<meta name="mobile-web-app-capable" content="yes"/>
-<link rel="manifest" href="manifest.json"/>
-<meta property="og:title" content="Quiz Mate 🎮"/>
-<meta property="og:description" content="The ultimate multiplayer quiz — play with friends anywhere!"/>
-<meta property="og:type" content="website"/>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+<meta name="application-name" content="Quiz Mate">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Quiz Mate">
+<meta name="description" content="The ultimate multiplayer quiz game. Play with friends anywhere in the world!">
+<meta name="theme-color" content="#7c3aed">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="file:///C:/Users/user%201/Downloads/manifest.json">
+<meta property="og:title" content="Quiz Mate 🎮">
+<meta property="og:description" content="The ultimate multiplayer quiz — play with friends anywhere!">
+<meta property="og:type" content="website">
+<script src="./index_files/firebase-app-compat.js.download"></script>
+<script src="./index_files/firebase-database-compat.js.download"></script>
+<link href="./index_files/css2" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 html,body{min-height:100vh;background:#080b14;color:#e2e8f0;font-family:'DM Sans',sans-serif;}
@@ -138,20 +138,20 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
 <div id="app">
 
 <!-- PARTICLES -->
-<div id="particles" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0;"></div>
+<div id="particles" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0;"><div class="particle" style="left: 20.0515%; width: 4.13108px; height: 4.12898px; background: rgba(168, 85, 247, 0.376); animation-duration: 12.053s; animation-delay: 6.33272s;"></div><div class="particle" style="left: 95.85%; width: 4.36318px; height: 3.47093px; background: rgba(59, 130, 246, 0.376); animation-duration: 11.4755s; animation-delay: 0.432369s;"></div><div class="particle" style="left: 0.250056%; width: 2.35667px; height: 2.41018px; background: rgba(236, 72, 153, 0.376); animation-duration: 19.9612s; animation-delay: 8.11975s;"></div><div class="particle" style="left: 61.4882%; width: 4.93774px; height: 4.40473px; background: rgba(34, 197, 94, 0.376); animation-duration: 19.6107s; animation-delay: 4.71259s;"></div><div class="particle" style="left: 32.6402%; width: 3.97369px; height: 2.49234px; background: rgba(234, 179, 8, 0.376); animation-duration: 19.4903s; animation-delay: 7.39478s;"></div><div class="particle" style="left: 0.948647%; width: 2.42042px; height: 3.12578px; background: rgba(249, 115, 22, 0.376); animation-duration: 8.14585s; animation-delay: 1.11812s;"></div><div class="particle" style="left: 71.1825%; width: 3.16762px; height: 3.34048px; background: rgba(6, 182, 212, 0.376); animation-duration: 19.278s; animation-delay: 6.2381s;"></div><div class="particle" style="left: 69.8691%; width: 3.13669px; height: 4.31652px; background: rgba(139, 92, 246, 0.376); animation-duration: 12.5248s; animation-delay: 5.11209s;"></div><div class="particle" style="left: 90.2866%; width: 3.07042px; height: 5.242px; background: rgba(168, 85, 247, 0.376); animation-duration: 8.65592s; animation-delay: 9.00484s;"></div><div class="particle" style="left: 3.90701%; width: 4.43583px; height: 2.31718px; background: rgba(59, 130, 246, 0.376); animation-duration: 18.6026s; animation-delay: 1.08383s;"></div><div class="particle" style="left: 14.3984%; width: 4.15181px; height: 3.07336px; background: rgba(236, 72, 153, 0.376); animation-duration: 16.9778s; animation-delay: 5.0741s;"></div><div class="particle" style="left: 83.1115%; width: 4.48973px; height: 5.31807px; background: rgba(34, 197, 94, 0.376); animation-duration: 14.361s; animation-delay: 0.346177s;"></div></div>
 <div id="confetti-container" style="position:fixed;inset:0;pointer-events:none;z-index:999;"></div>
 
 <!-- ═══ LANDING PAGE ═══ -->
 <div id="page-landing" class="page active" style="z-index:1;">
   <div class="fade-in center" style="max-width:480px;width:100%;">
     <div class="flex-center gap12" style="justify-content:center;margin-bottom:32px;">
-      <div style="width:56px;height:56px;background:linear-gradient(135deg,#7c3aed,#ec4899);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 0 30px #a855f760;">✝</div>
+      <div style="width:56px;height:56px;background:linear-gradient(135deg,#7c3aed,#ec4899);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 0 30px #a855f760;">🎮</div>
       <span class="orbitron neon-text" style="font-size:30px;letter-spacing:2px;">QUIZ MATE</span>
     </div>
     <p style="color:#94a3b8;font-size:17px;line-height:1.6;margin-bottom:40px;">The ultimate multiplayer quiz — play with friends anywhere in the world!</p>
     <div style="display:flex;flex-direction:column;gap:14px;max-width:320px;margin:0 auto;">
-      <button class="btn-primary" style="font-size:18px;padding:18px;" onclick="showPage('host-setup')">🎮 Host a Game</button>
-      <button class="btn-secondary" style="font-size:18px;padding:18px;" onclick="showPage('join')">✋ Join a Game</button>
+      <button class="btn-primary" style="font-size:18px;padding:18px;" onclick="showPage(&#39;host-setup&#39;)">🎮 Host a Game</button>
+      <button class="btn-secondary" style="font-size:18px;padding:18px;" onclick="showPage(&#39;join&#39;)">✋ Join a Game</button>
     </div>
     <div class="flex-center gap8" style="justify-content:center;margin-top:48px;gap:40px;">
       <div class="center"><div class="orbitron neon-text" style="font-size:28px;">10-50</div><div style="font-size:13px;color:#64748b;margin-top:4px;">Questions</div></div>
@@ -169,9 +169,9 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
 <!-- ═══ HOST SETUP ═══ -->
 <div id="page-host-setup" class="page" style="z-index:1;padding:24px 20px 60px;justify-content:flex-start;align-items:center;">
   <div class="fade-in" style="width:100%;max-width:500px;margin-top:20px;">
-    <button onclick="showPage('landing')" style="background:none;border:none;color:#64748b;cursor:pointer;margin-bottom:24px;font-size:14px;font-family:'DM Sans',sans-serif;">← Back</button>
+    <button onclick="showPage(&#39;landing&#39;)" style="background:none;border:none;color:#64748b;cursor:pointer;margin-bottom:24px;font-size:14px;font-family:&#39;DM Sans&#39;,sans-serif;">← Back</button>
     <div class="flex-center gap12 mb32">
-      <div style="width:36px;height:36px;background:linear-gradient(135deg,#7c3aed,#ec4899);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">✝</div>
+      <div style="width:36px;height:36px;background:linear-gradient(135deg,#7c3aed,#ec4899);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">🎮</div>
       <span class="orbitron neon-text" style="font-size:20px;letter-spacing:2px;">QUIZ MATE</span>
     </div>
 
@@ -180,9 +180,9 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
       <h2 style="font-size:22px;font-weight:700;margin-bottom:6px;">Create Game Room</h2>
       <p class="muted mb24" style="font-size:14px;">Set a PIN — players will use this to join</p>
       <span class="label">YOUR NAME (HOST)</span>
-      <input class="input-field mb16" id="host-name" placeholder="e.g. Alex or TeamHost" maxlength="20"/>
+      <input class="input-field mb16" id="host-name" placeholder="e.g. Alex or TeamHost" maxlength="20">
       <span class="label">GAME PIN (you choose)</span>
-      <input class="input-field" id="host-pin" placeholder="e.g. NEXUS24" maxlength="12" oninput="this.value=this.value.toUpperCase()" style="font-size:22px;letter-spacing:4px;text-align:center;font-family:'Orbitron',monospace;"/>
+      <input class="input-field" id="host-pin" placeholder="e.g. NEXUS24" maxlength="12" oninput="this.value=this.value.toUpperCase()" style="font-size:22px;letter-spacing:4px;text-align:center;font-family:&#39;Orbitron&#39;,monospace;">
       <div class="error-box" id="host-error"></div>
     </div>
 
@@ -192,34 +192,35 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
 
       <span class="label">NUMBER OF QUESTIONS</span>
       <div class="pill-group" id="setting-count">
-        <button class="pill" data-value="10" onclick="selectPill('setting-count','10')">10</button>
-        <button class="pill active" data-value="20" onclick="selectPill('setting-count','20')">20</button>
-        <button class="pill" data-value="30" onclick="selectPill('setting-count','30')">30</button>
-        <button class="pill" data-value="50" onclick="selectPill('setting-count','50')">50</button>
+        <button class="pill" data-value="10" onclick="selectPill(&#39;setting-count&#39;,&#39;10&#39;)">10</button>
+        <button class="pill active" data-value="20" onclick="selectPill(&#39;setting-count&#39;,&#39;20&#39;)">20</button>
+        <button class="pill" data-value="30" onclick="selectPill(&#39;setting-count&#39;,&#39;30&#39;)">30</button>
+        <button class="pill" data-value="40" onclick="selectPill(&#39;setting-count&#39;,&#39;40&#39;)">40</button>
+        <button class="pill" data-value="50" onclick="selectPill(&#39;setting-count&#39;,&#39;50&#39;)">50</button>
       </div>
 
       <span class="label">GAME TIMER</span>
       <div class="pill-group" id="setting-timer">
-        <button class="pill" data-value="60" onclick="selectPill('setting-timer','60')">1 min</button>
-        <button class="pill active" data-value="120" onclick="selectPill('setting-timer','120')">2 min</button>
-        <button class="pill" data-value="180" onclick="selectPill('setting-timer','180')">3 min</button>
-        <button class="pill" data-value="300" onclick="selectPill('setting-timer','300')">5 min</button>
-        <button class="pill" data-value="600" onclick="selectPill('setting-timer','600')">10 min</button>
+        <button class="pill" data-value="60" onclick="selectPill(&#39;setting-timer&#39;,&#39;60&#39;)">1 min</button>
+        <button class="pill active" data-value="120" onclick="selectPill(&#39;setting-timer&#39;,&#39;120&#39;)">2 min</button>
+        <button class="pill" data-value="180" onclick="selectPill(&#39;setting-timer&#39;,&#39;180&#39;)">3 min</button>
+        <button class="pill" data-value="300" onclick="selectPill(&#39;setting-timer&#39;,&#39;300&#39;)">5 min</button>
+        <button class="pill" data-value="600" onclick="selectPill(&#39;setting-timer&#39;,&#39;600&#39;)">10 min</button>
       </div>
       <p style="font-size:12px;color:#475569;margin-top:-10px;margin-bottom:16px;">⚡ Lightning mode uses per-question timer instead</p>
 
       <span class="label">GAME MODE</span>
       <div class="pill-group" id="setting-mode">
-        <button class="pill active" data-value="classic" onclick="selectPill('setting-mode','classic')">🎮 Classic</button>
-        <button class="pill" data-value="lightning" onclick="selectPill('setting-mode','lightning')">⚡ Lightning</button>
-        <button class="pill" data-value="survival" onclick="selectPill('setting-mode','survival')">💀 Survival</button>
+        <button class="pill active" data-value="classic" onclick="selectPill(&#39;setting-mode&#39;,&#39;classic&#39;)">🎮 Classic</button>
+        <button class="pill" data-value="lightning" onclick="selectPill(&#39;setting-mode&#39;,&#39;lightning&#39;)">⚡ Lightning</button>
+        <button class="pill" data-value="survival" onclick="selectPill(&#39;setting-mode&#39;,&#39;survival&#39;)">💀 Survival</button>
       </div>
-      <div id="mode-desc" style="font-size:12px;color:#64748b;margin-top:-8px;margin-bottom:16px;padding:8px 12px;background:rgba(255,255,255,0.02);border-radius:8px;"></div>
+      <div id="mode-desc" style="font-size:12px;color:#64748b;margin-top:-8px;margin-bottom:16px;padding:8px 12px;background:rgba(255,255,255,0.02);border-radius:8px;">Standard quiz with a shared countdown timer. Answer all questions before time runs out.</div>
 
       <span class="label">SCORING</span>
       <div class="pill-group" id="setting-scoring">
-        <button class="pill active" data-value="standard" onclick="selectPill('setting-scoring','standard')">📊 Standard</button>
-        <button class="pill" data-value="speed" onclick="selectPill('setting-scoring','speed')">⚡ Speed Bonus</button>
+        <button class="pill active" data-value="standard" onclick="selectPill(&#39;setting-scoring&#39;,&#39;standard&#39;)">📊 Standard</button>
+        <button class="pill" data-value="speed" onclick="selectPill(&#39;setting-scoring&#39;,&#39;speed&#39;)">⚡ Speed Bonus</button>
       </div>
       <p style="font-size:12px;color:#475569;margin-top:-10px;">Speed Bonus: faster answers earn more points</p>
     </div>
@@ -232,17 +233,17 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
 <!-- ═══ JOIN PAGE ═══ -->
 <div id="page-join" class="page" style="z-index:1;">
   <div class="fade-in" style="width:100%;max-width:460px;">
-    <button onclick="showPage('landing')" style="background:none;border:none;color:#64748b;cursor:pointer;margin-bottom:24px;font-size:14px;font-family:'DM Sans',sans-serif;">← Back</button>
+    <button onclick="showPage(&#39;landing&#39;)" style="background:none;border:none;color:#64748b;cursor:pointer;margin-bottom:24px;font-size:14px;font-family:&#39;DM Sans&#39;,sans-serif;">← Back</button>
     <div class="flex-center gap12 mb32">
-      <div style="width:36px;height:36px;background:linear-gradient(135deg,#7c3aed,#ec4899);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">✝</div>
+      <div style="width:36px;height:36px;background:linear-gradient(135deg,#7c3aed,#ec4899);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">🎮</div>
       <span class="orbitron neon-text" style="font-size:20px;letter-spacing:2px;">QUIZ MATE</span>
     </div>
     <div class="card">
       <h2 style="font-size:24px;font-weight:700;margin-bottom:28px;">Join a Game</h2>
       <span class="label">YOUR NICKNAME</span>
-      <input class="input-field mb16" id="join-nickname" placeholder="e.g. QuizPro99" maxlength="20"/>
+      <input class="input-field mb16" id="join-nickname" placeholder="e.g. QuizPro99" maxlength="20">
       <span class="label">GAME PIN (ask your host)</span>
-      <input class="input-field" id="join-pin" placeholder="Enter PIN here" maxlength="12" oninput="this.value=this.value.toUpperCase()" style="font-size:20px;letter-spacing:3px;text-align:center;font-family:'Orbitron',monospace;"/>
+      <input class="input-field" id="join-pin" placeholder="Enter PIN here" maxlength="12" oninput="this.value=this.value.toUpperCase()" style="font-size:20px;letter-spacing:3px;text-align:center;font-family:&#39;Orbitron&#39;,monospace;">
       <div class="error-box" id="join-error"></div>
       <button class="btn-primary mt24" id="join-btn" onclick="joinGame()">Join Game →</button>
     </div>
@@ -253,7 +254,7 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
 <div id="page-lobby" class="page" style="z-index:1;">
   <div class="fade-in center" style="width:100%;max-width:480px;">
     <div class="flex-center gap12 mb32" style="justify-content:center;">
-      <div style="width:36px;height:36px;background:linear-gradient(135deg,#7c3aed,#ec4899);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">✝</div>
+      <div style="width:36px;height:36px;background:linear-gradient(135deg,#7c3aed,#ec4899);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">🎮</div>
       <span class="orbitron neon-text" style="font-size:20px;letter-spacing:2px;">QUIZ MATE</span>
     </div>
     <div class="card" style="max-width:100%;">
@@ -290,7 +291,7 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
       </div>
       <!-- Per-question timer (Lightning) -->
       <div id="quiz-q-timer" class="q-timer-wrap" style="display:none;">
-        <div id="quiz-q-timer-val" style="font-family:'Orbitron',monospace;font-size:30px;font-weight:900;line-height:1;color:#eab308;">15</div>
+        <div id="quiz-q-timer-val" style="font-family:&#39;Orbitron&#39;,monospace;font-size:30px;font-weight:900;line-height:1;color:#eab308;">8</div>
         <div style="font-size:11px;color:#475569;">per Q</div>
         <div class="q-timer-bar-wrap"><div class="q-timer-bar-fill" id="quiz-q-timer-bar" style="width:100%;"></div></div>
       </div>
@@ -346,7 +347,7 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
 <div id="page-results" class="page" style="z-index:1;padding:24px 20px 60px;justify-content:flex-start;align-items:center;">
   <div class="fade-in" style="width:100%;max-width:520px;">
     <div class="flex-center gap12 mb32" style="justify-content:center;">
-      <div style="width:36px;height:36px;background:linear-gradient(135deg,#7c3aed,#ec4899);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">✝</div>
+      <div style="width:36px;height:36px;background:linear-gradient(135deg,#7c3aed,#ec4899);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">🎮</div>
       <span class="orbitron neon-text" style="font-size:20px;letter-spacing:2px;">QUIZ MATE</span>
     </div>
     <div class="center mb24">
@@ -358,7 +359,7 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
       <div class="label">🏆 FINAL LEADERBOARD</div>
       <div id="results-leaderboard" class="scroll-box"></div>
     </div>
-    <button class="btn-secondary mt20" onclick="showPage('landing')">🔄 Play Again</button>
+    <button class="btn-secondary mt20" onclick="showPage(&#39;landing&#39;)">🔄 Play Again</button>
   </div>
 </div>
 
@@ -368,11 +369,11 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
     <!-- Header -->
     <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;flex-wrap:wrap;">
       <div class="flex-center gap12">
-        <div style="width:32px;height:32px;background:linear-gradient(135deg,#7c3aed,#ec4899);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;">✝</div>
+        <div style="width:32px;height:32px;background:linear-gradient(135deg,#7c3aed,#ec4899);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;">🎮</div>
         <span class="orbitron neon-text" style="font-size:18px;letter-spacing:2px;">QUIZ MATE</span>
       </div>
       <div style="margin-left:auto;display:flex;gap:10px;flex-wrap:wrap;">
-        <button class="btn-primary btn-sm" id="admin-start-btn" onclick="adminStartGame()" style="background:linear-gradient(135deg,#15803d,#22c55e);">▶ Start Game</button>
+        <button class="btn-primary btn-sm" id="admin-start-btn" onclick="adminStartGame()" style="background: linear-gradient(135deg, rgb(21, 128, 61), rgb(34, 197, 94)); display: none;">▶ Start Game</button>
         <button class="btn-danger" id="admin-end-btn" onclick="adminEndGame()" style="display:none;">⏹ End Game</button>
         <button class="btn-secondary btn-sm" onclick="adminReset()">↺ Reset</button>
         <button class="btn-secondary btn-sm" onclick="adminCloseRoom()" style="border-color:rgba(239,68,68,0.4);color:#f87171;">✕ Close Room</button>
@@ -381,10 +382,10 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
 
     <!-- Stats row -->
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:12px;">
-      <div class="stat-card"><div class="label" style="margin-bottom:4px;">STATUS</div><div style="font-size:16px;font-weight:700;" id="admin-status">Lobby Open</div></div>
-      <div class="stat-card"><div class="label" style="margin-bottom:4px;">GAME PIN</div><div class="orbitron" style="font-size:20px;color:#a855f7;" id="admin-pin-display">—</div></div>
+      <div class="stat-card"><div class="label" style="margin-bottom:4px;">STATUS</div><div style="font-size: 16px; font-weight: 700; color: rgb(100, 116, 139);" id="admin-status">⚫ Game Over</div></div>
+      <div class="stat-card"><div class="label" style="margin-bottom:4px;">GAME PIN</div><div class="orbitron" style="font-size:20px;color:#a855f7;" id="admin-pin-display">0000</div></div>
       <div class="stat-card"><div class="label" style="margin-bottom:4px;">PLAYERS</div><div style="font-size:20px;font-weight:700;color:#3b82f6;" id="admin-player-count">0</div></div>
-      <div class="stat-card"><div class="label" style="margin-bottom:4px;">TIME LEFT</div><div class="orbitron" style="font-size:18px;" id="admin-timer">—</div></div>
+      <div class="stat-card"><div class="label" style="margin-bottom:4px;">TIME LEFT</div><div class="orbitron" style="font-size:18px;" id="admin-timer">Done</div></div>
     </div>
 
     <!-- Settings summary -->
@@ -401,23 +402,23 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
     <!-- Share PIN box -->
     <div id="admin-share-box" class="glass glow-border" style="border-radius:16px;padding:20px;margin-bottom:20px;text-align:center;">
       <div style="font-size:13px;color:#64748b;margin-bottom:4px;">📱 SHARE THIS LINK + PIN WITH PLAYERS</div>
-      <div style="font-size:13px;color:#94a3b8;margin-bottom:8px;word-break:break-all;" id="admin-share-url"></div>
-      <div class="pin-display" id="admin-pin-big"></div>
+      <div style="font-size:13px;color:#94a3b8;margin-bottom:8px;word-break:break-all;" id="admin-share-url">file:///C:/Users/user%201/Downloads/index_1.html</div>
+      <div class="pin-display" id="admin-pin-big">0000</div>
       <div style="font-size:12px;color:#475569;margin-top:8px;">Players open that link → click Join → enter PIN</div>
     </div>
 
     <!-- Tabs -->
     <div class="admin-tabs">
-      <button class="admin-tab active" id="atab-dashboard" onclick="showAdminTab('dashboard')">📊 Dashboard</button>
-      <button class="admin-tab" id="atab-questions" onclick="showAdminTab('questions')">📝 Questions</button>
+      <button class="admin-tab" id="atab-dashboard" onclick="showAdminTab(&#39;dashboard&#39;)">📊 Dashboard</button>
+      <button class="admin-tab active" id="atab-questions" onclick="showAdminTab(&#39;questions&#39;)">📝 Questions</button>
     </div>
 
     <!-- TAB: Dashboard -->
-    <div class="admin-tab-panel active" id="admin-tp-dashboard">
+    <div class="admin-tab-panel" id="admin-tp-dashboard">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;" class="admin-grid">
         <div class="glass glow-border" style="border-radius:20px;padding:24px;">
           <div class="label">🏆 LIVE LEADERBOARD</div>
-          <div id="admin-leaderboard" class="scroll-box"></div>
+          <div id="admin-leaderboard" class="scroll-box"><p style="color:#475569;font-size:14px;">No players yet</p></div>
           <div id="admin-winner-box" style="display:none;margin-top:16px;padding:14px;background:rgba(234,179,8,0.1);border-radius:12px;border:1px solid #eab30840;text-align:center;">
             <div style="font-size:20px;">👑</div>
             <div style="font-weight:700;color:#eab308;" id="admin-winner-name"></div>
@@ -426,24 +427,19 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
         </div>
         <div class="glass glow-border" style="border-radius:20px;padding:24px;">
           <div class="label" id="admin-players-label">👥 CONNECTED PLAYERS (0)</div>
-          <div id="admin-players-list" class="scroll-box">
-            <div class="center" style="padding:32px 0;">
-              <div style="font-size:32px;margin-bottom:8px;">⏳</div>
-              <p style="color:#475569;font-size:14px;">Waiting for players to join...</p>
-            </div>
-          </div>
+          <div id="admin-players-list" class="scroll-box"><div class="center" style="padding:32px 0;"><div style="font-size:32px;margin-bottom:8px;">⏳</div><p style="color:#475569;font-size:14px;">Waiting for players to join...</p></div></div>
         </div>
       </div>
     </div>
 
     <!-- TAB: Questions -->
-    <div class="admin-tab-panel" id="admin-tp-questions">
+    <div class="admin-tab-panel active" id="admin-tp-questions">
       <div class="glass glow-border" style="border-radius:20px;padding:24px;">
         <!-- Summary bar -->
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
           <div>
             <div style="font-weight:700;font-size:16px;margin-bottom:4px;">Custom Question Manager</div>
-            <div style="font-size:12px;color:#64748b;" id="qm-summary">Loading...</div>
+            <div style="font-size:12px;color:#64748b;" id="qm-summary">⚠️ No questions yet — add questions or use AI Generate below</div>
           </div>
           <button class="btn-primary btn-sm" onclick="showQuestionForm(null)" style="width:auto;padding:10px 20px;">+ Add Question</button>
         </div>
@@ -454,10 +450,10 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
           <span class="label">QUESTION TEXT</span>
           <textarea class="input-field mb12" id="qf-text" placeholder="Type your question here..." rows="2" style="resize:vertical;"></textarea>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
-            <div><span class="label">OPTION A</span><input class="input-field" id="qf-opt0" placeholder="Option A"/></div>
-            <div><span class="label">OPTION B</span><input class="input-field" id="qf-opt1" placeholder="Option B"/></div>
-            <div><span class="label">OPTION C</span><input class="input-field" id="qf-opt2" placeholder="Option C"/></div>
-            <div><span class="label">OPTION D</span><input class="input-field" id="qf-opt3" placeholder="Option D"/></div>
+            <div><span class="label">OPTION A</span><input class="input-field" id="qf-opt0" placeholder="Option A"></div>
+            <div><span class="label">OPTION B</span><input class="input-field" id="qf-opt1" placeholder="Option B"></div>
+            <div><span class="label">OPTION C</span><input class="input-field" id="qf-opt2" placeholder="Option C"></div>
+            <div><span class="label">OPTION D</span><input class="input-field" id="qf-opt3" placeholder="Option D"></div>
           </div>
           <span class="label">CORRECT ANSWER</span>
           <div style="display:flex;gap:8px;margin-bottom:16px;">
@@ -475,9 +471,9 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
 
         <!-- Bulk Import & AI Generate tabs -->
         <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
-          <button class="btn-secondary btn-sm" onclick="toggleImportPanel('bulk')" style="width:auto;padding:9px 16px;">📋 Bulk Import</button>
-          <button class="btn-secondary btn-sm" onclick="toggleImportPanel('ai')" style="width:auto;padding:9px 16px;border-color:rgba(168,85,247,0.5);color:#a855f7;">✨ AI Generate</button>
-          <button class="btn-secondary btn-sm" onclick="toggleImportPanel('csv')" style="width:auto;padding:9px 16px;">📊 CSV Import</button>
+          <button class="btn-secondary btn-sm" onclick="toggleImportPanel(&#39;bulk&#39;)" style="width:auto;padding:9px 16px;">📋 Bulk Import</button>
+          <button class="btn-secondary btn-sm" onclick="toggleImportPanel(&#39;ai&#39;)" style="width:auto;padding:9px 16px;border-color:rgba(168,85,247,0.5);color:#a855f7;">✨ AI Generate</button>
+          <button class="btn-secondary btn-sm" onclick="toggleImportPanel(&#39;csv&#39;)" style="width:auto;padding:9px 16px;">📊 CSV Import</button>
           <button class="btn-danger btn-sm" onclick="clearAllQuestions()" style="width:auto;padding:9px 16px;font-size:13px;">🗑 Clear All</button>
         </div>
 
@@ -485,24 +481,24 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
         <div id="import-panel-bulk" style="display:none;background:rgba(59,130,246,0.05);border:1px solid rgba(59,130,246,0.2);border-radius:14px;padding:20px;margin-bottom:16px;">
           <h4 style="font-size:14px;font-weight:700;margin-bottom:8px;color:#60a5fa;">📋 Bulk Text Import</h4>
           <p style="font-size:12px;color:#64748b;margin-bottom:12px;">Paste questions in this format (one question per block):</p>
-          <pre style="font-size:11px;color:#94a3b8;background:rgba(0,0,0,0.3);padding:10px;border-radius:8px;margin-bottom:12px;overflow-x:auto;">Q: Who built the ark?
-A: Noah
-B: Moses
-C: David
-D: Solomon
-Answer: A
+          <pre style="font-size:11px;color:#94a3b8;background:rgba(0,0,0,0.3);padding:10px;border-radius:8px;margin-bottom:12px;overflow-x:auto;">Q: What is the capital of France?
+A: London
+B: Berlin
+C: Paris
+D: Madrid
+Answer: C
 
-Q: How many days did creation take?
-A: 5
-B: 6
-C: 7
-D: 8
+Q: How many players are on a basketball team?
+A: 4
+B: 5
+C: 6
+D: 7
 Answer: B</pre>
           <textarea class="input-field" id="bulk-import-text" rows="8" placeholder="Paste your questions here..." style="font-size:13px;font-family:monospace;margin-bottom:12px;"></textarea>
           <div id="bulk-import-error" style="display:none;color:#f87171;font-size:13px;margin-bottom:8px;"></div>
           <div style="display:flex;gap:8px;">
             <button class="btn-primary btn-sm" onclick="processBulkImport()" style="flex:1;">Import Questions</button>
-            <button class="btn-secondary btn-sm" onclick="toggleImportPanel('bulk')" style="width:auto;">Cancel</button>
+            <button class="btn-secondary btn-sm" onclick="toggleImportPanel(&#39;bulk&#39;)" style="width:auto;">Cancel</button>
           </div>
         </div>
 
@@ -511,13 +507,13 @@ Answer: B</pre>
           <h4 style="font-size:14px;font-weight:700;margin-bottom:4px;color:#a855f7;">✨ AI Question Generator</h4>
           <p style="font-size:12px;color:#64748b;margin-bottom:14px;">Powered by Groq (Llama 3.3) — generates fresh questions on any topic instantly</p>
           <span class="label">TOPIC / CATEGORY</span>
-          <input class="input-field mb12" id="ai-topic" placeholder="e.g. Book of Daniel, Miracles of Jesus, New Testament, Psalms..."/>
+          <input class="input-field mb12" id="ai-topic" placeholder="e.g. Football, World History, Science, Politics, Music...">
           <div style="display:flex;gap:12px;margin-bottom:12px;align-items:flex-end;">
             <div style="flex:1;">
               <span class="label">NUMBER OF QUESTIONS</span>
               <select class="input-field" id="ai-count" style="cursor:pointer;">
                 <option value="5">5 questions</option>
-                <option value="10" selected>10 questions</option>
+                <option value="10" selected="">10 questions</option>
                 <option value="15">15 questions</option>
                 <option value="20">20 questions</option>
               </select>
@@ -526,7 +522,7 @@ Answer: B</pre>
               <span class="label">DIFFICULTY</span>
               <select class="input-field" id="ai-difficulty" style="cursor:pointer;">
                 <option value="easy">Easy</option>
-                <option value="medium" selected>Medium</option>
+                <option value="medium" selected="">Medium</option>
                 <option value="hard">Hard</option>
                 <option value="mixed">Mixed</option>
               </select>
@@ -544,7 +540,7 @@ Answer: B</pre>
           <div style="display:flex;gap:8px;">
             <button class="btn-primary btn-sm" id="ai-generate-btn" onclick="aiGenerateQuestions()" style="flex:1;background:linear-gradient(135deg,#7c3aed,#ec4899);">✨ Generate with AI</button>
             <button class="btn-primary btn-sm" id="ai-add-btn" onclick="aiAddToGame()" style="flex:1;display:none;background:linear-gradient(135deg,#15803d,#22c55e);">✅ Add to Game</button>
-            <button class="btn-secondary btn-sm" onclick="toggleImportPanel('ai')" style="width:auto;">Cancel</button>
+            <button class="btn-secondary btn-sm" onclick="toggleImportPanel(&#39;ai&#39;)" style="width:auto;">Cancel</button>
           </div>
         </div>
 
@@ -553,16 +549,20 @@ Answer: B</pre>
           <h4 style="font-size:14px;font-weight:700;margin-bottom:8px;color:#eab308;">📊 CSV Import</h4>
           <p style="font-size:12px;color:#64748b;margin-bottom:8px;">Upload a CSV file with columns: <code style="color:#94a3b8;">Question, A, B, C, D, Answer</code></p>
           <p style="font-size:11px;color:#475569;margin-bottom:12px;">Answer column should contain A, B, C or D</p>
-          <input type="file" id="csv-file-input" accept=".csv" style="display:none;" onchange="processCSVImport(this)"/>
+          <input type="file" id="csv-file-input" accept=".csv" style="display:none;" onchange="processCSVImport(this)">
           <div style="display:flex;gap:8px;">
-            <button class="btn-primary btn-sm" onclick="document.getElementById('csv-file-input').click()" style="flex:1;background:linear-gradient(135deg,#92400e,#eab308);color:white;">📁 Choose CSV File</button>
-            <button class="btn-secondary btn-sm" onclick="toggleImportPanel('csv')" style="width:auto;">Cancel</button>
+            <button class="btn-primary btn-sm" onclick="document.getElementById(&#39;csv-file-input&#39;).click()" style="flex:1;background:linear-gradient(135deg,#92400e,#eab308);color:white;">📁 Choose CSV File</button>
+            <button class="btn-secondary btn-sm" onclick="toggleImportPanel(&#39;csv&#39;)" style="width:auto;">Cancel</button>
           </div>
           <div id="csv-status" style="margin-top:10px;font-size:13px;color:#64748b;"></div>
         </div>
 
         <!-- Custom questions list -->
-        <div id="custom-questions-list"></div>
+        <div id="custom-questions-list"><div class="center" style="padding:32px 0;color:#475569;">
+      <div style="font-size:36px;margin-bottom:8px;">📝</div>
+      <p>No custom questions yet.</p>
+      <p style="font-size:13px;margin-top:4px;">Add questions above to include them in the game!</p>
+    </div></div>
       </div>
     </div>
 
@@ -614,13 +614,13 @@ const DEFAULT_QUESTIONS=[
   {q:"What is the capital of Brazil?",options:["Rio de Janeiro","Sao Paulo","Brasilia","Salvador"],answer:2},
 ];
 
-const LIGHTNING_Q_DURATION=15;
+const LIGHTNING_Q_DURATION=8;
 const COLORS=["#a855f7","#3b82f6","#ec4899","#22c55e","#eab308","#f97316","#06b6d4","#8b5cf6"];
 const MEDAL_COLORS=["#eab308","#94a3b8","#f97316"];
 const MEDAL_EMOJIS=["🥇","🥈","🥉"];
 const MODE_DESCS={
   classic:"Standard quiz with a shared countdown timer. Answer all questions before time runs out.",
-  lightning:"Each question has a 15-second per-question timer. Speed earns bonus points (3/2/1).",
+  lightning:"Each question has an 8-second per-question timer. Speed earns bonus points (3/2/1).",
   survival:"One wrong answer and you're eliminated! Last player standing wins."
 };
 
@@ -918,6 +918,7 @@ async function adminCloseRoom(){
   }catch(e){}
   myPin=null;isHost=false;gameSettings={questionCount:20,timerDuration:120,gameMode:'classic',scoringMode:'standard'};
   activeQuestions=[];customQuestions=[];
+  sessionStorage.removeItem('qm_session');
   showPage('landing');
 }
 
@@ -1124,6 +1125,14 @@ async function joinGame(){
       btn.disabled=false;btn.textContent='Join Game →';
       return;
     }
+    // Check for duplicate nickname
+    const playersSnap=await db.ref('games/'+pin+'/players').get();
+    const existingPlayers=playersSnap.val()||{};
+    const nickTaken=Object.values(existingPlayers).some(p=>p.nickname&&p.nickname.toLowerCase()===nick.toLowerCase());
+    if(nickTaken){
+      errEl.textContent='❌ The nickname "'+nick+'" is already taken. Please choose a different one.';
+      errEl.classList.add('show');btn.disabled=false;btn.textContent='Join Game →';return;
+    }
     myPlayerId='player_'+Date.now()+'_'+Math.random().toString(36).substr(2,5);
     await db.ref('games/'+pin+'/players/'+myPlayerId).set({
       id:myPlayerId,nickname:nick,score:0,correctCount:0,
@@ -1131,6 +1140,8 @@ async function joinGame(){
     });
     setupLobby(g);
     showPage('lobby');
+    // Persist session so the player can rejoin if they refresh
+    sessionStorage.setItem('qm_session',JSON.stringify({pin,nick,playerId:myPlayerId}));
   }catch(e){
     errEl.textContent='Connection error: '+e.message;errEl.classList.add('show');
   }
@@ -1241,9 +1252,9 @@ function startQuestionTimer(){
     const tlr=Math.ceil(tl);
     const el=document.getElementById('quiz-q-timer-val');
     el.textContent=tlr;
-    el.style.color=tl<5?'#ef4444':tl<8?'#f97316':'#eab308';
+    el.style.color=tl<2?'#ef4444':tl<4?'#f97316':'#eab308';
     document.getElementById('quiz-q-timer-bar').style.width=(tl/dur*100)+'%';
-    document.getElementById('quiz-q-timer-bar').style.background=tl<5?'#ef4444':tl<8?'#f97316':'#eab308';
+    document.getElementById('quiz-q-timer-bar').style.background=tl<2?'#ef4444':tl<4?'#f97316':'#eab308';
     if(tl<=0&&quizState.selected===null&&!quizState.finished)timeoutQuestion();
   },100);
 }
@@ -1407,6 +1418,7 @@ async function finishQuiz(){
   clearInterval(quizTimerInterval);
   clearInterval(questionTimerInterval);
   db.ref('games/'+myPin+'/status').off();
+  sessionStorage.removeItem('qm_session');
   try{
     await db.ref('games/'+myPin+'/players/'+myPlayerId).update({
       score:quizState.score,correctCount:quizState.correctCount,
@@ -1551,8 +1563,19 @@ async function processCSVImport(input){
   const lines=text.split('\n').map(l=>l.trim()).filter(Boolean);
   if(lines.length<2){statusEl.textContent='File appears empty.';return;}
   const parsed=[];const errors=[];
+  function parseCSVLine(line){
+    const cols=[];let cur='';let inQ=false;
+    for(let ci=0;ci<line.length;ci++){
+      const ch=line[ci];
+      if(ch==='"'){if(inQ&&line[ci+1]==='"'){cur+='"';ci++;}else{inQ=!inQ;}}
+      else if(ch===','&&!inQ){cols.push(cur.trim());cur='';}
+      else{cur+=ch;}
+    }
+    cols.push(cur.trim());
+    return cols;
+  }
   lines.slice(1).forEach((line,i)=>{
-    const cols=line.split(',').map(c=>c.replace(/^"|"$/g,'').trim());
+    const cols=parseCSVLine(line);
     if(cols.length<6){errors.push('Row '+(i+2)+': not enough columns');return;}
     const [q,a,b,c,d,ansLetter]=cols;
     const ans='ABCD'.indexOf((ansLetter||'').toUpperCase());
@@ -1622,6 +1645,57 @@ async function aiAddToGame(){
 // PWA SERVICE WORKER
 if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});}
 
+// ══════════════════════════════════════════
+// SESSION RESTORE — rejoin after refresh
+// ══════════════════════════════════════════
+(async function restoreSession(){
+  const saved=sessionStorage.getItem('qm_session');
+  if(!saved)return;
+  let s;try{s=JSON.parse(saved);}catch(e){return;}
+  if(!s.pin||!s.nick||!s.playerId)return;
+  try{
+    const snap=await db.ref('games/'+s.pin).get();
+    if(!snap.exists())return;
+    const g=snap.val();
+    if(g.status==='ended'){sessionStorage.removeItem('qm_session');return;}
+    // Check player record still exists
+    const pSnap=await db.ref('games/'+s.pin+'/players/'+s.playerId).get();
+    if(!pSnap.exists())return;
+    // Restore globals
+    myPin=s.pin;myNickname=s.nick;myPlayerId=s.playerId;
+    if(g.status==='active'&&g.activeQuestions){
+      gameSettings=g.settings||{};
+      const savedState=pSnap.val();
+      if(savedState.finished){goToResults();return;}
+      if(savedState.eliminated){
+        activeQuestions=[];gameSettings=g.settings||{};
+        quizState={current:0,score:savedState.score||0,correctCount:savedState.correctCount||0,answers:{},selected:null,finished:false,eliminated:true};
+        showPage('eliminated');
+        document.getElementById('eliminated-score').textContent=quizState.score;
+        document.getElementById('eliminated-correct').textContent=(quizState.correctCount||0)+' correct';
+        startSpectatorMode();return;
+      }
+      // Resume mid-game — find the furthest unanswered question
+      const answeredCount=savedState.answers?Object.keys(savedState.answers).length:0;
+      activeQuestions=Object.values(g.activeQuestions);
+      gameStartTime=g.startTime;
+      quizState={current:Math.min(answeredCount,activeQuestions.length-1),score:savedState.score||0,correctCount:savedState.correctCount||0,answers:savedState.answers||{},selected:null,finished:false,eliminated:false,questionStartTime:Date.now()};
+      showPage('quiz');
+      const isLightning=gameSettings.gameMode==='lightning';
+      document.getElementById('quiz-global-timer').style.display=isLightning?'none':'flex';
+      document.getElementById('quiz-q-timer').style.display=isLightning?'flex':'none';
+      document.getElementById('quiz-lives').style.display=gameSettings.gameMode==='survival'?'block':'none';
+      renderQuestion();
+      if(isLightning)startQuestionTimer();else startGlobalTimer(g.startTime);
+      db.ref('games/'+myPin+'/status').on('value',snap=>{if(snap.val()==='ended'&&!quizState.finished)finishQuiz();});
+    }else{
+      // Back to lobby
+      setupLobby(g);
+      showPage('lobby');
+    }
+  }catch(e){sessionStorage.removeItem('qm_session');}
+})();
+
 let deferredPrompt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;setTimeout(()=>{const b=document.getElementById('pwa-install-banner');if(b)b.style.display='flex';},3000);});
 
@@ -1633,10 +1707,11 @@ window.addEventListener('appinstalled',()=>{const b=document.getElementById('pwa
 </script>
 <!-- PWA Install Banner -->
 <div id="pwa-install-banner" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:9999;background:linear-gradient(135deg,#7c3aed,#a855f7);border-radius:16px;padding:14px 20px;box-shadow:0 0 40px #a855f760;align-items:center;gap:14px;max-width:360px;width:calc(100% - 40px);">
-  <div style="font-size:28px;">✝</div>
+  <div style="font-size:28px;">🎮</div>
   <div style="flex:1;"><div style="font-weight:700;color:white;font-size:14px;font-family:DM Sans,sans-serif;">Install Quiz Mate</div><div style="color:rgba(255,255,255,0.8);font-size:12px;font-family:DM Sans,sans-serif;">Add to your home screen for quick access!</div></div>
   <button onclick="installApp()" style="background:white;color:#7c3aed;border:none;border-radius:8px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer;font-family:DM Sans,sans-serif;white-space:nowrap;">Install</button>
   <button onclick="dismissInstallBanner()" style="background:none;border:none;color:white;font-size:18px;cursor:pointer;padding:0 4px;">✕</button>
 </div>
-</body>
-</html>
+
+
+</body></html>
