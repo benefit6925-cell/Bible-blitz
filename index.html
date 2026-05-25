@@ -3,18 +3,18 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>BibleBrawl 🎮 v2</title>
+<title>QuizBrawl 🎮 v2</title>
 <!-- PWA Meta Tags -->
-<meta name="application-name" content="BibleBrawl"/>
+<meta name="application-name" content="QuizBrawl"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-<meta name="apple-mobile-web-app-title" content="BibleBrawl"/>
-<meta name="description" content="The ultimate multiplayer Bible quiz game. Play with friends anywhere in the world!"/>
+<meta name="apple-mobile-web-app-title" content="QuizBrawl"/>
+<meta name="description" content="The ultimate multiplayer quiz game. Play with friends anywhere in the world!"/>
 <meta name="theme-color" content="#7c3aed"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <link rel="manifest" href="manifest.json"/>
-<meta property="og:title" content="BibleBrawl 🎮"/>
-<meta property="og:description" content="The ultimate multiplayer Bible quiz — play with friends anywhere!"/>
+<meta property="og:title" content="QuizBrawl 🎮"/>
+<meta property="og:description" content="The ultimate multiplayer quiz — play with friends anywhere!"/>
 <meta property="og:type" content="website"/>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -146,9 +146,9 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
   <div class="fade-in center" style="max-width:480px;width:100%;">
     <div class="flex-center gap12" style="justify-content:center;margin-bottom:32px;">
       <div style="width:56px;height:56px;background:linear-gradient(135deg,#7c3aed,#ec4899);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 0 30px #a855f760;">✝</div>
-      <span class="orbitron neon-text" style="font-size:30px;letter-spacing:2px;">BIBLEBRAWL</span>
+      <span class="orbitron neon-text" style="font-size:30px;letter-spacing:2px;">QUIZBRAWL</span>
     </div>
-    <p style="color:#94a3b8;font-size:17px;line-height:1.6;margin-bottom:40px;">The ultimate multiplayer Bible quiz — play with friends anywhere in the world!</p>
+    <p style="color:#94a3b8;font-size:17px;line-height:1.6;margin-bottom:40px;">The ultimate multiplayer quiz — play with friends anywhere in the world!</p>
     <div style="display:flex;flex-direction:column;gap:14px;max-width:320px;margin:0 auto;">
       <button class="btn-primary" style="font-size:18px;padding:18px;" onclick="showPage('host-setup')">🎮 Host a Game</button>
       <button class="btn-secondary" style="font-size:18px;padding:18px;" onclick="showPage('join')">✋ Join a Game</button>
@@ -172,7 +172,7 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
     <button onclick="showPage('landing')" style="background:none;border:none;color:#64748b;cursor:pointer;margin-bottom:24px;font-size:14px;font-family:'DM Sans',sans-serif;">← Back</button>
     <div class="flex-center gap12 mb32">
       <div style="width:36px;height:36px;background:linear-gradient(135deg,#7c3aed,#ec4899);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">✝</div>
-      <span class="orbitron neon-text" style="font-size:20px;letter-spacing:2px;">BIBLEBRAWL</span>
+      <span class="orbitron neon-text" style="font-size:20px;letter-spacing:2px;">QUIZBRAWL</span>
     </div>
 
     <!-- Room Info -->
@@ -235,12 +235,12 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
     <button onclick="showPage('landing')" style="background:none;border:none;color:#64748b;cursor:pointer;margin-bottom:24px;font-size:14px;font-family:'DM Sans',sans-serif;">← Back</button>
     <div class="flex-center gap12 mb32">
       <div style="width:36px;height:36px;background:linear-gradient(135deg,#7c3aed,#ec4899);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">✝</div>
-      <span class="orbitron neon-text" style="font-size:20px;letter-spacing:2px;">BIBLEBRAWL</span>
+      <span class="orbitron neon-text" style="font-size:20px;letter-spacing:2px;">QUIZBRAWL</span>
     </div>
     <div class="card">
       <h2 style="font-size:24px;font-weight:700;margin-bottom:28px;">Join a Game</h2>
       <span class="label">YOUR NICKNAME</span>
-      <input class="input-field mb16" id="join-nickname" placeholder="e.g. BibleChamp99" maxlength="20"/>
+      <input class="input-field mb16" id="join-nickname" placeholder="e.g. QuizChamp99" maxlength="20"/>
       <span class="label">GAME PIN (ask your host)</span>
       <input class="input-field" id="join-pin" placeholder="Enter PIN here" maxlength="12" oninput="this.value=this.value.toUpperCase()" style="font-size:20px;letter-spacing:3px;text-align:center;font-family:'Orbitron',monospace;"/>
       <div class="error-box" id="join-error"></div>
@@ -254,7 +254,7 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
   <div class="fade-in center" style="width:100%;max-width:480px;">
     <div class="flex-center gap12 mb32" style="justify-content:center;">
       <div style="width:36px;height:36px;background:linear-gradient(135deg,#7c3aed,#ec4899);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">✝</div>
-      <span class="orbitron neon-text" style="font-size:20px;letter-spacing:2px;">BIBLEBRAWL</span>
+      <span class="orbitron neon-text" style="font-size:20px;letter-spacing:2px;">QUIZBRAWL</span>
     </div>
     <div class="card" style="max-width:100%;">
       <div class="mb24">
@@ -347,7 +347,7 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
   <div class="fade-in" style="width:100%;max-width:520px;">
     <div class="flex-center gap12 mb32" style="justify-content:center;">
       <div style="width:36px;height:36px;background:linear-gradient(135deg,#7c3aed,#ec4899);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">✝</div>
-      <span class="orbitron neon-text" style="font-size:20px;letter-spacing:2px;">BIBLEBRAWL</span>
+      <span class="orbitron neon-text" style="font-size:20px;letter-spacing:2px;">QUIZBRAWL</span>
     </div>
     <div class="center mb24">
       <div style="font-size:40px;">🏁</div>
@@ -369,7 +369,7 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
     <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;flex-wrap:wrap;">
       <div class="flex-center gap12">
         <div style="width:32px;height:32px;background:linear-gradient(135deg,#7c3aed,#ec4899);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;">✝</div>
-        <span class="orbitron neon-text" style="font-size:18px;letter-spacing:2px;">BIBLEBRAWL</span>
+        <span class="orbitron neon-text" style="font-size:18px;letter-spacing:2px;">QUIZBRAWL</span>
       </div>
       <div style="margin-left:auto;display:flex;gap:10px;flex-wrap:wrap;">
         <button class="btn-primary btn-sm" id="admin-start-btn" onclick="adminStartGame()" style="background:linear-gradient(135deg,#15803d,#22c55e);">▶ Start Game</button>
@@ -452,7 +452,7 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
         <div id="question-form" style="display:none;background:rgba(168,85,247,0.05);border:1px solid rgba(168,85,247,0.2);border-radius:14px;padding:20px;margin-bottom:20px;">
           <h4 style="font-size:14px;font-weight:700;margin-bottom:16px;" id="qf-title">Add New Question</h4>
           <span class="label">QUESTION TEXT</span>
-          <textarea class="input-field mb12" id="qf-text" placeholder="Type your Bible question here..." rows="2" style="resize:vertical;"></textarea>
+          <textarea class="input-field mb12" id="qf-text" placeholder="Type your question here..." rows="2" style="resize:vertical;"></textarea>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
             <div><span class="label">OPTION A</span><input class="input-field" id="qf-opt0" placeholder="Option A"/></div>
             <div><span class="label">OPTION B</span><input class="input-field" id="qf-opt1" placeholder="Option B"/></div>
@@ -509,8 +509,8 @@ Answer: B</pre>
         <!-- AI GENERATE PANEL -->
         <div id="import-panel-ai" style="display:none;background:rgba(168,85,247,0.05);border:1px solid rgba(168,85,247,0.3);border-radius:14px;padding:20px;margin-bottom:16px;">
           <h4 style="font-size:14px;font-weight:700;margin-bottom:4px;color:#a855f7;">✨ AI Question Generator</h4>
-          <p style="font-size:12px;color:#64748b;margin-bottom:14px;">Powered by Groq AI — generates fresh Bible questions instantly</p>
-          <span class="label">BIBLE TOPIC OR BOOK</span>
+          <p style="font-size:12px;color:#64748b;margin-bottom:14px;">Powered by Groq (Llama 3.3) — generates fresh questions on any topic instantly</p>
+          <span class="label">TOPIC / CATEGORY</span>
           <input class="input-field mb12" id="ai-topic" placeholder="e.g. Book of Daniel, Miracles of Jesus, New Testament, Psalms..."/>
           <div style="display:flex;gap:12px;margin-bottom:12px;align-items:flex-end;">
             <div style="flex:1;">
@@ -602,13 +602,13 @@ const DEFAULT_QUESTIONS=[
   {q:"How many apostles did Jesus have?",options:["10","11","12","13"],answer:2},
   {q:"Who wrote most of the New Testament letters?",options:["Peter","Paul","John","James"],answer:1},
   {q:"Which book comes first in the New Testament?",options:["Mark","Luke","Matthew","John"],answer:2},
-  {q:"How many books are in the Bible?",options:["60","63","66","69"],answer:2},
+  {q:"How many continents are there on Earth?",options:["5","6","7","8"],answer:2},
   {q:"Who was the first king of Israel?",options:["David","Solomon","Saul","Samuel"],answer:2},
   {q:"What did Moses receive on Mount Sinai?",options:["The Ark","Ten Commandments","The Psalms","Manna"],answer:1},
   {q:"Who killed Goliath?",options:["Saul","Jonathan","David","Samson"],answer:2},
   {q:"In which book is the story of creation found?",options:["Exodus","Genesis","Leviticus","Numbers"],answer:1},
   {q:"How many days was Jesus in the wilderness?",options:["20","30","40","50"],answer:2},
-  {q:"What is the shortest verse in the Bible?",options:["God is love","Jesus wept","Fear not","Be still"],answer:1},
+  {q:"What is the smallest planet in our solar system?",options:["Mars","Venus","Mercury","Pluto"],answer:2},
   {q:"Who was Daniel thrown in with?",options:["Wolves","Bears","Lions","Serpents"],answer:2},
   {q:"What fruit did Eve eat in the Garden of Eden?",options:["Apple (forbidden fruit)","Pomegranate","Fig","Grape"],answer:0},
   {q:"On which day did God rest from creation?",options:["5th","6th","7th","8th"],answer:2},
@@ -1574,13 +1574,13 @@ async function aiGenerateQuestions(){
   const statusEl=document.getElementById('ai-status');
   const previewEl=document.getElementById('ai-preview');
   errEl.style.display='none';previewEl.style.display='none';
-  if(!topic){errEl.textContent='Please enter a Bible topic or book.';errEl.style.display='block';return;}
+  if(!topic){errEl.textContent='Please enter a topic or category.';errEl.style.display='block';return;}
   const genBtn=document.getElementById('ai-generate-btn');
   const addBtn=document.getElementById('ai-add-btn');
   genBtn.disabled=true;genBtn.textContent='Generating...';
   statusEl.style.display='block';
-  document.getElementById('ai-status-text').textContent='Gemini AI is crafting your questions...';
-  const prompt='You are a Bible quiz expert. Generate exactly '+count+' multiple-choice Bible quiz questions about: "'+topic+'". Difficulty: '+difficulty+'. Rules: factually accurate, 4 options per question, only one correct answer, plausible wrong answers, vary question styles. Respond ONLY with a valid JSON array, no other text, no markdown, no backticks: [{"q":"Question?","options":["A","B","C","D"],"answer":0},...] where answer is the 0-based index of the correct option.';
+  document.getElementById('ai-status-text').textContent='Groq (Llama 3.3) is crafting your questions...';
+  const prompt='You are a quiz expert. Generate exactly '+count+' multiple-choice quiz questions about: "'+topic+'". Difficulty: '+difficulty+'. Rules: factually accurate, 4 options per question, only one correct answer, plausible wrong answers, vary question styles. Respond ONLY with a valid JSON array, no other text, no markdown, no backticks: [{"q":"Question?","options":["A","B","C","D"],"answer":0},...] where answer is the 0-based index of the correct option.';
   try{
     const res=await fetch('https://aged-bird-2087.benefit6925.workers.dev/',{
       method:'POST',headers:{'Content-Type':'application/json'},
@@ -1633,7 +1633,7 @@ window.addEventListener('appinstalled',()=>{const b=document.getElementById('pwa
 <!-- PWA Install Banner -->
 <div id="pwa-install-banner" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:9999;background:linear-gradient(135deg,#7c3aed,#a855f7);border-radius:16px;padding:14px 20px;box-shadow:0 0 40px #a855f760;align-items:center;gap:14px;max-width:360px;width:calc(100% - 40px);">
   <div style="font-size:28px;">✝</div>
-  <div style="flex:1;"><div style="font-weight:700;color:white;font-size:14px;font-family:DM Sans,sans-serif;">Install BibleBrawl</div><div style="color:rgba(255,255,255,0.8);font-size:12px;font-family:DM Sans,sans-serif;">Add to your home screen for quick access!</div></div>
+  <div style="flex:1;"><div style="font-weight:700;color:white;font-size:14px;font-family:DM Sans,sans-serif;">Install QuizBrawl</div><div style="color:rgba(255,255,255,0.8);font-size:12px;font-family:DM Sans,sans-serif;">Add to your home screen for quick access!</div></div>
   <button onclick="installApp()" style="background:white;color:#7c3aed;border:none;border-radius:8px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer;font-family:DM Sans,sans-serif;white-space:nowrap;">Install</button>
   <button onclick="dismissInstallBanner()" style="background:none;border:none;color:white;font-size:18px;cursor:pointer;padding:0 4px;">✕</button>
 </div>
