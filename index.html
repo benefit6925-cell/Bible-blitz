@@ -1000,8 +1000,34 @@ const firebaseConfig={
   appId:"1:287293986494:web:cc2332e5edac83ae0470ef",
   measurementId:"G-76PMZ0RBTL"
 };
-firebase.initializeApp(firebaseConfig);
-const db=firebase.database();
+let db=null;
+try{
+  if(typeof firebase!=='undefined'&&firebase.initializeApp){
+    firebase.initializeApp(firebaseConfig);
+    db=firebase.database();
+  }else{
+    console.warn('Firebase SDK not loaded. Check your internet connection.');
+  }
+}catch(e){
+  console.warn('Firebase initialization failed:',e.message);
+}
+// Mock Firebase for offline mode
+if(!db){
+  db={
+    ref:function(path){
+      return{
+        on:function(){},
+        off:function(){},
+        get:function(){return Promise.resolve({exists:function(){return false;},val:function(){return null;}});},
+        set:function(){return Promise.resolve();},
+        update:function(){return Promise.resolve();},
+        remove:function(){return Promise.resolve();},
+        once:function(){return Promise.resolve({exists:function(){return false;},val:function(){return null;}});}
+      };
+    }
+  };
+}
+
 
 // ══════════════════════════════════════════
 // DEFAULT QUESTIONS (20 built-in)
