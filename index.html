@@ -188,7 +188,7 @@ details>summary::before{content:'▶ ';font-size:10px;}
 details[open]>summary::before{content:'▼ ';font-size:10px;}
 
 /* ── LANDING PAGE SPECIAL ── */
-.landing-logo-img{max-width:380px;width:100%;height:auto;filter:drop-shadow(0 8px 30px rgba(0,128,255,0.25));animation:logoFloat 3s ease-in-out infinite;}
+.landing-logo-img{max-width:380px;width:100%;height:auto;background:transparent!important;animation:logoFloat 3s ease-in-out infinite;-webkit-backface-visibility:hidden;backface-visibility:hidden;}
 @keyframes logoFloat{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}
 
 /* ── GLOW ORBS ── */
@@ -235,8 +235,37 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
 <div id="page-landing" class="page active" style="z-index:1;">
   <div class="fade-in center" style="max-width:520px;width:100%;padding:20px;">
     <!-- Logo -->
-    <div style="margin-bottom:16px;">
-      <img src="quiz-mate-logo.png" alt="Quiz Mate by Benery" class="landing-logo-img" style="max-width:360px;width:100%;height:auto;">
+    <div style="margin-bottom:16px;background:transparent!important;">
+      <!-- Inline SVG logo - no external file needed -->
+      <svg viewBox="0 0 400 120" class="landing-logo-img" style="max-width:360px;width:100%;height:auto;background:transparent!important;display:block;" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#0040c0"/>
+            <stop offset="100%" style="stop-color:#00ccff"/>
+          </linearGradient>
+          <filter id="logoGlow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="3" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+        <!-- Gamepad icon -->
+        <rect x="20" y="35" width="50" height="35" rx="12" fill="url(#logoGrad)" filter="url(#logoGlow)"/>
+        <circle cx="32" cy="52" r="4" fill="white"/>
+        <circle cx="58" cy="52" r="4" fill="white"/>
+        <rect x="28" y="48" width="8" height="8" rx="2" fill="white" opacity="0.8"/>
+        <rect x="54" y="48" width="8" height="8" rx="2" fill="white" opacity="0.8"/>
+        <!-- QUIZ text -->
+        <text x="85" y="55" font-family="Orbitron,monospace" font-size="42" font-weight="900" fill="white" filter="url(#logoGlow)">QUIZ</text>
+        <!-- MATE text -->
+        <text x="85" y="90" font-family="Orbitron,monospace" font-size="42" font-weight="900" fill="url(#logoGrad)" filter="url(#logoGlow)">MATE</text>
+        <!-- Decorative elements -->
+        <circle cx="370" cy="30" r="6" fill="#ffd700" opacity="0.8"/>
+        <circle cx="385" cy="45" r="4" fill="#ff4444" opacity="0.8"/>
+        <circle cx="375" cy="65" r="5" fill="#00ff66" opacity="0.8"/>
+        <circle cx="360" cy="50" r="3" fill="#00ccff" opacity="0.8"/>
+        <!-- By Benery -->
+        <text x="85" y="108" font-family="DM Sans,sans-serif" font-size="11" fill="#7a8ab0" letter-spacing="2">BY BENERY</text>
+      </svg>
     </div>
 
     <p style="color:#8a9aba;font-size:18px;line-height:1.7;margin-bottom:36px;text-align:center;max-width:400px;font-weight:500;margin-left:auto;margin-right:auto;">The ultimate multiplayer quiz — play with friends anywhere in the world!</p>
@@ -1226,27 +1255,15 @@ function setupAdminDashboard(){
     updateAdminPlayers(snap.val()||{});
   });
 
-  // FIXED: Dedicated blitzRound listener for real-time team score updates
-  // This ONLY updates the DOM score elements, doesn't recalculate from stale data
-  db.ref('games/'+myPin+'/blitzRound').on('value',snap=>{
-    const round=snap.val();
-    if(!round||gameSettings.gameMode!=='blitz')return;
-
-    // Update score displays directly from round data for instant feedback
+  // FIXED v2: blitzRound listener now stores running totals in Firebase
+  // and reads from a dedicated scores node for consistency
+  db.ref('games/'+myPin+'/blitzScores').on('value',snap=>{
+    const scores=snap.val();
+    if(!scores||gameSettings.gameMode!=='blitz')return;
     const scoreAEl=document.getElementById('host-blitz-score-a');
     const scoreBEl=document.getElementById('host-blitz-score-b');
-
-    if(scoreAEl&&round.aPoints!==undefined){
-      // Get current displayed value and add new points for animation effect
-      const currentA=parseInt(scoreAEl.textContent)||0;
-      const newA=Math.max(0,currentA+round.aPoints);
-      scoreAEl.textContent=newA;
-    }
-    if(scoreBEl&&round.bPoints!==undefined){
-      const currentB=parseInt(scoreBEl.textContent)||0;
-      const newB=Math.max(0,currentB+round.bPoints);
-      scoreBEl.textContent=newB;
-    }
+    if(scoreAEl)scoreAEl.textContent=scores.a||0;
+    if(scoreBEl)scoreBEl.textContent=scores.b||0;
   });
 }
 
@@ -1328,15 +1345,17 @@ function updateAdminPlayers(players){
   if(list.length===0){
     lb.innerHTML='<p style="color:#5a6a8a;font-size:14px;">No players yet</p>';
   }else if(isBlitz){
-    // FIXED: Sum team scores correctly instead of using Math.max()
+    // FIXED v2: Read team scores from dedicated blitzScores node
+    // Player individual scores (p.score) are personal correct counts, NOT team scores
     const aPlayers=list.filter(p=>p.team==='A');
     const bPlayers=list.filter(p=>p.team==='B');
 
-    // Calculate team totals by summing all player scores per team
-    const aScore=aPlayers.reduce((sum,p)=>sum+(p.score||0),0);
-    const bScore=bPlayers.reduce((sum,p)=>sum+(p.score||0),0);
+    // Get team scores from blitzScores node (written by showBlitzReveal on host)
+    // Default to 0 if not yet set
+    const teamScores=window._blitzTeamScores||{a:0,b:0};
+    const aScore=teamScores.a;
+    const bScore=teamScores.b;
 
-    // Also calculate from blitzRound data as fallback for real-time accuracy
     const aCorrectTotal=aPlayers.reduce((sum,p)=>sum+(p.blitzCorrectCount||0),0);
     const bCorrectTotal=bPlayers.reduce((sum,p)=>sum+(p.blitzCorrectCount||0),0);
 
@@ -1360,7 +1379,7 @@ function updateAdminPlayers(players){
         <div class="avatar" style="width:24px;height:24px;background:${avatarColor(p.nickname)}30;color:${avatarColor(p.nickname)};font-size:10px;">${p.nickname[0].toUpperCase()}</div>
         <span style="flex:1;font-size:13px;font-weight:500;">${escHtml(p.nickname)}</span>
         <span style="font-size:11px;color:${p.team==='A'?'#ff8888':'#66b3ff'};margin-right:6px;">${p.team==='A'?'🔴':'🔵'}</span>
-        <span style="font-size:12px;color:#7a8ab0;">${p.score||0} pts · ${p.blitzCorrectCount||0} ✓</span>
+        <span style="font-size:12px;color:#7a8ab0;">${p.blitzCorrectCount||0} correct · ${p.score||0} pts</span>
       </div>`).join('');
   }else{
     lb.innerHTML=list.slice(0,15).map((p,i)=>`
@@ -1513,6 +1532,17 @@ async function adminLaunchNextRound(){
   await db.ref('games/'+myPin+'/players').set(Object.keys(updates).length>0?updates:null);
   await db.ref('games/'+myPin+'/waitingPlayers').remove();
   await db.ref('games/'+myPin+'/eliminated').remove();
+  // FIXED v2: Clean up ALL Blitz-specific state from previous round
+  await db.ref('games/'+myPin+'/blitzRound').remove();
+  await db.ref('games/'+myPin+'/blitzReactions').remove();
+  await db.ref('games/'+myPin+'/blitzSignals').remove();
+  await db.ref('games/'+myPin+'/blitzScores').remove();
+  await db.ref('games/'+myPin+'/blitzScoreA').remove();
+  await db.ref('games/'+myPin+'/blitzScoreB').remove();
+  await db.ref('games/'+myPin+'/blitzRoundsWonA').remove();
+  await db.ref('games/'+myPin+'/blitzRoundsWonB').remove();
+  await db.ref('games/'+myPin+'/blitzPerfectA').remove();
+  await db.ref('games/'+myPin+'/blitzPerfectB').remove();
   // Now open the lobby
   await db.ref('games/'+myPin).update({status:'lobby',settings:newSettings});
   gameSettings=newSettings;
@@ -2673,9 +2703,15 @@ adminStartGame=async function(){
 // TEAM BLITZ — QUIZ FLOW
 // ══════════════════════════════════════════
 function startBlitzQuiz(gameData){
+  // FIXED v2: Clean up ALL previous listeners before starting
   db.ref('games/'+myPin).off();
   db.ref('games/'+myPin+'/players').off();
   db.ref('games/'+myPin+'/status').off();
+  db.ref('games/'+myPin+'/blitzRound').off();
+  db.ref('games/'+myPin+'/blitzReactions').off();
+  // Clear any existing timer intervals
+  clearInterval(questionTimerInterval);
+  clearInterval(blitzState.revealCountdown);
 
   gameSettings=gameData.settings||{};
   activeQuestions=toArray(gameData.activeQuestions);
@@ -2747,25 +2783,36 @@ function renderBlitzQuestion(){
 }
 
 function startBlitzQuestionTimer(){
+  // FIXED v2: Always clear any existing timer first
   clearInterval(questionTimerInterval);
+  questionTimerInterval=null;
   const dur=gameSettings.blitzTimerDuration||12;
   const start=Date.now();
-  document.getElementById('blitz-q-timer-val').textContent=dur;
-  document.getElementById('blitz-q-timer-bar').style.width='100%';
+  const timerValEl=document.getElementById('blitz-q-timer-val');
+  const timerBarEl=document.getElementById('blitz-q-timer-bar');
+  if(timerValEl)timerValEl.textContent=dur;
+  if(timerBarEl){timerBarEl.style.width='100%';timerBarEl.style.background='#ffd700';}
+  // Guard flag to prevent multiple triggers
+  let timerTriggered=false;
 
   questionTimerInterval=setInterval(async()=>{
+    if(timerTriggered)return; // Already handled
     const elapsed=(Date.now()-start)/1000;
     const tl=Math.max(0,dur-elapsed);
-    document.getElementById('blitz-q-timer-val').textContent=Math.ceil(tl);
-    document.getElementById('blitz-q-timer-bar').style.width=(tl/dur*100)+'%';
-    document.getElementById('blitz-q-timer-bar').style.background=tl<3?'#ff4444':tl<6?'#ff8800':'#ffd700';
+    if(timerValEl)timerValEl.textContent=Math.ceil(tl);
+    if(timerBarEl){
+      timerBarEl.style.width=(tl/dur*100)+'%';
+      timerBarEl.style.background=tl<3?'#ff4444':tl<6?'#ff8800':'#ffd700';
+    }
     if(tl<=0){
+      timerTriggered=true;
       clearInterval(questionTimerInterval);
+      questionTimerInterval=null;
       // Submit blank if unanswered
       if(blitzState.myAnswer===null){
         await submitBlitzAnswer(-1);
       }
-      // Try to trigger reveal (host role: first player to time out triggers it)
+      // Try to trigger reveal (first player to time out triggers it)
       await tryTriggerBlitzReveal();
     }
   },100);
@@ -2857,16 +2904,32 @@ async function tryTriggerBlitzReveal(){
 
 function showBlitzReveal(round){
   if(blitzState.finished)return;
+  // FIXED v2: Guard against duplicate reveal processing
+  if(blitzState._lastRevealQ===round.q&&blitzState._lastRevealTime&&Date.now()-blitzState._lastRevealTime<5000)return;
+  blitzState._lastRevealQ=round.q;
+  blitzState._lastRevealTime=Date.now();
   clearInterval(questionTimerInterval);
+  questionTimerInterval=null;
   db.ref('games/'+myPin+'/blitzRound').off();
 
-  // Update running scores
+  // Update running scores — use direct assignment, not accumulation
+  // blitzRound.aPoints/bPoints are the points for THIS round only
   blitzState.teamScoreA=Math.max(0,blitzState.teamScoreA+round.aPoints);
   blitzState.teamScoreB=Math.max(0,blitzState.teamScoreB+round.bPoints);
   if(round.aVote===round.correctAnswer)blitzState.roundsWonA++;
   if(round.bVote===round.correctAnswer)blitzState.roundsWonB++;
   if(round.aPerfect)blitzState.perfectA++;
   if(round.bPerfect)blitzState.perfectB++;
+
+  // FIXED v2: Write running totals to blitzScores for host dashboard sync
+  // This is the SINGLE SOURCE OF TRUTH for team scores
+  try{
+    await db.ref('games/'+myPin+'/blitzScores').set({
+      a:blitzState.teamScoreA,
+      b:blitzState.teamScoreB,
+      updatedAt:Date.now()
+    });
+  }catch(e){}
 
   // Track personal accuracy
   if(blitzState.myAnswer===round.correctAnswer)blitzState.myCorrectCount++;
@@ -2935,14 +2998,17 @@ function showBlitzReveal(round){
 
   showPage('blitz-reveal');
 
-  // 4-second countdown then next question
+  // FIXED v2: 4-second countdown with proper listener cleanup
   let secs=4;
   const countEl=document.getElementById('blitz-reveal-countdown');
+  // Store reveal listener so we can clean it up properly
+  const revealListenerRef=db.ref('games/'+myPin+'/blitzRound');
   blitzState.revealCountdown=setInterval(()=>{
     secs--;
     if(countEl)countEl.textContent=secs>0?'Next question in '+secs+'...':'Moving on...';
     if(secs<=0){
       clearInterval(blitzState.revealCountdown);
+      blitzState.revealCountdown=null;
       blitzState.currentQ++;
       if(blitzState.currentQ>=activeQuestions.length){
         // Check for tie — sudden death
@@ -2952,8 +3018,10 @@ function showBlitzReveal(round){
           finishBlitzQuiz(false);
         }
       }else{
-        // Re-attach blitzRound listener for next question
-        db.ref('games/'+myPin+'/blitzRound').on('value',snap=>{
+        // FIXED: Remove OLD listener before adding new one
+        revealListenerRef.off();
+        // Add fresh listener for next question
+        revealListenerRef.on('value',snap=>{
           const round=snap.val();
           if(!round||round.q!==blitzState.currentQ)return;
           if(round.phase==='reveal')showBlitzReveal(round);
