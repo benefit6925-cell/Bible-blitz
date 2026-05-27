@@ -647,6 +647,10 @@ Answer: B</pre>
                 <option value="10" selected="">10 questions</option>
                 <option value="15">15 questions</option>
                 <option value="20">20 questions</option>
+                <option value="25">25 questions</option>
+                <option value="30">30 questions</option>
+                <option value="40">40 questions</option>
+                <option value="50">50 questions</option>
               </select>
             </div>
             <div style="flex:1;">
@@ -700,31 +704,36 @@ Answer: B</pre>
   </div><!-- end max-width wrapper -->
 </div>
 
-<!-- ═══ TEAM BLITZ — TEAM SELECTION ═══ -->
+<!-- ═══ TEAM BLITZ — AUTO TEAM ASSIGNMENT ═══ -->
 <div id="page-team-select" class="page" style="z-index:1;padding:24px 20px 60px;justify-content:flex-start;align-items:center;">
-  <div class="fade-in" style="width:100%;max-width:480px;margin-top:20px;">
+  <div class="fade-in" style="width:100%;max-width:480px;margin-top:20px;text-align:center;">
     <div class="flex-center gap12 mb32" style="justify-content:center;">
       <div style="width:36px;height:36px;background:linear-gradient(135deg,#7c3aed,#ec4899);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">🎮</div>
       <span class="orbitron neon-text" style="font-size:20px;letter-spacing:2px;">QUIZ MATE</span>
     </div>
-    <div style="text-align:center;margin-bottom:28px;">
-      <div style="font-size:13px;color:#f97316;letter-spacing:2px;font-weight:700;margin-bottom:6px;">⚔️ TEAM BLITZ</div>
-      <h2 style="font-size:24px;font-weight:700;margin-bottom:8px;">Choose Your Team</h2>
-      <p style="color:#94a3b8;font-size:14px;">Pick a side — your team wins or loses together</p>
+    <div style="font-size:13px;color:#f97316;letter-spacing:2px;font-weight:700;margin-bottom:16px;">⚔️ TEAM BLITZ</div>
+    <!-- Assignment card — filled dynamically -->
+    <div id="blitz-assign-card" class="glass glow-border" style="border-radius:24px;padding:36px 28px;margin-bottom:24px;">
+      <div style="font-size:64px;margin-bottom:16px;" id="blitz-assign-emoji">⚔️</div>
+      <div style="font-size:13px;color:#94a3b8;letter-spacing:2px;margin-bottom:8px;">YOU'VE BEEN ASSIGNED TO</div>
+      <div class="orbitron" style="font-size:28px;font-weight:900;margin-bottom:6px;" id="blitz-assign-team-name">Team A</div>
+      <div style="font-size:13px;color:#64748b;" id="blitz-assign-team-count">— players on your team</div>
     </div>
-    <div class="grid2" style="gap:16px;margin-bottom:24px;">
-      <div class="team-card team-card-a" id="blitz-team-a-card" onclick="selectTeam('A')">
-        <div style="font-size:48px;margin-bottom:12px;">🔴</div>
-        <div style="font-size:18px;font-weight:700;color:#f87171;margin-bottom:8px;" id="blitz-select-team-a-name">Team A</div>
-        <div style="font-size:13px;color:#94a3b8;" id="blitz-team-a-count">0 players</div>
-      </div>
-      <div class="team-card team-card-b" id="blitz-team-b-card" onclick="selectTeam('B')">
-        <div style="font-size:48px;margin-bottom:12px;">🔵</div>
-        <div style="font-size:18px;font-weight:700;color:#60a5fa;margin-bottom:8px;" id="blitz-select-team-b-name">Team B</div>
-        <div style="font-size:13px;color:#94a3b8;" id="blitz-team-b-count">0 players</div>
+    <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:14px 18px;margin-bottom:20px;">
+      <div style="font-size:12px;color:#64748b;margin-bottom:8px;letter-spacing:1px;">TEAM BALANCE</div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="flex:1;text-align:right;">
+          <div style="font-size:11px;color:#f87171;font-weight:700;margin-bottom:3px;" id="blitz-assign-a-name">Team A</div>
+          <div style="font-size:20px;font-weight:900;color:#f87171;" id="blitz-assign-a-count">0</div>
+        </div>
+        <div style="font-size:13px;color:#475569;font-weight:700;">vs</div>
+        <div style="flex:1;text-align:left;">
+          <div style="font-size:11px;color:#60a5fa;font-weight:700;margin-bottom:3px;" id="blitz-assign-b-name">Team B</div>
+          <div style="font-size:20px;font-weight:900;color:#60a5fa;" id="blitz-assign-b-count">0</div>
+        </div>
       </div>
     </div>
-    <p style="text-align:center;color:#475569;font-size:13px;">Teams update live — more balanced teams make better games!</p>
+    <p style="color:#475569;font-size:12px;">Teams are auto-balanced as players join — fair play guaranteed! 🤝</p>
   </div>
 </div>
 
@@ -1137,6 +1146,26 @@ function setupAdminDashboard(){
   playersRef.on('value',snap=>{
     updateAdminPlayers(snap.val()||{});
   });
+  // Live blitz round score listener for host dashboard
+  db.ref('games/'+myPin+'/blitzRound').on('value',snap=>{
+    const round=snap.val();
+    if(!round||gameSettings.gameMode!=='blitz')return;
+    if(round.phase==='reveal'){
+      // Update host-side team score display whenever a round reveal is written
+      const hostScoreA=document.getElementById('host-blitz-score-a');
+      const hostScoreB=document.getElementById('host-blitz-score-b');
+      if(hostScoreA&&round.aPoints!==undefined){
+        // Accumulate from player records (most reliable source)
+        db.ref('games/'+myPin+'/players').get().then(psnap=>{
+          const pl=Object.values(psnap.val()||{});
+          const aScore=Math.max(0,...pl.filter(p=>p.team==='A').map(p=>p.score||0),0);
+          const bScore=Math.max(0,...pl.filter(p=>p.team==='B').map(p=>p.score||0),0);
+          if(document.getElementById('host-blitz-score-a'))document.getElementById('host-blitz-score-a').textContent=aScore;
+          if(document.getElementById('host-blitz-score-b'))document.getElementById('host-blitz-score-b').textContent=bScore;
+        });
+      }
+    }
+  });
 }
 
 function updateAdminSettingChips(){
@@ -1203,10 +1232,39 @@ function updateAdminPlayers(players){
   document.getElementById('admin-player-count').textContent=list.length;
   document.getElementById('admin-players-label').textContent='👥 CONNECTED PLAYERS ('+list.length+')';
 
+  // For Team Blitz: compute live team scores from players' blitzAnswers progression
+  const isBlitz=gameSettings.gameMode==='blitz';
+
   // Leaderboard
   const lb=document.getElementById('admin-leaderboard');
   if(list.length===0){
     lb.innerHTML='<p style="color:#475569;font-size:14px;">No players yet</p>';
+  }else if(isBlitz){
+    // Show team score summary for blitz
+    const aPlayers=list.filter(p=>p.team==='A');
+    const bPlayers=list.filter(p=>p.team==='B');
+    const aScore=aPlayers.length>0?Math.max(...aPlayers.map(p=>p.score||0)):0;
+    const bScore=bPlayers.length>0?Math.max(...bPlayers.map(p=>p.score||0)):0;
+    lb.innerHTML=`
+      <div style="display:flex;gap:10px;margin-bottom:12px;">
+        <div style="flex:1;text-align:center;padding:12px;background:rgba(239,68,68,0.1);border-radius:12px;border:1px solid rgba(239,68,68,0.3);">
+          <div style="font-size:11px;color:#f87171;font-weight:700;margin-bottom:4px;">🔴 ${escHtml(gameSettings.teamAName||'Team A')}</div>
+          <div class="orbitron" style="font-size:28px;color:#f87171;" id="host-blitz-score-a">${aScore}</div>
+        </div>
+        <div style="display:flex;align-items:center;font-size:16px;color:#475569;font-weight:700;">vs</div>
+        <div style="flex:1;text-align:center;padding:12px;background:rgba(59,130,246,0.1);border-radius:12px;border:1px solid rgba(59,130,246,0.3);">
+          <div style="font-size:11px;color:#60a5fa;font-weight:700;margin-bottom:4px;">🔵 ${escHtml(gameSettings.teamBName||'Team B')}</div>
+          <div class="orbitron" style="font-size:28px;color:#60a5fa;" id="host-blitz-score-b">${bScore}</div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:#64748b;margin-bottom:8px;">PLAYERS (${list.length})</div>
+      `+list.slice(0,10).map((p,i)=>`
+      <div class="leaderboard-row">
+        <div class="avatar" style="width:24px;height:24px;background:${avatarColor(p.nickname)}30;color:${avatarColor(p.nickname)};font-size:10px;">${p.nickname[0].toUpperCase()}</div>
+        <span style="flex:1;font-size:13px;font-weight:500;">${escHtml(p.nickname)}</span>
+        <span style="font-size:11px;color:${p.team==='A'?'#f87171':'#60a5fa'};margin-right:6px;">${p.team==='A'?'🔴':'🔵'}</span>
+        <span style="font-size:12px;color:#94a3b8;">${p.blitzCorrectCount||0} ✓</span>
+      </div>`).join('');
   }else{
     lb.innerHTML=list.slice(0,15).map((p,i)=>`
       <div class="leaderboard-row ${i===0?'winner-glow':''}">
@@ -1598,20 +1656,31 @@ async function joinGame(){
       errEl.classList.add('show');btn.disabled=false;btn.textContent='Join Game →';return;
     }
     myPlayerId='player_'+Date.now()+'_'+Math.random().toString(36).substr(2,5);
-    await db.ref('games/'+pin+'/players/'+myPlayerId).set({
-      id:myPlayerId,nickname:nick,score:0,correctCount:0,
-      finished:false,eliminated:false,joinedAt:Date.now(),answers:{}
-    });
-    // Team Blitz: go to team selection instead of lobby
+    // Team Blitz: auto-assign to the smaller team for balance, then go straight to blitz lobby
     if(g.settings&&g.settings.gameMode==='blitz'){
-      setupBlitzTeamSelect(g);
-      showPage('team-select');
+      const allExisting=Object.values(existingPlayers);
+      const countA=allExisting.filter(p=>p.team==='A').length;
+      const countB=allExisting.filter(p=>p.team==='B').length;
+      // Assign to team with fewer players; break ties by alternating (total players % 2)
+      const assignedTeam=countA<=countB?'A':'B';
+      await db.ref('games/'+pin+'/players/'+myPlayerId).set({
+        id:myPlayerId,nickname:nick,score:0,correctCount:0,
+        finished:false,eliminated:false,joinedAt:Date.now(),answers:{},team:assignedTeam
+      });
+      blitzState.myTeam=assignedTeam;
+      blitzState.teamAName=g.settings.teamAName||'Team A';
+      blitzState.teamBName=g.settings.teamBName||'Team B';
+      sessionStorage.setItem('qm_session',JSON.stringify({pin,nick,playerId:myPlayerId}));
+      showBlitzAutoAssign(g,assignedTeam,countA+(assignedTeam==='A'?1:0),countB+(assignedTeam==='B'?1:0));
     }else{
+      await db.ref('games/'+pin+'/players/'+myPlayerId).set({
+        id:myPlayerId,nickname:nick,score:0,correctCount:0,
+        finished:false,eliminated:false,joinedAt:Date.now(),answers:{}
+      });
+      sessionStorage.setItem('qm_session',JSON.stringify({pin,nick,playerId:myPlayerId}));
       setupLobby(g);
       showPage('lobby');
     }
-    // Persist session so the player can rejoin if they refresh
-    sessionStorage.setItem('qm_session',JSON.stringify({pin,nick,playerId:myPlayerId}));
   }catch(e){
     errEl.textContent='Connection error: '+e.message;errEl.classList.add('show');
   }
@@ -1903,6 +1972,26 @@ async function handleAnswer(idx){
     });
   }catch(e){}
 
+  // Survival: check if this player is the last survivor and is now 1 answer ahead of the last eliminated player
+  if(gameSettings.gameMode==='survival'&&correct){
+    try{
+      const snap=await db.ref('games/'+myPin+'/players').get();
+      const allPlayers=Object.values(snap.val()||{});
+      const survivors=allPlayers.filter(p=>!p.eliminated&&!p.finished);
+      if(survivors.length===1&&survivors[0].id===myPlayerId){
+        const eliminated=allPlayers.filter(p=>p.eliminated).sort((a,b)=>(b.eliminatedAt||0)-(a.eliminatedAt||0));
+        const lastEliminated=eliminated[0];
+        if(lastEliminated&&quizState.correctCount>(lastEliminated.correctCount||0)){
+          // Last player is now ahead — instant win
+          await db.ref('games/'+myPin+'/players/'+myPlayerId).update({finished:true,finishedAt:Date.now()});
+          await db.ref('games/'+myPin).update({status:'ended'});
+          finishQuiz();
+          return;
+        }
+      }
+    }catch(e){}
+  }
+
   setTimeout(()=>{
     const next=quizState.current+1;
     if(next>=activeQuestions.length){finishQuiz();return;}
@@ -1932,11 +2021,29 @@ async function eliminatePlayer(){
   document.getElementById('eliminated-correct').textContent=quizState.correctCount+'/'+activeQuestions.length+' correct';
   startSpectatorMode();
   // If all players are now eliminated, auto-end the game
+  // Also check if only 1 player remains — if they are 1 answer ahead, they win immediately
   try{
     const snap=await db.ref('games/'+myPin+'/players').get();
     const allPlayers=Object.values(snap.val()||{});
     if(allPlayers.length>0&&allPlayers.every(p=>p.eliminated||p.finished)){
       await db.ref('games/'+myPin).update({status:'ended'});
+    }else if(gameSettings.gameMode==='survival'){
+      // Check if exactly one player is still alive
+      const survivors=allPlayers.filter(p=>!p.eliminated&&!p.finished);
+      if(survivors.length===1){
+        // Find the most recently eliminated player's correctCount
+        const eliminated=allPlayers.filter(p=>p.eliminated).sort((a,b)=>(b.eliminatedAt||0)-(a.eliminatedAt||0));
+        const lastEliminated=eliminated[0];
+        if(lastEliminated){
+          const survivorCorrect=survivors[0].correctCount||0;
+          const lastEliminatedCorrect=lastEliminated.correctCount||0;
+          // If survivor has answered at least 1 more question correctly, declare them winner immediately
+          if(survivorCorrect>lastEliminatedCorrect){
+            await db.ref('games/'+myPin+'/players/'+survivors[0].id).update({finished:true,finishedAt:Date.now()});
+            await db.ref('games/'+myPin).update({status:'ended'});
+          }
+        }
+      }
     }
   }catch(e){}
 }
@@ -2195,11 +2302,25 @@ async function aiGenerateQuestions(){
     if(!Array.isArray(questions)||questions.length===0)throw new Error('Invalid response format');
     aiGeneratedQuestions=questions.filter(q=>q.q&&Array.isArray(q.options)&&q.options.length===4&&typeof q.answer==='number');
     if(aiGeneratedQuestions.length===0)throw new Error('No valid questions in response');
-    document.getElementById('ai-preview-label').textContent=aiGeneratedQuestions.length+' questions generated — preview below:';
+    document.getElementById('ai-preview-label').textContent=aiGeneratedQuestions.length+' questions generated — adding to game...';
     document.getElementById('ai-preview-list').innerHTML=aiGeneratedQuestions.map((q,i)=>'<div style="padding:8px 10px;background:rgba(168,85,247,0.08);border-radius:8px;margin-bottom:6px;font-size:12px;"><div style="font-weight:600;color:#e2e8f0;margin-bottom:4px;">'+(i+1)+'. '+escHtml(q.q)+'</div><div style="color:#64748b;">'+q.options.map((o,oi)=>'<span style="color:'+(oi===q.answer?'#4ade80':'#64748b')+'">'+'ABCD'[oi]+': '+escHtml(o)+(oi===q.answer?' ✓':'')+'</span>').join(' · ')+'</div></div>').join('');
-    previewEl.style.display='block';addBtn.style.display='';genBtn.textContent='Regenerate';
+    previewEl.style.display='block';
+    // Auto-add questions immediately — no manual button needed
+    genBtn.disabled=false;statusEl.style.display='none';
+    genBtn.textContent='✨ Generate with AI';
+    const added=await importQuestionsToGame(aiGeneratedQuestions);
+    document.getElementById('ai-preview-label').textContent='✅ '+added+' questions added to your game! Preview:';
+    aiGeneratedQuestions=[];
+    addBtn.style.display='none';
+    // Auto-close the panel after a short delay
+    setTimeout(()=>{
+      toggleImportPanel('ai');
+      document.getElementById('ai-topic').value='';
+      document.getElementById('ai-preview').style.display='none';
+    },2000);
+    return;
   }catch(e){
-    errEl.textContent='AI Error: '+(e.message||'Unknown error. Try again.');errEl.style.display='block';genBtn.textContent='Generate with AI';
+    errEl.textContent='AI Error: '+(e.message||'Unknown error. Try again.');errEl.style.display='block';genBtn.textContent='✨ Generate with AI';
   }
   genBtn.disabled=false;statusEl.style.display='none';
 }
@@ -2219,28 +2340,59 @@ async function aiAddToGame(){
 }
 
 // ══════════════════════════════════════════
-// TEAM BLITZ — TEAM SELECTION
+// TEAM BLITZ — AUTO TEAM ASSIGNMENT
 // ══════════════════════════════════════════
-function setupBlitzTeamSelect(gameData){
+function showBlitzAutoAssign(gameData,assignedTeam,newCountA,newCountB){
   const s=gameData.settings||{};
   blitzState.teamAName=s.teamAName||'Team A';
   blitzState.teamBName=s.teamBName||'Team B';
-  blitzState.myTeam=null;
-  document.getElementById('blitz-select-team-a-name').textContent=blitzState.teamAName;
-  document.getElementById('blitz-select-team-b-name').textContent=blitzState.teamBName;
 
-  // Live team count updates
-  db.ref('games/'+myPin+'/players').on('value',snap=>{
-    const players=Object.values(snap.val()||{});
-    const countA=players.filter(p=>p.team==='A').length;
-    const countB=players.filter(p=>p.team==='B').length;
-    document.getElementById('blitz-team-a-count').textContent=countA+' player'+(countA!==1?'s':'');
-    document.getElementById('blitz-team-b-count').textContent=countB+' player'+(countB!==1?'s':'');
-  });
+  const isA=assignedTeam==='A';
+  const teamName=isA?blitzState.teamAName:blitzState.teamBName;
+  const teamColor=isA?'#f87171':'#60a5fa';
+  const teamEmoji=isA?'🔴':'🔵';
 
-  // Watch for game starting
+  // Fill assignment card
+  document.getElementById('blitz-assign-emoji').textContent=teamEmoji;
+  document.getElementById('blitz-assign-team-name').textContent=teamName;
+  document.getElementById('blitz-assign-team-name').style.color=teamColor;
+  document.getElementById('blitz-assign-card').style.borderColor=isA?'rgba(248,113,113,0.4)':'rgba(96,165,250,0.4)';
+  document.getElementById('blitz-assign-card').style.boxShadow=isA?'0 0 30px rgba(248,113,113,0.15)':'0 0 30px rgba(96,165,250,0.15)';
+
+  // Live balance counter — updates as more players join
+  const updateBalance=()=>{
+    db.ref('games/'+myPin+'/players').get().then(snap=>{
+      const pl=Object.values(snap.val()||{});
+      const cA=pl.filter(p=>p.team==='A').length;
+      const cB=pl.filter(p=>p.team==='B').length;
+      const myCount=isA?cA:cB;
+      document.getElementById('blitz-assign-team-count').textContent=myCount+' player'+(myCount!==1?'s':'')+' on your team';
+      document.getElementById('blitz-assign-a-name').textContent='🔴 '+blitzState.teamAName;
+      document.getElementById('blitz-assign-b-name').textContent='🔵 '+blitzState.teamBName;
+      document.getElementById('blitz-assign-a-count').textContent=cA;
+      document.getElementById('blitz-assign-b-count').textContent=cB;
+    });
+  };
+  updateBalance();
+
+  // Live update as more players join
+  const balanceRef=db.ref('games/'+myPin+'/players');
+  balanceRef.on('value',()=>updateBalance());
+
+  showPage('team-select');
+
+  // Auto-transition to blitz lobby after 2 seconds
+  setTimeout(()=>{
+    balanceRef.off();
+    setupBlitzLobby();
+    showPage('blitz-lobby');
+  },2000);
+
+  // Also watch for game starting while on assignment screen
   db.ref('games/'+myPin+'/status').on('value',snap=>{
     if(snap.val()==='active'){
+      balanceRef.off();
+      db.ref('games/'+myPin+'/status').off();
       db.ref('games/'+myPin).get().then(g=>{
         if(g.val()&&g.val().activeQuestions)startBlitzQuiz(g.val());
       });
@@ -2248,19 +2400,14 @@ function setupBlitzTeamSelect(gameData){
   });
 }
 
+// Legacy stub — no longer used for player flow but kept so any internal references don't break
+function setupBlitzTeamSelect(gameData){
+  showBlitzAutoAssign(gameData, blitzState.myTeam||'A', 0, 0);
+}
 async function selectTeam(team){
-  if(blitzState.myTeam===team)return; // already on this team
+  // No longer called from UI — kept as safety fallback
   blitzState.myTeam=team;
-  // Visual feedback
-  document.getElementById('blitz-team-a-card').classList.toggle('selected',team==='A');
-  document.getElementById('blitz-team-b-card').classList.toggle('selected',team==='B');
-  document.getElementById('blitz-team-a-card').style.color='#f87171';
-  document.getElementById('blitz-team-b-card').style.color='#60a5fa';
-  // Update Firebase
-  try{
-    await db.ref('games/'+myPin+'/players/'+myPlayerId).update({team});
-  }catch(e){}
-  // Move to blitz lobby
+  try{ await db.ref('games/'+myPin+'/players/'+myPlayerId).update({team}); }catch(e){}
   db.ref('games/'+myPin+'/players').off();
   db.ref('games/'+myPin+'/status').off();
   setupBlitzLobby();
@@ -2537,6 +2684,15 @@ function showBlitzReveal(round){
 
   // Track personal accuracy
   if(blitzState.myAnswer===round.correctAnswer)blitzState.myCorrectCount++;
+
+  // Push live score to Firebase so host dashboard updates in real time
+  try{
+    const myTeamScore=blitzState.myTeam==='A'?blitzState.teamScoreA:blitzState.teamScoreB;
+    db.ref('games/'+myPin+'/players/'+myPlayerId).update({
+      score:myTeamScore,
+      blitzCorrectCount:blitzState.myCorrectCount
+    });
+  }catch(e){}
 
   // Build reveal screen
   const q=activeQuestions[blitzState.currentQ];
