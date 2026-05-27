@@ -235,37 +235,9 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
 <div id="page-landing" class="page active" style="z-index:1;">
   <div class="fade-in center" style="max-width:520px;width:100%;padding:20px;">
     <!-- Logo -->
-    <div style="margin-bottom:16px;background:transparent!important;">
-      <!-- Inline SVG logo - no external file needed -->
-      <svg viewBox="0 0 400 120" class="landing-logo-img" style="max-width:360px;width:100%;height:auto;background:transparent!important;display:block;" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:#0040c0"/>
-            <stop offset="100%" style="stop-color:#00ccff"/>
-          </linearGradient>
-          <filter id="logoGlow" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="3" result="blur"/>
-            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-          </filter>
-        </defs>
-        <!-- Gamepad icon -->
-        <rect x="20" y="35" width="50" height="35" rx="12" fill="url(#logoGrad)" filter="url(#logoGlow)"/>
-        <circle cx="32" cy="52" r="4" fill="white"/>
-        <circle cx="58" cy="52" r="4" fill="white"/>
-        <rect x="28" y="48" width="8" height="8" rx="2" fill="white" opacity="0.8"/>
-        <rect x="54" y="48" width="8" height="8" rx="2" fill="white" opacity="0.8"/>
-        <!-- QUIZ text -->
-        <text x="85" y="55" font-family="Orbitron,monospace" font-size="42" font-weight="900" fill="white" filter="url(#logoGlow)">QUIZ</text>
-        <!-- MATE text -->
-        <text x="85" y="90" font-family="Orbitron,monospace" font-size="42" font-weight="900" fill="url(#logoGrad)" filter="url(#logoGlow)">MATE</text>
-        <!-- Decorative elements -->
-        <circle cx="370" cy="30" r="6" fill="#ffd700" opacity="0.8"/>
-        <circle cx="385" cy="45" r="4" fill="#ff4444" opacity="0.8"/>
-        <circle cx="375" cy="65" r="5" fill="#00ff66" opacity="0.8"/>
-        <circle cx="360" cy="50" r="3" fill="#00ccff" opacity="0.8"/>
-        <!-- By Benery -->
-        <text x="85" y="108" font-family="DM Sans,sans-serif" font-size="11" fill="#7a8ab0" letter-spacing="2">BY BENERY</text>
-      </svg>
+    <!-- Logo centered at top with floating animation -->
+    <div style="text-align:center;padding-top:20px;background:transparent!important;">
+      <img src="quiz-mate-logo.png" alt="Quiz Mate" style="width:180px;height:auto;background:transparent!important;display:block;object-fit:contain;animation:logoFloat 3s ease-in-out infinite;-webkit-backface-visibility:hidden;backface-visibility:hidden;filter:drop-shadow(0 4px 15px rgba(0,128,255,0.3));margin:0 auto;">
     </div>
 
     <p style="color:#8a9aba;font-size:18px;line-height:1.7;margin-bottom:36px;text-align:center;max-width:400px;font-weight:500;margin-left:auto;margin-right:auto;">The ultimate multiplayer quiz — play with friends anywhere in the world!</p>
