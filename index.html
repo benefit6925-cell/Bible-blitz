@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-
+<!-- saved from url=(0048)file:///C:/Users/user%201/Downloads/index_1.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -124,6 +124,26 @@ html,body{min-height:100vh;background:#080b14;color:#e2e8f0;font-family:'DM Sans
 .mode-lightning{background:rgba(234,179,8,0.15);border:1px solid rgba(234,179,8,0.3);color:#fbbf24;}
 .mode-survival{background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#f87171;}
 
+/* ── TEAM BLITZ MODE TAG ── */
+.mode-blitz{background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.35);color:#f97316;}
+
+/* ── TEAM BLITZ — TEAM SELECTION ── */
+.team-card{border-radius:20px;padding:28px 24px;cursor:pointer;transition:all 0.25s;border:2px solid transparent;text-align:center;position:relative;overflow:hidden;}
+.team-card:hover{transform:translateY(-4px);}
+.team-card.selected{border-color:currentColor;box-shadow:0 0 40px currentColor;}
+.team-card-a{background:rgba(239,68,68,0.08);}
+.team-card-b{background:rgba(59,130,246,0.08);}
+
+/* ── TEAM BLITZ — REVEAL SCREEN ── */
+.vote-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;font-size:13px;font-weight:600;margin:3px;}
+.reveal-answer-row{padding:12px 16px;border-radius:12px;margin-bottom:8px;display:flex;align-items:center;gap:12px;font-size:15px;font-weight:600;}
+@keyframes blitzReveal{0%{transform:scale(0.8);opacity:0;}60%{transform:scale(1.05);}100%{transform:scale(1);opacity:1;}}
+.blitz-reveal-anim{animation:blitzReveal 0.5s ease forwards;}
+@keyframes perfectPulse{0%,100%{box-shadow:0 0 30px #eab30880,0 0 60px #eab30840;}50%{box-shadow:0 0 60px #eab308cc,0 0 120px #eab30880;}}
+.perfect-round{animation:perfectPulse 1s ease infinite;}
+.reaction-bubble{position:fixed;font-size:28px;pointer-events:none;z-index:9998;animation:reactionFloat 3s ease forwards;}
+@keyframes reactionFloat{0%{transform:translateY(0) scale(0.5);opacity:0;}15%{opacity:1;transform:translateY(-20px) scale(1);}80%{opacity:0.8;}100%{transform:translateY(-120px) scale(0.8);opacity:0;}}
+
 /* ── SETTINGS SUMMARY CHIPS ── */
 .setting-chip{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:5px 10px;font-size:12px;color:#94a3b8;}
 
@@ -156,16 +176,17 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
       <button class="btn-primary" style="font-size:18px;padding:18px;" onclick="showPage(&#39;host-setup&#39;)">🎮 Host a Game</button>
       <button class="btn-secondary" style="font-size:18px;padding:18px;" onclick="showPage(&#39;join&#39;)">✋ Join a Game</button>
     </div>
-    <div class="flex-center gap8" style="justify-content:center;margin-top:48px;gap:40px;">
-      <div class="center"><div class="orbitron neon-text" style="font-size:28px;">10-50</div><div style="font-size:13px;color:#64748b;margin-top:4px;">Questions</div></div>
-      <div class="center"><div class="orbitron neon-text" style="font-size:28px;">3</div><div style="font-size:13px;color:#64748b;margin-top:4px;">Game Modes</div></div>
-      <div class="center"><div class="orbitron neon-text" style="font-size:28px;">∞</div><div style="font-size:13px;color:#64748b;margin-top:4px;">Players</div></div>
-    </div>
-    <div style="margin-top:24px;display:flex;justify-content:center;gap:8px;flex-wrap:wrap;">
-      <span class="mode-tag mode-classic">🎮 Classic</span>
-      <span class="mode-tag mode-lightning">⚡ Lightning</span>
-      <span class="mode-tag mode-survival">💀 Survival</span>
-    </div>
+      <div class="flex-center gap8" style="justify-content:center;margin-bottom:48px;gap:40px;">
+        <div class="center"><div class="orbitron neon-text" style="font-size:28px;">10-50</div><div style="font-size:13px;color:#64748b;margin-top:4px;">Questions</div></div>
+        <div class="center"><div class="orbitron neon-text" style="font-size:28px;">4</div><div style="font-size:13px;color:#64748b;margin-top:4px;">Game Modes</div></div>
+        <div class="center"><div class="orbitron neon-text" style="font-size:28px;">∞</div><div style="font-size:13px;color:#64748b;margin-top:4px;">Players</div></div>
+      </div>
+      <div style="margin-top:24px;display:flex;justify-content:center;gap:8px;flex-wrap:wrap;">
+        <span class="mode-tag mode-classic">🎮 Classic</span>
+        <span class="mode-tag mode-lightning">⚡ Lightning</span>
+        <span class="mode-tag mode-survival">💀 Survival</span>
+        <span class="mode-tag mode-blitz">⚔️ Team Blitz</span>
+      </div>
   </div>
 </div>
 
@@ -214,11 +235,38 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
 
       <span class="label">GAME MODE</span>
       <div class="pill-group" id="setting-mode">
-        <button class="pill active" data-value="classic" onclick="selectPill(&#39;setting-mode&#39;,&#39;classic&#39;)">🎮 Classic</button>
-        <button class="pill" data-value="lightning" onclick="selectPill(&#39;setting-mode&#39;,&#39;lightning&#39;)">⚡ Lightning</button>
-        <button class="pill" data-value="survival" onclick="selectPill(&#39;setting-mode&#39;,&#39;survival&#39;)">💀 Survival</button>
+        <button class="pill active" data-value="classic" onclick="selectPill('setting-mode','classic')">🎮 Classic</button>
+        <button class="pill" data-value="lightning" onclick="selectPill('setting-mode','lightning')">⚡ Lightning</button>
+        <button class="pill" data-value="survival" onclick="selectPill('setting-mode','survival')">💀 Survival</button>
+        <button class="pill" data-value="blitz" onclick="selectPill('setting-mode','blitz')">⚔️ Team Blitz</button>
       </div>
       <div id="mode-desc" style="font-size:12px;color:#64748b;margin-top:-8px;margin-bottom:16px;padding:8px 12px;background:rgba(255,255,255,0.02);border-radius:8px;">Standard quiz with a shared countdown timer. Answer all questions before time runs out.</div>
+
+      <!-- Team Blitz team name config (hidden unless blitz selected) -->
+      <div id="blitz-team-config" style="display:none;margin-bottom:16px;">
+        <div class="grid2" style="gap:12px;">
+          <div>
+            <span class="label">TEAM A NAME</span>
+            <input class="input-field" id="blitz-team-a-name" placeholder="e.g. Lions 🔴" maxlength="20" value="Lions 🔴">
+          </div>
+          <div>
+            <span class="label">TEAM B NAME</span>
+            <input class="input-field" id="blitz-team-b-name" placeholder="e.g. Eagles 🔵" maxlength="20" value="Eagles 🔵">
+          </div>
+        </div>
+        <p style="font-size:12px;color:#475569;margin-top:8px;">Players choose their team after joining. At least 1 player per team required to start.</p>
+      </div>
+
+      <!-- Team Blitz: use per-question timer (15/20/30s) -->
+      <div id="blitz-timer-config" style="display:none;margin-bottom:16px;">
+        <span class="label">PER-QUESTION TIMER</span>
+        <div class="pill-group" id="setting-blitz-timer">
+          <button class="pill" data-value="8" onclick="selectPill('setting-blitz-timer','8')">8s</button>
+          <button class="pill" data-value="10" onclick="selectPill('setting-blitz-timer','10')">10s</button>
+          <button class="pill active" data-value="12" onclick="selectPill('setting-blitz-timer','12')">12s</button>
+          <button class="pill" data-value="15" onclick="selectPill('setting-blitz-timer','15')">15s</button>
+        </div>
+      </div>
 
       <span class="label">SCORING</span>
       <div class="pill-group" id="setting-scoring">
@@ -428,6 +476,7 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
       <button class="pill active" data-value="classic" onclick="selectNRModePill('classic')">🎮 Classic</button>
       <button class="pill" data-value="lightning" onclick="selectNRModePill('lightning')">⚡ Lightning</button>
       <button class="pill" data-value="survival" onclick="selectNRModePill('survival')">💀 Survival</button>
+      <button class="pill" data-value="blitz" onclick="selectNRModePill('blitz')">⚔️ Team Blitz</button>
     </div>
     <div id="nr-mode-desc" style="font-size:12px;color:#64748b;margin-top:-8px;margin-bottom:16px;padding:8px 12px;background:rgba(255,255,255,0.02);border-radius:8px;">Standard quiz with a shared countdown timer. Answer all questions before time runs out.</div>
 
@@ -484,7 +533,7 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
     <!-- Share PIN box -->
     <div id="admin-share-box" class="glass glow-border" style="border-radius:16px;padding:20px;margin-bottom:20px;text-align:center;">
       <div style="font-size:13px;color:#64748b;margin-bottom:4px;">📱 SHARE THIS LINK + PIN WITH PLAYERS</div>
-      <div style="font-size:13px;color:#94a3b8;margin-bottom:8px;word-break:break-all;" id="admin-share-url"></div>
+      <div style="font-size:13px;color:#94a3b8;margin-bottom:8px;word-break:break-all;" id="admin-share-url">file:///C:/Users/user%201/Downloads/index_1.html</div>
       <div class="pin-display" id="admin-pin-big">0000</div>
       <div style="font-size:12px;color:#475569;margin-top:8px;">Players open that link → click Join → enter PIN</div>
     </div>
@@ -598,10 +647,6 @@ Answer: B</pre>
                 <option value="10" selected="">10 questions</option>
                 <option value="15">15 questions</option>
                 <option value="20">20 questions</option>
-                <option value="25">25 questions</option>
-                <option value="30">30 questions</option>
-                <option value="40">40 questions</option>
-                <option value="50">50 questions</option>
               </select>
             </div>
             <div style="flex:1;">
@@ -653,6 +698,209 @@ Answer: B</pre>
     </div>
 
   </div><!-- end max-width wrapper -->
+</div>
+
+<!-- ═══ TEAM BLITZ — TEAM SELECTION ═══ -->
+<div id="page-team-select" class="page" style="z-index:1;padding:24px 20px 60px;justify-content:flex-start;align-items:center;">
+  <div class="fade-in" style="width:100%;max-width:480px;margin-top:20px;">
+    <div class="flex-center gap12 mb32" style="justify-content:center;">
+      <div style="width:36px;height:36px;background:linear-gradient(135deg,#7c3aed,#ec4899);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">🎮</div>
+      <span class="orbitron neon-text" style="font-size:20px;letter-spacing:2px;">QUIZ MATE</span>
+    </div>
+    <div style="text-align:center;margin-bottom:28px;">
+      <div style="font-size:13px;color:#f97316;letter-spacing:2px;font-weight:700;margin-bottom:6px;">⚔️ TEAM BLITZ</div>
+      <h2 style="font-size:24px;font-weight:700;margin-bottom:8px;">Choose Your Team</h2>
+      <p style="color:#94a3b8;font-size:14px;">Pick a side — your team wins or loses together</p>
+    </div>
+    <div class="grid2" style="gap:16px;margin-bottom:24px;">
+      <div class="team-card team-card-a" id="blitz-team-a-card" onclick="selectTeam('A')">
+        <div style="font-size:48px;margin-bottom:12px;">🔴</div>
+        <div style="font-size:18px;font-weight:700;color:#f87171;margin-bottom:8px;" id="blitz-select-team-a-name">Team A</div>
+        <div style="font-size:13px;color:#94a3b8;" id="blitz-team-a-count">0 players</div>
+      </div>
+      <div class="team-card team-card-b" id="blitz-team-b-card" onclick="selectTeam('B')">
+        <div style="font-size:48px;margin-bottom:12px;">🔵</div>
+        <div style="font-size:18px;font-weight:700;color:#60a5fa;margin-bottom:8px;" id="blitz-select-team-b-name">Team B</div>
+        <div style="font-size:13px;color:#94a3b8;" id="blitz-team-b-count">0 players</div>
+      </div>
+    </div>
+    <p style="text-align:center;color:#475569;font-size:13px;">Teams update live — more balanced teams make better games!</p>
+  </div>
+</div>
+
+<!-- ═══ TEAM BLITZ — TEAM LOBBY ═══ -->
+<div id="page-blitz-lobby" class="page" style="z-index:1;padding:24px 20px;justify-content:flex-start;align-items:center;">
+  <div class="fade-in" style="width:100%;max-width:480px;margin-top:20px;">
+    <div class="flex-center gap12 mb24" style="justify-content:center;">
+      <div style="width:36px;height:36px;background:linear-gradient(135deg,#7c3aed,#ec4899);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">🎮</div>
+      <span class="orbitron neon-text" style="font-size:20px;letter-spacing:2px;">QUIZ MATE</span>
+    </div>
+    <div style="text-align:center;margin-bottom:20px;">
+      <div style="font-size:13px;letter-spacing:2px;font-weight:700;margin-bottom:4px;" id="blitz-lobby-team-label">⚔️ TEAM BLITZ</div>
+      <div style="font-size:20px;font-weight:700;" id="blitz-lobby-myteam-name">Team A</div>
+      <div class="flex-center gap8" style="justify-content:center;margin-top:10px;">
+        <span class="status-dot"></span>
+        <span style="color:#94a3b8;font-size:14px;">Waiting for host to start...</span>
+      </div>
+    </div>
+    <div class="grid2" style="gap:12px;margin-bottom:16px;">
+      <div class="glass glow-border" style="border-radius:16px;padding:16px;">
+        <div style="font-size:12px;color:#f87171;font-weight:700;letter-spacing:1px;margin-bottom:10px;" id="blitz-lobby-a-header">🔴 TEAM A (0)</div>
+        <div id="blitz-lobby-a-players" class="scroll-box" style="max-height:180px;"></div>
+      </div>
+      <div class="glass glow-border" style="border-radius:16px;padding:16px;">
+        <div style="font-size:12px;color:#60a5fa;font-weight:700;letter-spacing:1px;margin-bottom:10px;" id="blitz-lobby-b-header">🔵 TEAM B (0)</div>
+        <div id="blitz-lobby-b-players" class="scroll-box" style="max-height:180px;"></div>
+      </div>
+    </div>
+    <p style="text-align:center;color:#475569;font-size:12px;">You'll see final results when the game ends</p>
+  </div>
+</div>
+
+<!-- ═══ TEAM BLITZ — QUIZ SCREEN ═══ -->
+<div id="page-blitz-quiz" class="page" style="z-index:1;padding:0;justify-content:flex-start;align-items:stretch;">
+  <div style="width:100%;z-index:1;">
+    <!-- Header -->
+    <div style="padding:12px 20px;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(255,255,255,0.06);">
+      <div style="flex:1;">
+        <div style="font-size:11px;color:#64748b;margin-bottom:3px;" id="blitz-quiz-progress-label">Question 1 of 20</div>
+        <div class="progress-bar"><div class="progress-fill" id="blitz-quiz-progress-bar" style="width:0%;background:linear-gradient(90deg,#f97316,#ef4444);"></div></div>
+      </div>
+      <div class="center" style="min-width:60px;">
+        <div style="font-size:22px;font-weight:900;font-family:'Orbitron',monospace;color:#eab308;" id="blitz-q-timer-val">12</div>
+        <div style="font-size:10px;color:#475569;">sec</div>
+      </div>
+    </div>
+    <div class="timer-bar"><div class="timer-fill" id="blitz-q-timer-bar" style="width:100%;background:#f97316;"></div></div>
+    <!-- Team score strip -->
+    <div style="display:flex;align-items:center;padding:8px 20px;gap:12px;background:rgba(255,255,255,0.02);border-bottom:1px solid rgba(255,255,255,0.04);">
+      <div style="flex:1;text-align:left;">
+        <div style="font-size:11px;color:#f87171;font-weight:700;" id="blitz-score-a-label">🔴 Team A</div>
+        <div class="orbitron" style="font-size:20px;color:#f87171;" id="blitz-score-a">0</div>
+      </div>
+      <div style="font-size:16px;color:#475569;font-weight:700;">VS</div>
+      <div style="flex:1;text-align:right;">
+        <div style="font-size:11px;color:#60a5fa;font-weight:700;" id="blitz-score-b-label">🔵 Team B</div>
+        <div class="orbitron" style="font-size:20px;color:#60a5fa;" id="blitz-score-b">0</div>
+      </div>
+    </div>
+    <!-- Signals bar -->
+    <div id="blitz-signals-bar" style="display:none;padding:8px 20px;text-align:center;font-size:12px;color:#94a3b8;background:rgba(168,85,247,0.06);border-bottom:1px solid rgba(255,255,255,0.04);" id="blitz-signal-display"></div>
+    <!-- Question area -->
+    <div style="display:flex;align-items:center;justify-content:center;padding:20px;min-height:calc(100vh - 200px);">
+      <div style="width:100%;max-width:600px;">
+        <div class="glass glow-border" style="border-radius:20px;padding:28px;margin-bottom:16px;text-align:center;">
+          <div style="font-size:11px;color:#64748b;margin-bottom:10px;letter-spacing:2px;" id="blitz-q-num">QUESTION 1</div>
+          <h2 style="font-size:20px;font-weight:700;line-height:1.4;color:#f1f5f9;" id="blitz-question"></h2>
+        </div>
+        <div id="blitz-quiz-options"></div>
+        <div id="blitz-answer-status" style="display:none;text-align:center;margin-top:12px;padding:10px;background:rgba(168,85,247,0.1);border-radius:12px;font-size:14px;color:#a855f7;">
+          ✓ Answer locked in — waiting for others...
+        </div>
+        <!-- Reaction buttons -->
+        <div style="display:flex;justify-content:center;gap:8px;margin-top:16px;flex-wrap:wrap;">
+          <button onclick="sendReaction('🔥')" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:8px 14px;font-size:18px;cursor:pointer;">🔥</button>
+          <button onclick="sendReaction('👏')" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:8px 14px;font-size:18px;cursor:pointer;">👏</button>
+          <button onclick="sendReaction('😱')" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:8px 14px;font-size:18px;cursor:pointer;">😱</button>
+          <button onclick="sendReaction('😂')" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:8px 14px;font-size:18px;cursor:pointer;">😂</button>
+          <button onclick="sendReaction('💀')" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:8px 14px;font-size:18px;cursor:pointer;">💀</button>
+        </div>
+        <!-- Signal buttons -->
+        <div style="display:flex;justify-content:center;gap:6px;margin-top:8px;flex-wrap:wrap;">
+          <button onclick="sendSignal('I know this! 💪')" style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:8px;padding:5px 10px;font-size:11px;color:#4ade80;cursor:pointer;">I know this! 💪</button>
+          <button onclick="sendSignal('Not sure... 🤔')" style="background:rgba(234,179,8,0.08);border:1px solid rgba(234,179,8,0.2);border-radius:8px;padding:5px 10px;font-size:11px;color:#fbbf24;cursor:pointer;">Not sure... 🤔</button>
+          <button onclick="sendSignal('Careful! ⚠️')" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:5px 10px;font-size:11px;color:#f87171;cursor:pointer;">Careful! ⚠️</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TEAM BLITZ — REVEAL SCREEN ═══ -->
+<div id="page-blitz-reveal" class="page" style="z-index:1;padding:24px 20px;justify-content:flex-start;align-items:center;">
+  <div class="fade-in" style="width:100%;max-width:520px;margin-top:10px;">
+    <div id="blitz-reveal-banner" style="text-align:center;margin-bottom:20px;padding:20px;border-radius:20px;" class="glass glow-border blitz-reveal-anim">
+      <div style="font-size:36px;margin-bottom:8px;" id="blitz-reveal-icon">⚖️</div>
+      <div style="font-size:22px;font-weight:700;margin-bottom:4px;" id="blitz-reveal-headline">DEADLOCK</div>
+      <div style="font-size:14px;color:#94a3b8;" id="blitz-reveal-sub">No majority reached — no points this round</div>
+    </div>
+    <!-- Correct answer -->
+    <div class="glass glow-border" style="border-radius:16px;padding:16px;margin-bottom:16px;">
+      <div style="font-size:11px;color:#64748b;letter-spacing:1px;margin-bottom:8px;">THE QUESTION</div>
+      <div style="font-size:14px;color:#e2e8f0;margin-bottom:12px;" id="blitz-reveal-question"></div>
+      <div class="reveal-answer-row" style="background:rgba(34,197,94,0.15);border:1px solid #22c55e40;color:#4ade80;" id="blitz-reveal-correct-row">
+        <span>✓</span><span id="blitz-reveal-correct-text">Correct answer</span>
+      </div>
+    </div>
+    <!-- Team vote breakdown -->
+    <div class="grid2" style="gap:12px;margin-bottom:16px;">
+      <div class="glass glow-border" style="border-radius:16px;padding:16px;" id="blitz-reveal-a-box">
+        <div style="font-size:12px;color:#f87171;font-weight:700;margin-bottom:8px;" id="blitz-reveal-a-label">🔴 TEAM A</div>
+        <div style="font-size:13px;color:#94a3b8;margin-bottom:8px;" id="blitz-reveal-a-vote">Voted: —</div>
+        <div id="blitz-reveal-a-chips" style="flex-wrap:wrap;display:flex;"></div>
+        <div style="font-size:18px;font-weight:700;margin-top:8px;" id="blitz-reveal-a-result">+0</div>
+      </div>
+      <div class="glass glow-border" style="border-radius:16px;padding:16px;" id="blitz-reveal-b-box">
+        <div style="font-size:12px;color:#60a5fa;font-weight:700;margin-bottom:8px;" id="blitz-reveal-b-label">🔵 TEAM B</div>
+        <div style="font-size:13px;color:#94a3b8;margin-bottom:8px;" id="blitz-reveal-b-vote">Voted: —</div>
+        <div id="blitz-reveal-b-chips" style="flex-wrap:wrap;display:flex;"></div>
+        <div style="font-size:18px;font-weight:700;margin-top:8px;" id="blitz-reveal-b-result">+0</div>
+      </div>
+    </div>
+    <!-- Running scores -->
+    <div class="glass glow-border" style="border-radius:16px;padding:16px;display:flex;align-items:center;gap:16px;">
+      <div style="flex:1;text-align:center;">
+        <div style="font-size:11px;color:#f87171;font-weight:700;margin-bottom:4px;" id="blitz-reveal-score-a-name">🔴 Team A</div>
+        <div class="orbitron" style="font-size:32px;color:#f87171;" id="blitz-reveal-score-a">0</div>
+      </div>
+      <div style="font-size:20px;color:#475569;font-weight:700;">vs</div>
+      <div style="flex:1;text-align:center;">
+        <div style="font-size:11px;color:#60a5fa;font-weight:700;margin-bottom:4px;" id="blitz-reveal-score-b-name">🔵 Team B</div>
+        <div class="orbitron" style="font-size:32px;color:#60a5fa;" id="blitz-reveal-score-b">0</div>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:12px;color:#475569;font-size:13px;" id="blitz-reveal-countdown">Next question in 4...</div>
+  </div>
+</div>
+
+<!-- ═══ TEAM BLITZ — FINAL RESULTS ═══ -->
+<div id="page-blitz-results" class="page" style="z-index:1;padding:24px 20px 60px;justify-content:flex-start;align-items:center;">
+  <div class="fade-in" style="width:100%;max-width:520px;">
+    <div class="flex-center gap12 mb24" style="justify-content:center;">
+      <div style="width:36px;height:36px;background:linear-gradient(135deg,#7c3aed,#ec4899);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">🎮</div>
+      <span class="orbitron neon-text" style="font-size:20px;letter-spacing:2px;">QUIZ MATE</span>
+    </div>
+    <div class="center mb20">
+      <div style="font-size:40px;">⚔️</div>
+      <h1 class="orbitron neon-text" style="font-size:28px;margin-top:8px;">Team Blitz Over!</h1>
+    </div>
+    <!-- Winner banner -->
+    <div id="blitz-results-winner-banner" class="glass glow-border" style="border-radius:20px;padding:28px;margin-bottom:20px;text-align:center;"></div>
+    <!-- Team breakdown -->
+    <div class="grid2" style="gap:12px;margin-bottom:16px;">
+      <div class="glass glow-border" style="border-radius:16px;padding:16px;text-align:center;" id="blitz-final-a-box">
+        <div style="font-size:13px;color:#f87171;font-weight:700;margin-bottom:8px;" id="blitz-final-a-name">🔴 Team A</div>
+        <div class="orbitron" style="font-size:40px;color:#f87171;" id="blitz-final-a-score">0</div>
+        <div style="font-size:12px;color:#64748b;margin-top:4px;" id="blitz-final-a-stats">0 rounds won · 0 perfect</div>
+      </div>
+      <div class="glass glow-border" style="border-radius:16px;padding:16px;text-align:center;" id="blitz-final-b-box">
+        <div style="font-size:13px;color:#60a5fa;font-weight:700;margin-bottom:8px;" id="blitz-final-b-name">🔵 Team B</div>
+        <div class="orbitron" style="font-size:40px;color:#60a5fa;" id="blitz-final-b-score">0</div>
+        <div style="font-size:12px;color:#64748b;margin-top:4px;" id="blitz-final-b-stats">0 rounds won · 0 perfect</div>
+      </div>
+    </div>
+    <!-- Individual accuracy -->
+    <div class="glass glow-border" style="border-radius:20px;padding:20px;margin-bottom:16px;">
+      <div class="label" style="margin-bottom:12px;">👤 YOUR PERSONAL STATS</div>
+      <div id="blitz-final-my-stats" style="text-align:center;"></div>
+    </div>
+    <!-- MVPs -->
+    <div class="glass glow-border" style="border-radius:20px;padding:20px;">
+      <div class="label" style="margin-bottom:12px;">⭐ MVP PLAYERS</div>
+      <div id="blitz-final-mvps"></div>
+    </div>
+    <button class="btn-secondary mt20" onclick="showPage('landing')">🔄 Play Again</button>
+  </div>
 </div>
 
 </div><!-- end #app -->
@@ -707,7 +955,8 @@ const MEDAL_EMOJIS=["🥇","🥈","🥉"];
 const MODE_DESCS={
   classic:"Standard quiz with a shared countdown timer. Answer all questions before time runs out.",
   lightning:"Each question has an 8-second per-question timer. Speed earns bonus points (3/2/1).",
-  survival:"One wrong answer and you're eliminated! Last player standing wins."
+  survival:"One wrong answer and you're eliminated! Last player standing wins.",
+  blitz:"⚔️ Teams vote on every question — majority decides! Reactions, signals, and sudden death tiebreakers."
 };
 
 // ══════════════════════════════════════════
@@ -722,6 +971,25 @@ let gameStartTime=0;
 let quizTimerInterval=null,adminTimerInterval=null,questionTimerInterval=null;
 let gameRef=null,playersRef=null;
 let editingQId=null;
+
+// ── TEAM BLITZ STATE ──
+let blitzState={
+  myTeam:null,            // 'A' or 'B'
+  teamScoreA:0,
+  teamScoreB:0,
+  teamAName:'Team A',
+  teamBName:'Team B',
+  currentQ:0,
+  myAnswer:null,          // index chosen this question
+  myCorrectCount:0,
+  roundsWonA:0,
+  roundsWonB:0,
+  perfectA:0,
+  perfectB:0,
+  suddenDeath:false,
+  finished:false,
+  revealCountdown:null
+};
 
 // ══════════════════════════════════════════
 // UTILITIES
@@ -773,6 +1041,12 @@ function selectPill(groupId,value){
   if(groupId==='setting-mode'){
     const desc=document.getElementById('mode-desc');
     if(desc)desc.textContent=MODE_DESCS[value]||'';
+    const blitzCfg=document.getElementById('blitz-team-config');
+    const blitzTimer=document.getElementById('blitz-timer-config');
+    const globalTimer=document.getElementById('setting-timer');
+    if(blitzCfg)blitzCfg.style.display=value==='blitz'?'block':'none';
+    if(blitzTimer)blitzTimer.style.display=value==='blitz'?'block':'none';
+    if(globalTimer)globalTimer.parentElement&&(globalTimer.closest('.pill-group'))?null:null;
   }
 }
 
@@ -807,12 +1081,18 @@ async function createGame(){
   if(!name){errEl.textContent='Please enter your name';errEl.classList.add('show');return;}
   if(pin.length<4){errEl.textContent='PIN must be at least 4 characters';errEl.classList.add('show');return;}
 
+  const mode=getSelectedPill('setting-mode')||'classic';
   const settings={
     questionCount:parseInt(getSelectedPill('setting-count'))||20,
     timerDuration:parseInt(getSelectedPill('setting-timer'))||120,
-    gameMode:getSelectedPill('setting-mode')||'classic',
+    gameMode:mode,
     scoringMode:getSelectedPill('setting-scoring')||'standard'
   };
+  if(mode==='blitz'){
+    settings.blitzTimerDuration=parseInt(getSelectedPill('setting-blitz-timer'))||12;
+    settings.teamAName=(document.getElementById('blitz-team-a-name').value.trim())||'Lions 🔴';
+    settings.teamBName=(document.getElementById('blitz-team-b-name').value.trim())||'Eagles 🔵';
+  }
 
   const btn=document.getElementById('host-create-btn');
   btn.disabled=true;btn.textContent='Creating...';
@@ -860,11 +1140,11 @@ function setupAdminDashboard(){
 }
 
 function updateAdminSettingChips(){
-  const modeLabels={classic:'🎮 Classic',lightning:'⚡ Lightning',survival:'💀 Survival'};
+  const modeLabels={classic:'🎮 Classic',lightning:'⚡ Lightning',survival:'💀 Survival',blitz:'⚔️ Team Blitz'};
   document.getElementById('admin-mode-chip').textContent=modeLabels[gameSettings.gameMode]||'🎮 Classic';
   document.getElementById('admin-qcount-chip').textContent=gameSettings.questionCount+' Questions';
-  document.getElementById('admin-timer-chip').textContent=formatTime(gameSettings.timerDuration)+' timer';
-  document.getElementById('admin-scoring-chip').textContent=gameSettings.scoringMode==='speed'?'⚡ Speed Bonus':'📊 Standard';
+  document.getElementById('admin-timer-chip').textContent=gameSettings.gameMode==='blitz'?(gameSettings.blitzTimerDuration||12)+'s per Q':formatTime(gameSettings.timerDuration)+' timer';
+  document.getElementById('admin-scoring-chip').textContent=gameSettings.gameMode==='blitz'?'⚔️ Team Vote':gameSettings.scoringMode==='speed'?'⚡ Speed Bonus':'📊 Standard';
 }
 
 function updateAdminStatus(g){
@@ -890,10 +1170,10 @@ function updateAdminStatus(g){
     clearInterval(adminTimerInterval);
     const dur=gameSettings.timerDuration||120;
 
-    if(gameSettings.gameMode==='lightning'){
+    if(gameSettings.gameMode==='lightning'||gameSettings.gameMode==='blitz'){
       document.getElementById('admin-timer-bar-wrap').style.display='none';
-      document.getElementById('admin-timer').textContent='⚡ Per Q';
-      document.getElementById('admin-timer').style.color='#eab308';
+      document.getElementById('admin-timer').textContent=gameSettings.gameMode==='blitz'?'⚔️ Team Blitz':'⚡ Per Q';
+      document.getElementById('admin-timer').style.color=gameSettings.gameMode==='blitz'?'#f97316':'#eab308';
     }else{
       document.getElementById('admin-timer-bar-wrap').style.display='block';
       const startT=g.startTime;
@@ -943,12 +1223,13 @@ function updateAdminPlayers(players){
   if(list.length===0){
     pl.innerHTML=`<div class="center" style="padding:32px 0;"><div style="font-size:32px;margin-bottom:8px;">⏳</div><p style="color:#475569;font-size:14px;">Waiting for players to join...</p></div>`;
   }else{
+    const isBlitz=gameSettings.gameMode==='blitz';
     pl.innerHTML=list.map(p=>`
       <div class="player-chip" style="${p.eliminated?'opacity:0.5;':''}">
         <div class="avatar" style="background:${avatarColor(p.nickname)}30;color:${avatarColor(p.nickname)}">${p.nickname[0].toUpperCase()}</div>
         <div style="flex:1;">
           <div style="font-weight:500;font-size:14px;">${escHtml(p.nickname)}${p.eliminated?' 💀':''}</div>
-          <div style="font-size:12px;color:#475569;">${p.answers?Object.keys(p.answers).length:0}/${qCount} answered</div>
+          <div style="font-size:12px;color:#475569;">${isBlitz?(p.team==='A'?'🔴 '+(gameSettings.teamAName||'Team A'):p.team==='B'?'🔵 '+(gameSettings.teamBName||'Team B'):'No team yet'):(p.answers?Object.keys(p.answers).length:0)+'/'+qCount+' answered'}</div>
         </div>
         ${p.finished?'<span style="font-size:18px;">✅</span>':''}
       </div>`).join('');
@@ -1321,8 +1602,14 @@ async function joinGame(){
       id:myPlayerId,nickname:nick,score:0,correctCount:0,
       finished:false,eliminated:false,joinedAt:Date.now(),answers:{}
     });
-    setupLobby(g);
-    showPage('lobby');
+    // Team Blitz: go to team selection instead of lobby
+    if(g.settings&&g.settings.gameMode==='blitz'){
+      setupBlitzTeamSelect(g);
+      showPage('team-select');
+    }else{
+      setupLobby(g);
+      showPage('lobby');
+    }
     // Persist session so the player can rejoin if they refresh
     sessionStorage.setItem('qm_session',JSON.stringify({pin,nick,playerId:myPlayerId}));
   }catch(e){
@@ -1400,7 +1687,11 @@ function setupLobby(initialGame){
   db.ref('games/'+myPin).on('value',snap=>{
     const g=snap.val();
     if(!g)return;
-    if(g.status==='active'&&g.activeQuestions&&!gameStarted){gameStarted=true;startQuiz(g);}
+    if(g.status==='active'&&g.activeQuestions&&!gameStarted){
+      gameStarted=true;
+      if(g.settings&&g.settings.gameMode==='blitz'){startBlitzQuiz(g);}
+      else{startQuiz(g);}
+    }
     if(g.status==='ended'&&!gameStarted)goToResults();
     // Lobby settings update (e.g. mode badge refresh for next round)
     if(g.status==='lobby'&&g.settings){
@@ -1927,6 +2218,575 @@ async function aiAddToGame(){
   alert(added+' AI-generated question'+(added!==1?'s':'')+' added to your game!');
 }
 
+// ══════════════════════════════════════════
+// TEAM BLITZ — TEAM SELECTION
+// ══════════════════════════════════════════
+function setupBlitzTeamSelect(gameData){
+  const s=gameData.settings||{};
+  blitzState.teamAName=s.teamAName||'Team A';
+  blitzState.teamBName=s.teamBName||'Team B';
+  blitzState.myTeam=null;
+  document.getElementById('blitz-select-team-a-name').textContent=blitzState.teamAName;
+  document.getElementById('blitz-select-team-b-name').textContent=blitzState.teamBName;
+
+  // Live team count updates
+  db.ref('games/'+myPin+'/players').on('value',snap=>{
+    const players=Object.values(snap.val()||{});
+    const countA=players.filter(p=>p.team==='A').length;
+    const countB=players.filter(p=>p.team==='B').length;
+    document.getElementById('blitz-team-a-count').textContent=countA+' player'+(countA!==1?'s':'');
+    document.getElementById('blitz-team-b-count').textContent=countB+' player'+(countB!==1?'s':'');
+  });
+
+  // Watch for game starting
+  db.ref('games/'+myPin+'/status').on('value',snap=>{
+    if(snap.val()==='active'){
+      db.ref('games/'+myPin).get().then(g=>{
+        if(g.val()&&g.val().activeQuestions)startBlitzQuiz(g.val());
+      });
+    }
+  });
+}
+
+async function selectTeam(team){
+  if(blitzState.myTeam===team)return; // already on this team
+  blitzState.myTeam=team;
+  // Visual feedback
+  document.getElementById('blitz-team-a-card').classList.toggle('selected',team==='A');
+  document.getElementById('blitz-team-b-card').classList.toggle('selected',team==='B');
+  document.getElementById('blitz-team-a-card').style.color='#f87171';
+  document.getElementById('blitz-team-b-card').style.color='#60a5fa';
+  // Update Firebase
+  try{
+    await db.ref('games/'+myPin+'/players/'+myPlayerId).update({team});
+  }catch(e){}
+  // Move to blitz lobby
+  db.ref('games/'+myPin+'/players').off();
+  db.ref('games/'+myPin+'/status').off();
+  setupBlitzLobby();
+  showPage('blitz-lobby');
+}
+
+// ══════════════════════════════════════════
+// TEAM BLITZ — TEAM LOBBY
+// ══════════════════════════════════════════
+function setupBlitzLobby(){
+  const teamColor=blitzState.myTeam==='A'?'#f87171':'#60a5fa';
+  const myTeamName=blitzState.myTeam==='A'?blitzState.teamAName:blitzState.teamBName;
+  const emoji=blitzState.myTeam==='A'?'🔴':'🔵';
+  document.getElementById('blitz-lobby-team-label').textContent='⚔️ TEAM BLITZ — YOUR TEAM';
+  document.getElementById('blitz-lobby-myteam-name').textContent=emoji+' '+myTeamName;
+  document.getElementById('blitz-lobby-myteam-name').style.color=teamColor;
+
+  db.ref('games/'+myPin+'/players').on('value',snap=>{
+    const players=Object.values(snap.val()||{});
+    const aPlayers=players.filter(p=>p.team==='A');
+    const bPlayers=players.filter(p=>p.team==='B');
+    document.getElementById('blitz-lobby-a-header').textContent='🔴 '+blitzState.teamAName+' ('+aPlayers.length+')';
+    document.getElementById('blitz-lobby-b-header').textContent='🔵 '+blitzState.teamBName+' ('+bPlayers.length+')';
+
+    const renderTeamList=(players,elId,myTeam)=>
+      players.map(p=>`
+        <div class="player-chip" style="margin-bottom:6px;">
+          <div class="avatar" style="background:${avatarColor(p.nickname)}30;color:${avatarColor(p.nickname)};width:28px;height:28px;font-size:11px;">${p.nickname[0].toUpperCase()}</div>
+          <span style="font-size:13px;font-weight:${p.id===myPlayerId?700:400};">${escHtml(p.nickname)}${p.id===myPlayerId?' (you)':''}</span>
+        </div>`).join('');
+    document.getElementById('blitz-lobby-a-players').innerHTML=renderTeamList(aPlayers);
+    document.getElementById('blitz-lobby-b-players').innerHTML=renderTeamList(bPlayers);
+  });
+
+  db.ref('games/'+myPin).on('value',snap=>{
+    const g=snap.val();
+    if(!g)return;
+    if(g.status==='active'&&g.activeQuestions){
+      db.ref('games/'+myPin+'/players').off();
+      db.ref('games/'+myPin).off();
+      startBlitzQuiz(g);
+    }
+  });
+}
+
+// ══════════════════════════════════════════
+// TEAM BLITZ — ADMIN START GUARD
+// ══════════════════════════════════════════
+// Patch adminStartGame to check blitz team balance
+const _origAdminStartGame=adminStartGame;
+adminStartGame=async function(){
+  if(gameSettings.gameMode==='blitz'){
+    const snap=await db.ref('games/'+myPin+'/players').get();
+    const players=Object.values(snap.val()||{});
+    const aCount=players.filter(p=>p.team==='A').length;
+    const bCount=players.filter(p=>p.team==='B').length;
+    // Auto-assign unassigned players
+    const unassigned=players.filter(p=>!p.team);
+    for(const p of unassigned){
+      const assignTo=aCount<=bCount?'A':'B';
+      await db.ref('games/'+myPin+'/players/'+p.id).update({team:assignTo});
+      if(assignTo==='A')aCount++;else bCount++;
+    }
+    const finalSnap=await db.ref('games/'+myPin+'/players').get();
+    const finalPlayers=Object.values(finalSnap.val()||{});
+    const finalA=finalPlayers.filter(p=>p.team==='A').length;
+    const finalB=finalPlayers.filter(p=>p.team==='B').length;
+    if(finalA===0||finalB===0){
+      alert('Team Blitz needs at least 1 player on each team!');
+      return;
+    }
+  }
+  await _origAdminStartGame();
+};
+
+// ══════════════════════════════════════════
+// TEAM BLITZ — QUIZ FLOW
+// ══════════════════════════════════════════
+function startBlitzQuiz(gameData){
+  db.ref('games/'+myPin).off();
+  db.ref('games/'+myPin+'/players').off();
+  db.ref('games/'+myPin+'/status').off();
+
+  gameSettings=gameData.settings||{};
+  activeQuestions=toArray(gameData.activeQuestions);
+  if(!activeQuestions||activeQuestions.length===0){alert('No questions loaded. Ask the host to restart.');return;}
+
+  blitzState={
+    myTeam:blitzState.myTeam,
+    teamAName:gameSettings.teamAName||'Team A',
+    teamBName:gameSettings.teamBName||'Team B',
+    teamScoreA:0,teamScoreB:0,
+    currentQ:0,myAnswer:null,myCorrectCount:0,
+    roundsWonA:0,roundsWonB:0,perfectA:0,perfectB:0,
+    suddenDeath:false,finished:false,revealCountdown:null
+  };
+
+  // Update score strip names
+  document.getElementById('blitz-score-a-label').textContent='🔴 '+blitzState.teamAName;
+  document.getElementById('blitz-score-b-label').textContent='🔵 '+blitzState.teamBName;
+
+  showPage('blitz-quiz');
+  renderBlitzQuestion();
+  startBlitzQuestionTimer();
+
+  // Watch for host force-end
+  setTimeout(()=>{
+    db.ref('games/'+myPin+'/status').on('value',snap=>{
+      if(snap.val()==='ended'&&!blitzState.finished)finishBlitzQuiz(true);
+    });
+  },2000);
+
+  // Watch for reveal signals from Firebase (when all answered or timer expired)
+  db.ref('games/'+myPin+'/blitzRound').on('value',snap=>{
+    const round=snap.val();
+    if(!round||round.q!==blitzState.currentQ)return;
+    if(round.phase==='reveal')showBlitzReveal(round);
+  });
+
+  // Watch for reactions from teammates
+  db.ref('games/'+myPin+'/blitzReactions').on('value',snap=>{
+    const reactions=snap.val()||{};
+    Object.values(reactions).forEach(r=>{
+      if(r.team===blitzState.myTeam&&r.timestamp>Date.now()-5000){
+        spawnReactionBubble(r.emoji);
+      }
+    });
+  });
+}
+
+function renderBlitzQuestion(){
+  const i=blitzState.currentQ;
+  const q=activeQuestions[i];
+  if(!q)return;
+  blitzState.myAnswer=null;
+  const total=activeQuestions.length;
+  document.getElementById('blitz-quiz-progress-label').textContent='Question '+(i+1)+' of '+total;
+  document.getElementById('blitz-quiz-progress-bar').style.width=(i/total*100)+'%';
+  document.getElementById('blitz-q-num').textContent='QUESTION '+(i+1);
+  document.getElementById('blitz-question').textContent=q.q;
+  document.getElementById('blitz-score-a').textContent=blitzState.teamScoreA;
+  document.getElementById('blitz-score-b').textContent=blitzState.teamScoreB;
+  const answerStatus=document.getElementById('blitz-answer-status');
+  answerStatus.style.display='none';
+  const opts=document.getElementById('blitz-quiz-options');
+  opts.innerHTML=q.options.map((opt,idx)=>
+    `<button class="answer-btn" id="blitz-opt-${idx}" onclick="handleBlitzAnswer(${idx})">
+      <span style="font-size:12px;color:#64748b;margin-right:8px;">${['A','B','C','D'][idx]}</span>${escHtml(opt)}
+    </button>`
+  ).join('');
+}
+
+function startBlitzQuestionTimer(){
+  clearInterval(questionTimerInterval);
+  const dur=gameSettings.blitzTimerDuration||12;
+  const start=Date.now();
+  document.getElementById('blitz-q-timer-val').textContent=dur;
+  document.getElementById('blitz-q-timer-bar').style.width='100%';
+
+  questionTimerInterval=setInterval(async()=>{
+    const elapsed=(Date.now()-start)/1000;
+    const tl=Math.max(0,dur-elapsed);
+    document.getElementById('blitz-q-timer-val').textContent=Math.ceil(tl);
+    document.getElementById('blitz-q-timer-bar').style.width=(tl/dur*100)+'%';
+    document.getElementById('blitz-q-timer-bar').style.background=tl<3?'#ef4444':tl<6?'#f97316':'#eab308';
+    if(tl<=0){
+      clearInterval(questionTimerInterval);
+      // Submit blank if unanswered
+      if(blitzState.myAnswer===null){
+        await submitBlitzAnswer(-1);
+      }
+      // Try to trigger reveal (host role: first player to time out triggers it)
+      await tryTriggerBlitzReveal();
+    }
+  },100);
+}
+
+async function handleBlitzAnswer(idx){
+  if(blitzState.myAnswer!==null)return;
+  blitzState.myAnswer=idx;
+  clearInterval(questionTimerInterval);
+
+  document.querySelectorAll('.answer-btn').forEach(b=>b.disabled=true);
+  document.getElementById('blitz-opt-'+idx).style.background='rgba(168,85,247,0.25)';
+  document.getElementById('blitz-opt-'+idx).style.borderColor='#a855f7';
+  document.getElementById('blitz-answer-status').style.display='block';
+
+  await submitBlitzAnswer(idx);
+  await tryTriggerBlitzReveal();
+}
+
+async function submitBlitzAnswer(idx){
+  try{
+    await db.ref('games/'+myPin+'/players/'+myPlayerId).update({
+      [`blitzAnswers/q${blitzState.currentQ}`]:{answer:idx,team:blitzState.myTeam,timestamp:Date.now()}
+    });
+  }catch(e){}
+}
+
+async function tryTriggerBlitzReveal(){
+  // Check if ALL players have answered this question
+  try{
+    const snap=await db.ref('games/'+myPin+'/players').get();
+    const players=Object.values(snap.val()||{});
+    const allAnswered=players.every(p=>{
+      const ans=p.blitzAnswers&&p.blitzAnswers['q'+blitzState.currentQ];
+      return ans!==undefined;
+    });
+    if(!allAnswered)return;
+
+    // Compute majority votes per team
+    const aPlayers=players.filter(p=>p.team==='A');
+    const bPlayers=players.filter(p=>p.team==='B');
+    const q=activeQuestions[blitzState.currentQ];
+
+    const computeMajority=(teamPlayers)=>{
+      const votes={};
+      teamPlayers.forEach(p=>{
+        const a=p.blitzAnswers&&p.blitzAnswers['q'+blitzState.currentQ];
+        const v=a?a.answer:-1;
+        if(v>=0)votes[v]=(votes[v]||0)+1;
+      });
+      const total=teamPlayers.filter(p=>{
+        const a=p.blitzAnswers&&p.blitzAnswers['q'+blitzState.currentQ];
+        return a&&a.answer>=0;
+      }).length;
+      if(total===0)return{vote:-1,isPerfect:false,deadlock:false};
+      let best=-1,bestCount=0;
+      Object.entries(votes).forEach(([v,c])=>{if(c>bestCount){bestCount=c;best=parseInt(v);}});
+      const half=total/2;
+      const deadlock=bestCount===half&&Object.values(votes).filter(c=>c===half).length>1;
+      const isPerfect=bestCount===teamPlayers.length&&best===q.answer;
+      return{vote:deadlock?'deadlock':best,isPerfect,deadlock,votes,total};
+    };
+
+    const aResult=computeMajority(aPlayers);
+    const bResult=computeMajority(bPlayers);
+
+    const calcPoints=(result,teamSize)=>{
+      if(result.deadlock&&teamSize===2){
+        // 2-player split rule
+        return result.votes&&result.votes[activeQuestions[blitzState.currentQ].answer]?5:result.votes?-3:0;
+      }
+      if(result.deadlock)return 0;
+      if(result.vote===q.answer)return result.isPerfect?25:10;
+      return result.vote===-1?0:-3;
+    };
+
+    const aPoints=calcPoints(aResult,aPlayers.length);
+    const bPoints=calcPoints(bResult,bPlayers.length);
+
+    await db.ref('games/'+myPin+'/blitzRound').set({
+      q:blitzState.currentQ,phase:'reveal',
+      aVote:aResult.vote,aPoints,aPerfect:aResult.isPerfect,aDeadlock:aResult.deadlock,aVotes:aResult.votes||{},
+      bVote:bResult.vote,bPoints,bPerfect:bResult.isPerfect,bDeadlock:bResult.deadlock,bVotes:bResult.votes||{},
+      correctAnswer:q.answer,questionText:q.q,options:q.options,
+      timestamp:Date.now()
+    });
+  }catch(e){}
+}
+
+function showBlitzReveal(round){
+  if(blitzState.finished)return;
+  clearInterval(questionTimerInterval);
+  db.ref('games/'+myPin+'/blitzRound').off();
+
+  // Update running scores
+  blitzState.teamScoreA=Math.max(0,blitzState.teamScoreA+round.aPoints);
+  blitzState.teamScoreB=Math.max(0,blitzState.teamScoreB+round.bPoints);
+  if(round.aVote===round.correctAnswer)blitzState.roundsWonA++;
+  if(round.bVote===round.correctAnswer)blitzState.roundsWonB++;
+  if(round.aPerfect)blitzState.perfectA++;
+  if(round.bPerfect)blitzState.perfectB++;
+
+  // Track personal accuracy
+  if(blitzState.myAnswer===round.correctAnswer)blitzState.myCorrectCount++;
+
+  // Build reveal screen
+  const q=activeQuestions[blitzState.currentQ];
+  const correctLabel=q.options[round.correctAnswer];
+
+  document.getElementById('blitz-reveal-question').textContent=round.questionText||q.q;
+  document.getElementById('blitz-reveal-correct-text').textContent='ABCD'[round.correctAnswer]+': '+correctLabel;
+
+  document.getElementById('blitz-reveal-score-a-name').textContent='🔴 '+blitzState.teamAName;
+  document.getElementById('blitz-reveal-score-b-name').textContent='🔵 '+blitzState.teamBName;
+  document.getElementById('blitz-reveal-score-a').textContent=blitzState.teamScoreA;
+  document.getElementById('blitz-reveal-score-b').textContent=blitzState.teamScoreB;
+  document.getElementById('blitz-reveal-a-label').textContent='🔴 '+blitzState.teamAName;
+  document.getElementById('blitz-reveal-b-label').textContent='🔵 '+blitzState.teamBName;
+
+  // Set headline
+  let headline,icon,sub;
+  const bothRight=round.aVote===round.correctAnswer&&round.bVote===round.correctAnswer;
+  const bothWrong=round.aVote!==round.correctAnswer&&round.bVote!==round.correctAnswer&&!round.aDeadlock&&!round.bDeadlock;
+  if(round.aPerfect||round.bPerfect){
+    const who=round.aPerfect?blitzState.teamAName:blitzState.teamBName;
+    headline='✨ PERFECT ROUND!';icon='⭐';sub=who+' got +25 — everyone answered correctly!';
+  }else if(round.aDeadlock&&round.bDeadlock){headline='⚖️ DOUBLE DEADLOCK';icon='⚖️';sub='Both teams split! No points either way.';}
+  else if(round.aDeadlock){headline='⚖️ '+blitzState.teamAName+' SPLIT!';icon='⚖️';sub='No majority — '+blitzState.teamAName+' gets nothing this round.';}
+  else if(round.bDeadlock){headline='⚖️ '+blitzState.teamBName+' SPLIT!';icon='⚖️';sub='No majority — '+blitzState.teamBName+' gets nothing this round.';}
+  else if(bothRight){headline='BOTH TEAMS GOT IT!';icon='🔥';sub='A great round for everyone.';}
+  else if(bothWrong){headline='BOTH TEAMS MISSED!';icon='😬';sub='Ouch — nobody got it right.';}
+  else if(round.aVote===round.correctAnswer){headline=blitzState.teamAName+' WINS THE ROUND!';icon='🔴';sub=blitzState.teamBName+' picked wrong.';}
+  else{headline=blitzState.teamBName+' WINS THE ROUND!';icon='🔵';sub=blitzState.teamAName+' picked wrong.';}
+  document.getElementById('blitz-reveal-headline').textContent=headline;
+  document.getElementById('blitz-reveal-icon').textContent=icon;
+  document.getElementById('blitz-reveal-sub').textContent=sub;
+
+  // Team vote chips
+  const buildChips=(votes,options,correct)=>{
+    if(!votes)return '<span style="color:#475569;font-size:12px;">No answers</span>';
+    return Object.entries(votes).map(([v,count])=>`
+      <span class="vote-chip" style="background:${parseInt(v)===correct?'rgba(34,197,94,0.2)':'rgba(239,68,68,0.15)'};color:${parseInt(v)===correct?'#4ade80':'#f87171'};">
+        ${'ABCD'[v]}: ${count}×${parseInt(v)===correct?' ✓':''}
+      </span>`).join('');
+  };
+  document.getElementById('blitz-reveal-a-vote').textContent=
+    round.aDeadlock?'⚖️ SPLIT VOTE':round.aVote===-1?'No answers':'Voted: '+'ABCD'[round.aVote];
+  document.getElementById('blitz-reveal-b-vote').textContent=
+    round.bDeadlock?'⚖️ SPLIT VOTE':round.bVote===-1?'No answers':'Voted: '+'ABCD'[round.bVote];
+  document.getElementById('blitz-reveal-a-chips').innerHTML=buildChips(round.aVotes,q.options,round.correctAnswer);
+  document.getElementById('blitz-reveal-b-chips').innerHTML=buildChips(round.bVotes,q.options,round.correctAnswer);
+  document.getElementById('blitz-reveal-a-result').textContent=(round.aPoints>0?'+':'')+round.aPoints;
+  document.getElementById('blitz-reveal-a-result').style.color=round.aPoints>0?'#4ade80':round.aPoints<0?'#f87171':'#94a3b8';
+  document.getElementById('blitz-reveal-b-result').textContent=(round.bPoints>0?'+':'')+round.bPoints;
+  document.getElementById('blitz-reveal-b-result').style.color=round.bPoints>0?'#4ade80':round.bPoints<0?'#f87171':'#94a3b8';
+
+  if(round.aPerfect||round.bPerfect)showConfetti();
+
+  showPage('blitz-reveal');
+
+  // 4-second countdown then next question
+  let secs=4;
+  const countEl=document.getElementById('blitz-reveal-countdown');
+  blitzState.revealCountdown=setInterval(()=>{
+    secs--;
+    if(countEl)countEl.textContent=secs>0?'Next question in '+secs+'...':'Moving on...';
+    if(secs<=0){
+      clearInterval(blitzState.revealCountdown);
+      blitzState.currentQ++;
+      if(blitzState.currentQ>=activeQuestions.length){
+        // Check for tie — sudden death
+        if(blitzState.teamScoreA===blitzState.teamScoreB){
+          startBlitzSuddenDeath();
+        }else{
+          finishBlitzQuiz(false);
+        }
+      }else{
+        // Re-attach blitzRound listener for next question
+        db.ref('games/'+myPin+'/blitzRound').on('value',snap=>{
+          const round=snap.val();
+          if(!round||round.q!==blitzState.currentQ)return;
+          if(round.phase==='reveal')showBlitzReveal(round);
+        });
+        showPage('blitz-quiz');
+        renderBlitzQuestion();
+        startBlitzQuestionTimer();
+      }
+    }
+  },1000);
+}
+
+// ══════════════════════════════════════════
+// TEAM BLITZ — SUDDEN DEATH
+// ══════════════════════════════════════════
+function startBlitzSuddenDeath(){
+  blitzState.suddenDeath=true;
+  // Add a bonus question (cycle back to first if needed)
+  const sdQ=activeQuestions[0];
+  activeQuestions.push({...sdQ,q:'⚡ SUDDEN DEATH: '+sdQ.q});
+  blitzState.currentQ=activeQuestions.length-1;
+  showPage('blitz-quiz');
+  renderBlitzQuestion();
+  startBlitzQuestionTimer();
+  db.ref('games/'+myPin+'/blitzRound').on('value',snap=>{
+    const round=snap.val();
+    if(!round||round.q!==blitzState.currentQ)return;
+    if(round.phase==='reveal'){
+      // After sudden death reveal, check winner
+      const aCorrect=round.aVote===round.correctAnswer;
+      const bCorrect=round.bVote===round.correctAnswer;
+      clearInterval(blitzState.revealCountdown);
+      if(aCorrect===bCorrect){
+        // Still tied — another sudden death
+        setTimeout(()=>startBlitzSuddenDeath(),4500);
+      }else{
+        if(aCorrect)blitzState.teamScoreA+=10;
+        if(bCorrect)blitzState.teamScoreB+=10;
+        setTimeout(()=>finishBlitzQuiz(false),4500);
+      }
+    }
+  });
+}
+
+// ══════════════════════════════════════════
+// TEAM BLITZ — REACTIONS & SIGNALS
+// ══════════════════════════════════════════
+async function sendReaction(emoji){
+  if(!blitzState.myTeam)return;
+  try{
+    await db.ref('games/'+myPin+'/blitzReactions/'+myPlayerId).set({
+      emoji,team:blitzState.myTeam,timestamp:Date.now()
+    });
+    spawnReactionBubble(emoji);
+  }catch(e){}
+}
+
+function spawnReactionBubble(emoji){
+  const b=document.createElement('div');
+  b.className='reaction-bubble';
+  b.textContent=emoji;
+  b.style.cssText=`left:${20+Math.random()*60}%;bottom:120px;`;
+  document.body.appendChild(b);
+  setTimeout(()=>b.remove(),3100);
+}
+
+async function sendSignal(text){
+  if(!blitzState.myTeam)return;
+  try{
+    await db.ref('games/'+myPin+'/blitzSignals/'+myPlayerId).set({
+      text,nickname:myNickname,team:blitzState.myTeam,timestamp:Date.now()
+    });
+  }catch(e){}
+  // Show signal locally
+  const bar=document.getElementById('blitz-signals-bar');
+  if(bar){bar.style.display='block';bar.textContent=myNickname+': "'+text+'"';
+    setTimeout(()=>{bar.style.display='none';},4000);}
+}
+
+// ══════════════════════════════════════════
+// TEAM BLITZ — FINISH
+// ══════════════════════════════════════════
+async function finishBlitzQuiz(forced){
+  if(blitzState.finished)return;
+  blitzState.finished=true;
+  clearInterval(questionTimerInterval);
+  clearInterval(blitzState.revealCountdown);
+  db.ref('games/'+myPin+'/blitzRound').off();
+  db.ref('games/'+myPin+'/status').off();
+  db.ref('games/'+myPin+'/blitzReactions').off();
+  sessionStorage.removeItem('qm_session');
+
+  // Save final personal stats
+  try{
+    await db.ref('games/'+myPin+'/players/'+myPlayerId).update({
+      finished:true,finishedAt:Date.now(),
+      blitzCorrectCount:blitzState.myCorrectCount,
+      blitzTeam:blitzState.myTeam,
+      score:blitzState.myTeam==='A'?blitzState.teamScoreA:blitzState.teamScoreB
+    });
+    // Save final team scores to game node
+    await db.ref('games/'+myPin).update({
+      blitzScoreA:blitzState.teamScoreA,
+      blitzScoreB:blitzState.teamScoreB,
+      blitzRoundsWonA:blitzState.roundsWonA,
+      blitzRoundsWonB:blitzState.roundsWonB,
+      blitzPerfectA:blitzState.perfectA,
+      blitzPerfectB:blitzState.perfectB
+    });
+  }catch(e){}
+
+  showBlitzResults();
+}
+
+async function showBlitzResults(){
+  showPage('blitz-results');
+
+  const winnerA=blitzState.teamScoreA>blitzState.teamScoreB;
+  const winnerB=blitzState.teamScoreB>blitzState.teamScoreA;
+  const tie=blitzState.teamScoreA===blitzState.teamScoreB;
+  const myTeamWon=(blitzState.myTeam==='A'&&winnerA)||(blitzState.myTeam==='B'&&winnerB);
+
+  if(myTeamWon)showConfetti();
+
+  // Winner banner
+  const banner=document.getElementById('blitz-results-winner-banner');
+  if(tie){
+    banner.innerHTML=`<div style="font-size:36px;margin-bottom:8px;">🤝</div><div class="orbitron" style="font-size:22px;color:#eab308;">IT'S A TIE!</div><div style="color:#94a3b8;margin-top:4px;">What an even match!</div>`;
+  }else{
+    const winName=winnerA?blitzState.teamAName:blitzState.teamBName;
+    const winColor=winnerA?'#f87171':'#60a5fa';
+    const winEmoji=winnerA?'🔴':'🔵';
+    banner.innerHTML=`<div style="font-size:36px;margin-bottom:8px;">${myTeamWon?'👑':'🏁'}</div><div class="orbitron" style="font-size:22px;color:${winColor};">${winEmoji} ${winName.toUpperCase()} WIN!</div><div style="color:#94a3b8;margin-top:4px;">${myTeamWon?'Your team took the victory! 🎉':'Better luck next time!'}</div>`;
+  }
+
+  // Team final boxes
+  document.getElementById('blitz-final-a-name').textContent='🔴 '+blitzState.teamAName;
+  document.getElementById('blitz-final-b-name').textContent='🔵 '+blitzState.teamBName;
+  document.getElementById('blitz-final-a-score').textContent=blitzState.teamScoreA;
+  document.getElementById('blitz-final-b-score').textContent=blitzState.teamScoreB;
+  document.getElementById('blitz-final-a-stats').textContent=blitzState.roundsWonA+' rounds won · '+blitzState.perfectA+' perfect';
+  document.getElementById('blitz-final-b-stats').textContent=blitzState.roundsWonB+' rounds won · '+blitzState.perfectB+' perfect';
+
+  if(winnerA)document.getElementById('blitz-final-a-box').style.border='2px solid #f87171';
+  if(winnerB)document.getElementById('blitz-final-b-box').style.border='2px solid #60a5fa';
+
+  // My stats
+  const total=activeQuestions.length;
+  document.getElementById('blitz-final-my-stats').innerHTML=`
+    <div style="font-size:13px;color:#94a3b8;margin-bottom:8px;">${escHtml(myNickname)} — ${blitzState.myTeam==='A'?'🔴 '+blitzState.teamAName:'🔵 '+blitzState.teamBName}</div>
+    <div class="orbitron" style="font-size:40px;color:${blitzState.myTeam==='A'?'#f87171':'#60a5fa'};">${blitzState.myCorrectCount}/${total}</div>
+    <div style="font-size:13px;color:#64748b;margin-top:4px;">personal accuracy</div>`;
+
+  // MVPs from Firebase
+  try{
+    const snap=await db.ref('games/'+myPin+'/players').get();
+    const players=Object.values(snap.val()||{});
+    const aPlayers=players.filter(p=>p.team==='A').sort((a,b)=>(b.blitzCorrectCount||0)-(a.blitzCorrectCount||0));
+    const bPlayers=players.filter(p=>p.team==='B').sort((a,b)=>(b.blitzCorrectCount||0)-(a.blitzCorrectCount||0));
+    const mvpA=aPlayers[0];const mvpB=bPlayers[0];
+    document.getElementById('blitz-final-mvps').innerHTML=`
+      ${mvpA?`<div class="player-chip" style="margin-bottom:8px;">
+        <div class="avatar" style="background:${avatarColor(mvpA.nickname)}30;color:${avatarColor(mvpA.nickname)}">${mvpA.nickname[0].toUpperCase()}</div>
+        <span style="flex:1;">🔴 ${escHtml(mvpA.nickname)}</span>
+        <span style="color:#f87171;font-weight:700;">${mvpA.blitzCorrectCount||0}/${total} correct</span>
+      </div>`:''}
+      ${mvpB?`<div class="player-chip">
+        <div class="avatar" style="background:${avatarColor(mvpB.nickname)}30;color:${avatarColor(mvpB.nickname)}">${mvpB.nickname[0].toUpperCase()}</div>
+        <span style="flex:1;">🔵 ${escHtml(mvpB.nickname)}</span>
+        <span style="color:#60a5fa;font-weight:700;">${mvpB.blitzCorrectCount||0}/${total} correct</span>
+      </div>`:''}`;
+  }catch(e){}
+}
+
+// ══════════════════════════════════════════
 // PWA SERVICE WORKER
 if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});}
 
