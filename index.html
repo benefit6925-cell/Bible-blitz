@@ -206,10 +206,16 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
   .landing-logo-img{max-width:280px;}
   .card{padding:24px;}
 }
+
+/* ── QUIZMATE CREDIT ── */
+.quizmate-credit{position:fixed;bottom:8px;left:50%;transform:translateX(-50%);font-size:11px;opacity:0.5;pointer-events:none;z-index:999;color:#7a9acc;letter-spacing:0.5px;white-space:nowrap;font-family:'DM Sans',sans-serif;}
 </style>
 </head>
 <body>
 <div id="app">
+
+<!-- QUIZMATE CREDIT -->
+<div class="quizmate-credit">QuizMate by Benery</div>
 
 <!-- GLOW ORBS -->
 <div class="glow-orb glow-orb-1"></div>
@@ -1276,9 +1282,28 @@ function updateAdminStatus(g){
     const dur=gameSettings.timerDuration||120;
 
     if(gameSettings.gameMode==='lightning'||gameSettings.gameMode==='blitz'){
-      document.getElementById('admin-timer-bar-wrap').style.display='none';
-      document.getElementById('admin-timer').textContent=gameSettings.gameMode==='blitz'?'⚔️ Team Blitz':'⚡ Per Q';
-      document.getElementById('admin-timer').style.color=gameSettings.gameMode==='blitz'?'#ff8800':'#ffd700';
+      if(gameSettings.gameMode==='blitz'){
+        document.getElementById('admin-timer-bar-wrap').style.display='none';
+        document.getElementById('admin-timer').textContent='⚔️ Team Blitz';
+        document.getElementById('admin-timer').style.color='#ff8800';
+      }else{
+        // Lightning: show live global countdown from Firebase globalEndTime
+        document.getElementById('admin-timer-bar-wrap').style.display='block';
+        const dur=gameSettings.timerDuration||120;
+        db.ref('games/'+myPin+'/gameState/globalEndTime').get().then(snap=>{
+          const endTime=snap.val();
+          if(!endTime)return;
+          clearInterval(adminTimerInterval);
+          adminTimerInterval=setInterval(()=>{
+            const tl=Math.max(0,(endTime-Date.now())/1000);
+            document.getElementById('admin-timer').textContent=Math.round(tl)+'s';
+            document.getElementById('admin-timer').style.color=tl<20?'#ff4444':tl<40?'#ff8800':'#ffd700';
+            document.getElementById('admin-timer-bar').style.width=(tl/dur*100)+'%';
+            document.getElementById('admin-timer-bar').style.background=tl<20?'#ff4444':tl<40?'#ff8800':'#ffd700';
+            if(tl<=0){clearInterval(adminTimerInterval);adminEndGame();}
+          },500);
+        });
+      }
     }else{
       document.getElementById('admin-timer-bar-wrap').style.display='block';
       const startT=g.startTime;
@@ -1390,8 +1415,13 @@ async function adminStartGame(){
     const qCount=gameSettings.questionCount||20;
     const active=shuffled.slice(0,Math.min(qCount,pool.length));
     const now=Date.now();
+    const dur=gameSettings.timerDuration||120;
+    // For Lightning mode: store authoritative end time in Firebase so all clients use it
+    const globalEndTime=(gameSettings.gameMode==='lightning')?now+(dur*1000):null;
     await db.ref('games/'+myPin).update({
-      status:'active',startTime:now,activeQuestions:active
+      status:'active',startTime:now,activeQuestions:active,
+      'gameState/globalEndTime':globalEndTime,
+      'gameState/status':'active'
     });
   }catch(e){
     alert('Error starting game: '+e.message);
@@ -1404,7 +1434,7 @@ async function adminEndGame(){
   if(adminGameEnded)return;
   adminGameEnded=true;
   clearInterval(adminTimerInterval);
-  await db.ref('games/'+myPin).update({status:'ended'});
+  await db.ref('games/'+myPin).update({status:'ended','gameState/status':'ended'});
   document.getElementById('admin-winner-box').style.display='block';
 }
 
@@ -1427,7 +1457,9 @@ async function adminReset(){
 async function adminCloseRoom(){
   if(!confirm('Close this room and go back to the home screen? All players will be disconnected.'))return;
   clearInterval(adminTimerInterval);
-  clearInterval(questionTimerInterval);
+  clearInterval(window.activeGameTimer);
+  clearInterval(window.questionTimer);
+  clearInterval(window.blitzTimer);
   try{
     await db.ref('games/'+myPin).update({status:'ended'});
     await db.ref('games/'+myPin+'/players').remove();
@@ -1481,7 +1513,8 @@ async function adminLaunchNextRound(){
   const players=playersSnap.val()||{};
   const updates={};
   Object.keys(players).forEach(pid=>{
-    updates[pid]={...players[pid],score:0,correctCount:0,finished:false,eliminated:false,answers:{},finishedAt:null};
+    // Preserve team assignments for Team Blitz; only reset round state
+    updates[pid]={...players[pid],score:0,correctCount:0,finished:false,eliminated:false,answers:{},finishedAt:null,blitzAnswers:null,blitzCorrectCount:0};
   });
   // Also add waiting players (who joined mid-game) as full players now
   const waitingSnap=await db.ref('games/'+myPin+'/waitingPlayers').get();
@@ -1886,6 +1919,17 @@ async function startQuiz(gameData){
 
   if(isLightning){
     startQuestionTimer();
+    // Watch Firebase authoritative gameState for Lightning
+    window._lightningGameStateRef=db.ref('games/'+myPin+'/gameState');
+    window._lightningGameStateRef.on('value',snap=>{
+      const gs=snap.val();
+      if(!gs)return;
+      if(gs.status==='ended'&&!quizState.finished){finishQuiz();return;}
+      if(gs.globalEndTime&&!quizState.finished){
+        // Start/restart the Lightning global session timer from Firebase end time
+        startLightningGlobalTimer(gs.globalEndTime);
+      }
+    });
   }else{
     startGlobalTimer(gameData.startTime);
   }
@@ -1895,16 +1939,22 @@ async function startQuiz(gameData){
     db.ref('games/'+myPin+'/status').on('value',snap=>{
       if(snap.val()==='ended'&&!quizState.finished)finishQuiz();
     });
+    // Lightning: also watch gameState/status in Firebase for authoritative game-over signal
+    if(isLightning){
+      db.ref('games/'+myPin+'/gameState/status').on('value',snap=>{
+        if(snap.val()==='ended'&&!quizState.finished)finishQuiz();
+      });
+    }
   },2000);
 }
 
 function startGlobalTimer(startTime){
   const dur=gameSettings.timerDuration||120;
-  clearInterval(quizTimerInterval);
+  clearInterval(window.activeGameTimer);
   // Always count down from full duration starting NOW on the player's device.
   // This avoids ANY clock skew between host and player ever ending the game instantly.
   const localCountdownStart=Date.now();
-  quizTimerInterval=setInterval(()=>{
+  window.activeGameTimer=setInterval(()=>{
     const elapsed=(Date.now()-localCountdownStart)/1000;
     const tl=Math.max(0,dur-elapsed);
     const tlr=Math.round(tl);
@@ -1919,14 +1969,39 @@ function startGlobalTimer(startTime){
   },300);
 }
 
+// Lightning Mode: authoritative global session timer driven by Firebase globalEndTime
+function startLightningGlobalTimer(globalEndTime){
+  clearInterval(window.activeGameTimer);
+  const dur=gameSettings.timerDuration||120;
+  window.activeGameTimer=setInterval(()=>{
+    const remaining=Math.max(0,globalEndTime-Date.now());
+    const tl=remaining/1000;
+    const tlr=Math.round(tl);
+    const el=document.getElementById('quiz-global-timer');
+    if(el){
+      el.style.display='flex';
+      const valEl=document.getElementById('quiz-timer');
+      if(valEl){
+        valEl.textContent=tlr;
+        valEl.className='orbitron '+(tl<20?'timer-critical':'neon-text');
+        valEl.style.cssText='font-size:26px;font-weight:900;line-height:1;';
+      }
+    }
+    if(remaining<=0){
+      clearInterval(window.activeGameTimer);
+      if(!quizState.finished)finishQuiz();
+    }
+  },500);
+}
+
 function startQuestionTimer(){
-  clearInterval(questionTimerInterval);
+  clearInterval(window.questionTimer);
   const dur=LIGHTNING_Q_DURATION;
   quizState.questionStartTime=Date.now();
   document.getElementById('quiz-q-timer-val').textContent=dur;
   document.getElementById('quiz-q-timer-bar').style.width='100%';
 
-  questionTimerInterval=setInterval(()=>{
+  window.questionTimer=setInterval(()=>{
     const elapsed=(Date.now()-quizState.questionStartTime)/1000;
     const tl=Math.max(0,dur-elapsed);
     const tlr=Math.ceil(tl);
@@ -1941,7 +2016,7 @@ function startQuestionTimer(){
 
 async function timeoutQuestion(){
   if(quizState.selected!==null||quizState.finished)return;
-  clearInterval(questionTimerInterval);
+  clearInterval(window.questionTimer);
   quizState.selected=-1;
   const q=activeQuestions[quizState.current];
   // Show "Time's Up" flash on all buttons — no correct answer revealed, question forfeited
@@ -1997,7 +2072,7 @@ function renderQuestion(){
 async function handleAnswer(idx){
   if(quizState.selected!==null||quizState.finished)return;
   quizState.selected=idx;
-  clearInterval(questionTimerInterval);
+  clearInterval(window.questionTimer);
 
   const q=activeQuestions[quizState.current];
   const correct=idx===q.answer;
@@ -2080,8 +2155,8 @@ async function handleAnswer(idx){
 async function eliminatePlayer(){
   quizState.eliminated=true;
   quizState.finished=true; // prevent finishQuiz() from firing on eliminated player
-  clearInterval(quizTimerInterval);
-  clearInterval(questionTimerInterval);
+  clearInterval(window.activeGameTimer);
+  clearInterval(window.questionTimer);
   db.ref('games/'+myPin+'/status').off();
   // Persist elimination permanently so rejoining is blocked
   const nickKey=myNickname.replace(/[^a-zA-Z0-9]/g,'_');
@@ -2151,9 +2226,10 @@ function startSpectatorMode(){
 async function finishQuiz(){
   if(quizState.finished)return;
   quizState.finished=true;
-  clearInterval(quizTimerInterval);
-  clearInterval(questionTimerInterval);
+  clearInterval(window.activeGameTimer);
+  clearInterval(window.questionTimer);
   db.ref('games/'+myPin+'/status').off();
+  if(window._lightningGameStateRef){window._lightningGameStateRef.off();window._lightningGameStateRef=null;}
   sessionStorage.removeItem('qm_session');
   try{
     await db.ref('games/'+myPin+'/players/'+myPlayerId).update({
@@ -2168,6 +2244,9 @@ async function finishQuiz(){
 // RESULTS
 // ══════════════════════════════════════════
 async function goToResults(){
+  // Clean up all active game timers/listeners before showing results
+  clearInterval(window.activeGameTimer);
+  clearInterval(window.questionTimer);
   showPage('results');
   const snap=await db.ref('games/'+myPin+'/players').get();
   const players=Object.values(snap.val()||{}).sort((a,b)=>b.score-a.score||(a.finishedAt||9e15)-(b.finishedAt||9e15));
@@ -2209,8 +2288,8 @@ async function goToResults(){
           db.ref('games/'+myPin).get().then(gsnap=>{
             const g=gsnap.val()||{};
             quizState={current:0,score:0,correctCount:0,answers:{},selected:null,finished:false,eliminated:false,questionStartTime:0};
-            clearInterval(quizTimerInterval);
-            clearInterval(questionTimerInterval);
+            clearInterval(window.activeGameTimer);
+            clearInterval(window.questionTimer);
             setupLobby(g);
             showPage('lobby');
           });
@@ -2351,7 +2430,7 @@ async function processCSVImport(input){
 let aiGeneratedQuestions=[];
 async function aiGenerateQuestions(){
   const topic=document.getElementById('ai-topic').value.trim();
-  const count=document.getElementById('ai-count').value;
+  const count=parseInt(document.getElementById('ai-count').value)||10;
   const difficulty=document.getElementById('ai-difficulty').value;
   const errEl=document.getElementById('ai-error');
   const statusEl=document.getElementById('ai-status');
@@ -2363,21 +2442,52 @@ async function aiGenerateQuestions(){
   genBtn.disabled=true;genBtn.textContent='Generating...';
   statusEl.style.display='block';
   document.getElementById('ai-status-text').textContent='Groq (Llama 3.3) is crafting your questions...';
-  const prompt='You are a quiz expert. Generate exactly '+count+' multiple-choice quiz questions about: "'+topic+'". Difficulty: '+difficulty+'. Rules: factually accurate, 4 options per question, only one correct answer, plausible wrong answers, vary question styles. Respond ONLY with a valid JSON array, no other text, no markdown, no backticks: [{"q":"Question?","options":["A","B","C","D"],"answer":0},...] where answer is the 0-based index of the correct option.';
-  try{
+
+  // Helper: call AI for a batch of questions
+  async function fetchBatch(needed,attempt){
+    const prompt='You are a quiz expert. Generate exactly '+needed+' multiple-choice quiz questions about: "'+topic+'". Difficulty: '+difficulty+'. Rules: factually accurate, 4 options per question, only one correct answer, plausible wrong answers, vary question styles, do NOT repeat questions already generated. Respond ONLY with a valid JSON array, no other text, no markdown, no backticks: [{"q":"Question?","options":["A","B","C","D"],"answer":0},...] where answer is the 0-based index of the correct option.';
     const res=await fetch('https://aged-bird-2087.benefit6925.workers.dev/',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({prompt:prompt})
+      body:JSON.stringify({prompt})
     });
     const data=await res.json();
     let raw=null;
     try{raw=data.choices[0].message.content;}catch(ex){raw=null;}
-    if(!raw){console.error('Groq raw response:',JSON.stringify(data));throw new Error('No response from AI - check console for details');};
+    if(!raw)throw new Error('No response from AI');
     const cleaned=raw.replace(/```json|```/g,'').trim();
-    const questions=JSON.parse(cleaned);
-    if(!Array.isArray(questions)||questions.length===0)throw new Error('Invalid response format');
-    aiGeneratedQuestions=questions.filter(q=>q.q&&Array.isArray(q.options)&&q.options.length===4&&typeof q.answer==='number');
-    if(aiGeneratedQuestions.length===0)throw new Error('No valid questions in response');
+    const parsed=JSON.parse(cleaned);
+    if(!Array.isArray(parsed))throw new Error('Invalid response format');
+    return parsed.filter(q=>q.q&&Array.isArray(q.options)&&q.options.length===4&&typeof q.answer==='number');
+  }
+
+  try{
+    let collected=[];
+    const seenQs=new Set();
+    let attempts=0;
+    const MAX_ATTEMPTS=4;
+
+    while(collected.length<count&&attempts<MAX_ATTEMPTS){
+      attempts++;
+      const needed=count-collected.length;
+      document.getElementById('ai-status-text').textContent=
+        attempts===1?'Groq (Llama 3.3) is crafting your questions...':
+        'Generating more to reach '+count+' ('+collected.length+'/'+count+' so far)...';
+      const batch=await fetchBatch(needed,attempts);
+      // Deduplicate by question text
+      for(const q of batch){
+        const key=q.q.trim().toLowerCase();
+        if(!seenQs.has(key)&&collected.length<count){
+          seenQs.add(key);
+          collected.push(q);
+        }
+      }
+    }
+
+    if(collected.length===0)throw new Error('No valid questions in response');
+    // Trim to exact count in case we got more
+    collected=collected.slice(0,count);
+
+    aiGeneratedQuestions=collected;
     document.getElementById('ai-preview-label').textContent=aiGeneratedQuestions.length+' questions generated — adding to game...';
     document.getElementById('ai-preview-list').innerHTML=aiGeneratedQuestions.map((q,i)=>'<div style="padding:8px 10px;background:rgba(168,85,247,0.08);border-radius:8px;margin-bottom:6px;font-size:12px;"><div style="font-weight:600;color:#e8eeff;margin-bottom:4px;">'+(i+1)+'. '+escHtml(q.q)+'</div><div style="color:#6a7a9a;">'+q.options.map((o,oi)=>'<span style="color:'+(oi===q.answer?'#4ade80':'#6a7a9a')+'">'+'ABCD'[oi]+': '+escHtml(o)+(oi===q.answer?' ✓':'')+'</span>').join(' · ')+'</div></div>').join('');
     previewEl.style.display='block';
@@ -2385,7 +2495,8 @@ async function aiGenerateQuestions(){
     genBtn.disabled=false;statusEl.style.display='none';
     genBtn.textContent='✨ Generate with AI';
     const added=await importQuestionsToGame(aiGeneratedQuestions);
-    document.getElementById('ai-preview-label').textContent='✅ '+added+' questions added to your game! Preview:';
+    document.getElementById('ai-preview-label').textContent='✅ '+added+' of '+count+' questions added!'+
+      (added<count?' (Some duplicates removed — try generating again to top up)':'');
     aiGeneratedQuestions=[];
     addBtn.style.display='none';
     // Auto-close the panel after a short delay
@@ -2560,12 +2671,27 @@ adminStartGame=async function(){
 };
 
 // ══════════════════════════════════════════
+// GAME CLEANUP — clears all timers and listeners
+// ══════════════════════════════════════════
+function cleanupGameSession(){
+  clearInterval(window.activeGameTimer);
+  clearInterval(window.questionTimer);
+  clearInterval(window.blitzTimer);
+  if(blitzState&&blitzState.revealCountdown)clearInterval(blitzState.revealCountdown);
+  try{db.ref('games/'+myPin+'/blitzRound').off();}catch(e){}
+  try{db.ref('games/'+myPin+'/blitzReactions').off();}catch(e){}
+  try{db.ref('games/'+myPin+'/status').off();}catch(e){}
+  try{db.ref('games/'+myPin+'/players').off();}catch(e){}
+  try{db.ref('games/'+myPin).off();}catch(e){}
+  if(window._lightningGameStateRef){try{window._lightningGameStateRef.off();}catch(e){}window._lightningGameStateRef=null;}
+}
+
+// ══════════════════════════════════════════
 // TEAM BLITZ — QUIZ FLOW
 // ══════════════════════════════════════════
 function startBlitzQuiz(gameData){
-  db.ref('games/'+myPin).off();
-  db.ref('games/'+myPin+'/players').off();
-  db.ref('games/'+myPin+'/status').off();
+  // Clean up any previous session listeners/timers first
+  cleanupGameSession();
 
   gameSettings=gameData.settings||{};
   activeQuestions=toArray(gameData.activeQuestions);
@@ -2589,7 +2715,7 @@ function startBlitzQuiz(gameData){
   renderBlitzQuestion();
   startBlitzQuestionTimer();
 
-  // Watch for host force-end
+  // Watch for host force-end (single listener)
   setTimeout(()=>{
     db.ref('games/'+myPin+'/status').on('value',snap=>{
       if(snap.val()==='ended'&&!blitzState.finished)finishBlitzQuiz(true);
@@ -2597,6 +2723,7 @@ function startBlitzQuiz(gameData){
   },2000);
 
   // Watch for reveal signals from Firebase (when all answered or timer expired)
+  // Single listener — detached and re-attached per question inside showBlitzReveal
   db.ref('games/'+myPin+'/blitzRound').on('value',snap=>{
     const round=snap.val();
     if(!round||round.q!==blitzState.currentQ)return;
@@ -2637,25 +2764,29 @@ function renderBlitzQuestion(){
 }
 
 function startBlitzQuestionTimer(){
-  clearInterval(questionTimerInterval);
+  clearInterval(window.blitzTimer);
   const dur=gameSettings.blitzTimerDuration||12;
   const start=Date.now();
   document.getElementById('blitz-q-timer-val').textContent=dur;
   document.getElementById('blitz-q-timer-bar').style.width='100%';
+  let timedOutFired=false;
 
-  questionTimerInterval=setInterval(async()=>{
+  window.blitzTimer=setInterval(async()=>{
+    if(blitzState.finished){clearInterval(window.blitzTimer);return;}
     const elapsed=(Date.now()-start)/1000;
     const tl=Math.max(0,dur-elapsed);
     document.getElementById('blitz-q-timer-val').textContent=Math.ceil(tl);
     document.getElementById('blitz-q-timer-bar').style.width=(tl/dur*100)+'%';
     document.getElementById('blitz-q-timer-bar').style.background=tl<3?'#ff4444':tl<6?'#ff8800':'#ffd700';
-    if(tl<=0){
-      clearInterval(questionTimerInterval);
+    if(tl<=0&&!timedOutFired){
+      timedOutFired=true;
+      clearInterval(window.blitzTimer);
       // Submit blank if unanswered
       if(blitzState.myAnswer===null){
         await submitBlitzAnswer(-1);
       }
-      // Try to trigger reveal (host role: first player to time out triggers it)
+      // Only the host triggers reveal to prevent race conditions;
+      // if no host is online every player tries but tryTriggerBlitzReveal is idempotent
       await tryTriggerBlitzReveal();
     }
   },100);
@@ -2664,7 +2795,7 @@ function startBlitzQuestionTimer(){
 async function handleBlitzAnswer(idx){
   if(blitzState.myAnswer!==null)return;
   blitzState.myAnswer=idx;
-  clearInterval(questionTimerInterval);
+  clearInterval(window.blitzTimer);
 
   document.querySelectorAll('.answer-btn').forEach(b=>b.disabled=true);
   document.getElementById('blitz-opt-'+idx).style.background='rgba(168,85,247,0.25)';
@@ -2747,7 +2878,8 @@ async function tryTriggerBlitzReveal(){
 
 function showBlitzReveal(round){
   if(blitzState.finished)return;
-  clearInterval(questionTimerInterval);
+  clearInterval(window.blitzTimer);
+  // Detach blitzRound listener during reveal phase to avoid duplicate triggers
   db.ref('games/'+myPin+'/blitzRound').off();
 
   // Update running scores
@@ -2828,7 +2960,9 @@ function showBlitzReveal(round){
   // 4-second countdown then next question
   let secs=4;
   const countEl=document.getElementById('blitz-reveal-countdown');
+  clearInterval(blitzState.revealCountdown);
   blitzState.revealCountdown=setInterval(()=>{
+    if(blitzState.finished){clearInterval(blitzState.revealCountdown);return;}
     secs--;
     if(countEl)countEl.textContent=secs>0?'Next question in '+secs+'...':'Moving on...';
     if(secs<=0){
@@ -2842,7 +2976,8 @@ function showBlitzReveal(round){
           finishBlitzQuiz(false);
         }
       }else{
-        // Re-attach blitzRound listener for next question
+        // Re-attach blitzRound listener for next question (single, fresh listener)
+        db.ref('games/'+myPin+'/blitzRound').off();
         db.ref('games/'+myPin+'/blitzRound').on('value',snap=>{
           const round=snap.val();
           if(!round||round.q!==blitzState.currentQ)return;
@@ -2868,6 +3003,7 @@ function startBlitzSuddenDeath(){
   showPage('blitz-quiz');
   renderBlitzQuestion();
   startBlitzQuestionTimer();
+  db.ref('games/'+myPin+'/blitzRound').off();
   db.ref('games/'+myPin+'/blitzRound').on('value',snap=>{
     const round=snap.val();
     if(!round||round.q!==blitzState.currentQ)return;
@@ -2929,11 +3065,7 @@ async function sendSignal(text){
 async function finishBlitzQuiz(forced){
   if(blitzState.finished)return;
   blitzState.finished=true;
-  clearInterval(questionTimerInterval);
-  clearInterval(blitzState.revealCountdown);
-  db.ref('games/'+myPin+'/blitzRound').off();
-  db.ref('games/'+myPin+'/status').off();
-  db.ref('games/'+myPin+'/blitzReactions').off();
+  cleanupGameSession();
   sessionStorage.removeItem('qm_session');
 
   // Save final personal stats
@@ -3087,8 +3219,23 @@ if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.s
       document.getElementById('quiz-q-timer').style.display=isLightning?'flex':'none';
       document.getElementById('quiz-lives').style.display=gameSettings.gameMode==='survival'?'block':'none';
       renderQuestion();
-      if(isLightning)startQuestionTimer();else startGlobalTimer(Date.now());
-      setTimeout(()=>{db.ref('games/'+myPin+'/status').on('value',snap=>{if(snap.val()==='ended'&&!quizState.finished)finishQuiz();});},2000);
+      if(isLightning){
+        startQuestionTimer();
+        // Attach Lightning global timer from Firebase
+        window._lightningGameStateRef=db.ref('games/'+s.pin+'/gameState');
+        window._lightningGameStateRef.on('value',snap=>{
+          const gs=snap.val();
+          if(!gs)return;
+          if(gs.status==='ended'&&!quizState.finished){finishQuiz();return;}
+          if(gs.globalEndTime&&!quizState.finished)startLightningGlobalTimer(gs.globalEndTime);
+        });
+      }else startGlobalTimer(Date.now());
+      setTimeout(()=>{
+        db.ref('games/'+s.pin+'/status').on('value',snap=>{if(snap.val()==='ended'&&!quizState.finished)finishQuiz();});
+        if(isLightning){
+          db.ref('games/'+s.pin+'/gameState/status').on('value',snap=>{if(snap.val()==='ended'&&!quizState.finished)finishQuiz();});
+        }
+      },2000);
     }else{
       // Back to lobby
       setupLobby(g);
