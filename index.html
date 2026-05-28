@@ -404,6 +404,7 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
         <div class="label" id="lobby-count">PLAYERS IN LOBBY (0)</div>
         <div id="lobby-players" class="scroll-box"></div>
       </div>
+      <button onclick="showExitConfirm()" style="width:100%;margin-top:20px;background:rgba(220,38,38,0.08);border:1.5px solid rgba(220,38,38,0.3);color:#ff8888;padding:12px;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">🚪 Exit Lobby</button>
     </div>
   </div>
 </div>
@@ -495,9 +496,9 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
     <div id="results-next-round-banner" style="display:none;margin-top:16px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:14px;padding:18px;text-align:center;">
       <div style="font-size:24px;margin-bottom:6px;animation:pulse 1.5s ease infinite;">🔄</div>
       <div style="font-weight:700;color:#4ade80;margin-bottom:4px;">New Round Starting!</div>
-      <div style="font-size:13px;color:#7a8ab0;">The host is setting up the next round. You'll be sent to the lobby shortly...</div>
+      <div style="font-size:13px;color:#7a8ab0;">The host is setting up the next round...</div>
     </div>
-    <button class="btn-secondary mt20" onclick="showPage('landing')">🔄 Play Again</button>
+    <button class="btn-secondary mt20" onclick="showExitConfirm()">🚪 Exit to Home</button>
   </div>
 </div>
 
@@ -525,11 +526,42 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
         <div class="label" style="margin-bottom:8px;">📊 CURRENT GAME — LIVE SCORES</div>
         <div id="waiting-leaderboard" class="scroll-box" style="max-height:200px;"></div>
       </div>
+      <button onclick="showExitConfirm()" style="width:100%;background:rgba(220,38,38,0.08);border:1.5px solid rgba(220,38,38,0.3);color:#ff8888;padding:12px;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">🚪 Exit Lobby</button>
     </div>
   </div>
 </div>
 
-<!-- ═══ NEXT ROUND MODAL (admin) ═══ -->
+<!-- ═══ EXIT CONFIRMATION POPUP ═══ -->
+<div id="exit-confirm-overlay" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;padding:20px;">
+  <div class="glass glow-border fade-in" style="border-radius:20px;padding:32px;width:100%;max-width:360px;text-align:center;">
+    <div style="font-size:40px;margin-bottom:12px;">🚪</div>
+    <h2 style="font-size:20px;font-weight:700;margin-bottom:8px;">Exit Lobby?</h2>
+    <p style="color:#7a8ab0;font-size:14px;margin-bottom:24px;">Are you sure you want to exit this lobby? You'll return to the home screen.</p>
+    <div style="display:flex;gap:12px;">
+      <button onclick="confirmExitLobby()" style="flex:1;background:linear-gradient(135deg,#991b1b,#dc2626);border:none;color:white;padding:14px;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">✓ Yes, Exit</button>
+      <button onclick="cancelExitLobby()" style="flex:1;background:rgba(255,255,255,0.06);border:1.5px solid rgba(255,255,255,0.12);color:#c8d4f0;padding:14px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">✕ Stay</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ NEXT ROUND JOIN PROMPT (post-game, non-host) ═══ -->
+<div id="next-round-join-overlay" style="display:none;position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,0.82);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:20px;">
+  <div class="glass glow-border fade-in" style="border-radius:20px;padding:32px;width:100%;max-width:380px;text-align:center;">
+    <div style="font-size:40px;margin-bottom:12px;">🔄</div>
+    <h2 class="orbitron neon-text" style="font-size:20px;margin-bottom:6px;">New Round!</h2>
+    <p style="color:#7a8ab0;font-size:14px;margin-bottom:20px;">The host has started a new round. Join or leave below.</p>
+    <div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:12px;padding:12px;margin-bottom:20px;">
+      <div id="next-round-countdown-text" style="font-size:13px;color:#4ade80;font-weight:600;">Auto-joining in <span id="next-round-countdown">5</span>s...</div>
+    </div>
+    <button onclick="playerJoinNextRoundLobby()" style="width:100%;background:linear-gradient(135deg,#15803d,#22c55e);border:none;color:white;padding:16px;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:10px;">✅ Join Lobby</button>
+    <button onclick="showExitConfirm()" style="width:100%;background:rgba(220,38,38,0.12);border:1.5px solid rgba(220,38,38,0.35);color:#ff8888;padding:12px;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">🚪 Exit Lobby</button>
+  </div>
+</div>
+
+<!-- EXIT LOBBY FIXED BUTTON (shown during active game screens) -->
+<button id="exit-lobby-btn" onclick="showExitConfirm()" style="display:none;position:fixed;top:12px;left:12px;z-index:9000;background:linear-gradient(135deg,#991b1b,#dc2626);border:none;color:white;padding:9px 14px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;box-shadow:0 2px 12px rgba(220,38,38,0.4);touch-action:manipulation;">🚪 Exit</button>
+
+
 <div id="next-round-modal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);padding:20px;">
   <div class="glass glow-border fade-in" style="border-radius:20px;padding:32px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;">
     <h2 class="orbitron neon-text" style="font-size:20px;margin-bottom:6px;">🔄 Start Next Round</h2>
@@ -1082,6 +1114,12 @@ let blitzState={
   revealCountdown:null
 };
 
+// ── ROOM STATE ──
+// "idle" | "lobby" | "inGame" | "postGame" | "waiting" | "nextRoundLobby"
+let roomState='idle';
+let _nextRoundCountdownTimer=null;
+let _nextRoundJoinTaken=false; // prevent double join
+
 // ══════════════════════════════════════════
 // UTILITIES
 // ══════════════════════════════════════════
@@ -1089,6 +1127,12 @@ function showPage(id){
   document.querySelectorAll('.page,.page-top').forEach(p=>p.classList.remove('active'));
   const el=document.getElementById('page-'+id);
   if(el) el.classList.add('active');
+  // Show fixed exit button on in-game/waiting screens
+  const exitBtn=document.getElementById('exit-lobby-btn');
+  if(exitBtn){
+    const showOn=['lobby','waiting','quiz','eliminated','blitz-lobby','blitz-quiz','blitz-reveal','blitz-results','results','team-select'];
+    exitBtn.style.display=showOn.includes(id)?'block':'none';
+  }
 }
 
 function avatarColor(name){
@@ -1109,6 +1153,128 @@ function formatTime(secs){
   if(secs<60)return secs+'s';
   const m=Math.floor(secs/60),s=secs%60;
   return s>0?m+'m '+s+'s':m+' min';
+}
+
+// ══════════════════════════════════════════
+// PLAYER SESSION CLEANUP & NAVIGATION
+// ══════════════════════════════════════════
+function cleanupPlayerSession(){
+  clearInterval(window.activeGameTimer);
+  clearInterval(window.questionTimer);
+  clearInterval(window.blitzTimer);
+  clearInterval(adminTimerInterval);
+  clearTimeout(_nextRoundCountdownTimer);
+  if(blitzState&&blitzState.revealCountdown)clearInterval(blitzState.revealCountdown);
+  if(myPin){
+    try{db.ref('games/'+myPin+'/blitzRound').off();}catch(e){}
+    try{db.ref('games/'+myPin+'/blitzReactions').off();}catch(e){}
+    try{db.ref('games/'+myPin+'/status').off();}catch(e){}
+    try{db.ref('games/'+myPin+'/players').off();}catch(e){}
+    try{db.ref('games/'+myPin).off();}catch(e){}
+    try{db.ref('games/'+myPin+'/gameState/status').off();}catch(e){}
+    try{db.ref('games/'+myPin+'/gameState').off();}catch(e){}
+  }
+  if(window._lightningGameStateRef){try{window._lightningGameStateRef.off();}catch(e){}window._lightningGameStateRef=null;}
+  sessionStorage.removeItem('qm_session');
+  roomState='idle';
+  _nextRoundJoinTaken=false;
+}
+
+function navigateToLandingPage(){
+  const nro=document.getElementById('next-round-join-overlay');
+  if(nro)nro.style.display='none';
+  const eco=document.getElementById('exit-confirm-overlay');
+  if(eco)eco.style.display='none';
+  myPlayerId=null;myNickname=null;myPin=null;isHost=false;
+  gameSettings={questionCount:20,timerDuration:120,gameMode:'classic',scoringMode:'standard'};
+  activeQuestions=[];
+  quizState={current:0,score:0,correctCount:0,answers:{},selected:null,finished:false,eliminated:false,questionStartTime:0};
+  blitzState={myTeam:null,teamScoreA:0,teamScoreB:0,teamAName:'Team A',teamBName:'Team B',currentQ:0,myAnswer:null,myCorrectCount:0,roundsWonA:0,roundsWonB:0,perfectA:0,perfectB:0,suddenDeath:false,finished:false,revealCountdown:null};
+  showPage('landing');
+}
+
+// ── Exit confirm popup ──
+function showExitConfirm(){
+  const o=document.getElementById('exit-confirm-overlay');
+  if(o){o.style.display='flex';}
+}
+function cancelExitLobby(){
+  const o=document.getElementById('exit-confirm-overlay');
+  if(o)o.style.display='none';
+}
+async function confirmExitLobby(){
+  const o=document.getElementById('exit-confirm-overlay');
+  if(o)o.style.display='none';
+  if(myPin&&myPlayerId&&!isHost){
+    try{await db.ref('games/'+myPin+'/players/'+myPlayerId).update({exited:true});}catch(e){}
+  }
+  cleanupPlayerSession();
+  navigateToLandingPage();
+}
+
+// ── Next Round Join Prompt (5-second countdown) ──
+function showNextRoundJoinPrompt(){
+  _nextRoundJoinTaken=false;
+  clearTimeout(_nextRoundCountdownTimer);
+  const overlay=document.getElementById('next-round-join-overlay');
+  if(overlay)overlay.style.display='flex';
+  const banner=document.getElementById('results-next-round-banner');
+  if(banner)banner.style.display='block';
+  let secs=5;
+  const countEl=document.getElementById('next-round-countdown');
+  if(countEl)countEl.textContent=secs;
+  function tick(){
+    if(_nextRoundJoinTaken)return;
+    secs--;
+    if(countEl)countEl.textContent=Math.max(0,secs);
+    if(secs<=0){
+      _nextRoundJoinTaken=true;
+      if(overlay)overlay.style.display='none';
+      _doJoinNextRoundLobby();
+    }else{
+      _nextRoundCountdownTimer=setTimeout(tick,1000);
+    }
+  }
+  _nextRoundCountdownTimer=setTimeout(tick,1000);
+}
+
+function playerJoinNextRoundLobby(){
+  if(_nextRoundJoinTaken)return;
+  _nextRoundJoinTaken=true;
+  clearTimeout(_nextRoundCountdownTimer);
+  const overlay=document.getElementById('next-round-join-overlay');
+  if(overlay)overlay.style.display='none';
+  _doJoinNextRoundLobby();
+}
+
+function _doJoinNextRoundLobby(){
+  if(!myPin)return;
+  db.ref('games/'+myPin).get().then(gsnap=>{
+    const g=gsnap.val()||{};
+    quizState={current:0,score:0,correctCount:0,answers:{},selected:null,finished:false,eliminated:false,questionStartTime:0};
+    clearInterval(window.activeGameTimer);
+    clearInterval(window.questionTimer);
+    roomState='lobby';
+    if(g.settings&&g.settings.gameMode==='blitz'){
+      blitzState.teamAName=g.settings.teamAName||'Team A';
+      blitzState.teamBName=g.settings.teamBName||'Team B';
+      // Detach old blitz lobby listeners before re-setting up
+      try{db.ref('games/'+myPin+'/players').off();}catch(e){}
+      try{db.ref('games/'+myPin).off();}catch(e){}
+      setupBlitzLobby();
+      showPage('blitz-lobby');
+    }else{
+      try{db.ref('games/'+myPin+'/players').off();}catch(e){}
+      try{db.ref('games/'+myPin).off();}catch(e){}
+      setupLobby(g);
+      showPage('lobby');
+    }
+  }).catch(()=>{
+    try{db.ref('games/'+myPin+'/players').off();}catch(e){}
+    try{db.ref('games/'+myPin).off();}catch(e){}
+    setupLobby({});
+    showPage('lobby');
+  });
 }
 
 function seededShuffle(arr,seed){
@@ -1520,7 +1686,8 @@ async function adminLaunchNextRound(){
   const waitingSnap=await db.ref('games/'+myPin+'/waitingPlayers').get();
   const waiting=waitingSnap.val()||{};
   Object.keys(waiting).forEach(pid=>{
-    updates[pid]={...waiting[pid],score:0,correctCount:0,finished:false,eliminated:false,answers:{},finishedAt:null};
+    // Preserve team assignment if they were in a blitz room
+    updates[pid]={...waiting[pid],score:0,correctCount:0,finished:false,eliminated:false,answers:{},finishedAt:null,blitzAnswers:null,blitzCorrectCount:0};
   });
   await db.ref('games/'+myPin+'/players').set(Object.keys(updates).length>0?updates:null);
   await db.ref('games/'+myPin+'/waitingPlayers').remove();
@@ -1821,12 +1988,8 @@ function startWaitingMode(){
     if(st==='lobby'){
       db.ref('games/'+myPin+'/players').off();
       db.ref('games/'+myPin+'/status').off();
-      // Fetch fresh game data and go to lobby
-      db.ref('games/'+myPin).get().then(gsnap=>{
-        const g=gsnap.val()||{};
-        setupLobby(g);
-        showPage('lobby');
-      });
+      // Show join/exit prompt instead of auto-redirecting
+      showNextRoundJoinPrompt();
     }
   });
 }
@@ -2276,24 +2439,20 @@ async function goToResults(){
       <span class="orbitron" style="font-size:15px;color:#00ccff;">${p.score}</span>
     </div>`).join('');
 
-  // Listen for host starting a new round — auto-return to lobby
+  // Listen for host starting a new round — show join/exit prompt
   if(myPin&&!isHost){
+    // Detach any previous status listener first
+    db.ref('games/'+myPin+'/status').off();
     db.ref('games/'+myPin+'/status').on('value',statusSnap=>{
       const st=statusSnap.val();
-      if(st==='next-round'||st==='lobby'){
+      if(st==='next-round'){
         const banner=document.getElementById('results-next-round-banner');
         if(banner)banner.style.display='block';
-        if(st==='lobby'){
-          db.ref('games/'+myPin+'/status').off();
-          db.ref('games/'+myPin).get().then(gsnap=>{
-            const g=gsnap.val()||{};
-            quizState={current:0,score:0,correctCount:0,answers:{},selected:null,finished:false,eliminated:false,questionStartTime:0};
-            clearInterval(window.activeGameTimer);
-            clearInterval(window.questionTimer);
-            setupLobby(g);
-            showPage('lobby');
-          });
-        }
+      }
+      if(st==='lobby'){
+        db.ref('games/'+myPin+'/status').off();
+        // Show the 5-second join/exit prompt
+        showNextRoundJoinPrompt();
       }
     });
   }
@@ -2671,12 +2830,13 @@ adminStartGame=async function(){
 };
 
 // ══════════════════════════════════════════
-// GAME CLEANUP — clears all timers and listeners
+// GAME CLEANUP — clears all timers and listeners (in-game only)
 // ══════════════════════════════════════════
 function cleanupGameSession(){
   clearInterval(window.activeGameTimer);
   clearInterval(window.questionTimer);
   clearInterval(window.blitzTimer);
+  clearTimeout(_nextRoundCountdownTimer);
   if(blitzState&&blitzState.revealCountdown)clearInterval(blitzState.revealCountdown);
   try{db.ref('games/'+myPin+'/blitzRound').off();}catch(e){}
   try{db.ref('games/'+myPin+'/blitzReactions').off();}catch(e){}
@@ -3148,10 +3308,23 @@ async function showBlitzResults(){
         <span style="color:#66b3ff;font-weight:700;">${mvpB.blitzCorrectCount||0}/${total} correct</span>
       </div>`:''}`;
   }catch(e){}
-}
 
-// ══════════════════════════════════════════
-// PWA SERVICE WORKER
+  // Listen for host launching next round from blitz results screen
+  if(myPin&&!isHost){
+    db.ref('games/'+myPin+'/status').off();
+    db.ref('games/'+myPin+'/status').on('value',statusSnap=>{
+      const st=statusSnap.val();
+      if(st==='next-round'){
+        const banner=document.getElementById('blitz-results-winner-banner');
+        if(banner&&banner.querySelector){}// just wait for lobby
+      }
+      if(st==='lobby'){
+        db.ref('games/'+myPin+'/status').off();
+        showNextRoundJoinPrompt();
+      }
+    });
+  }
+}
 if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/Bible-blitz/sw.js',{scope:'/Bible-blitz/'}).catch(e=>console.warn('SW:',e));});}
 
 // ══════════════════════════════════════════
