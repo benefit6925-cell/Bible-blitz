@@ -1,21 +1,22 @@
 {
   "name": "Quiz Mate",
   "short_name": "Quiz Mate",
-  "description": "The ultimate multiplayer quiz game — any topic, play with friends anywhere!",
-  "start_url": "/",
+  "description": "The ultimate multiplayer quiz game. Play with friends anywhere in the world!",
+  "start_url": "/Bible-blitz/",
+  "scope": "/Bible-blitz/",
   "display": "standalone",
-  "background_color": "#0f0f1a",
-  "theme_color": "#7c3aed",
   "orientation": "portrait",
+  "background_color": "#0040c0",
+  "theme_color": "#0040c0",
   "icons": [
     {
-      "src": "icon-192.png",
+      "src": "/Bible-blitz/quiz-mate-logo.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "icon-512.png",
+      "src": "/Bible-blitz/quiz-mate-logo.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
