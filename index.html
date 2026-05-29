@@ -350,6 +350,19 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
         </div>
       </div>
 
+      <!-- Survival Mode: seconds per question -->
+      <div id="survival-timer-config" style="display:none;margin-bottom:16px;">
+        <span class="label">SECONDS PER QUESTION</span>
+        <div class="pill-group" id="setting-survival-timer">
+          <button class="pill" data-value="5" onclick="selectPill('setting-survival-timer','5')">5s</button>
+          <button class="pill active" data-value="8" onclick="selectPill('setting-survival-timer','8')">8s</button>
+          <button class="pill" data-value="10" onclick="selectPill('setting-survival-timer','10')">10s</button>
+        </div>
+        <div id="survival-duration-calc" style="font-size:12px;color:#ff8888;margin-top:6px;padding:8px 12px;background:rgba(255,68,68,0.06);border-radius:8px;border:1px solid rgba(255,68,68,0.2);">
+          💀 20 Questions × 8s = <strong>160s total duration</strong>
+        </div>
+      </div>
+
       <span class="label">SCORING</span>
       <div class="pill-group" id="setting-scoring">
         <button class="pill active" data-value="standard" onclick="selectPill(&#39;setting-scoring&#39;,&#39;standard&#39;)">📊 Standard</button>
@@ -418,15 +431,15 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
         <div style="font-size:12px;color:#6a7a9a;margin-bottom:4px;" id="quiz-progress-label">Question 1 of 20</div>
         <div class="progress-bar"><div class="progress-fill" id="quiz-progress-bar" style="width:0%;background:linear-gradient(90deg,#0040c0,#00ccff);"></div></div>
       </div>
-      <!-- Global timer (Classic/Survival) -->
+      <!-- Global timer (Classic only) -->
       <div id="quiz-global-timer" class="center" style="min-width:80px;">
         <div class="orbitron neon-text" style="font-size:30px;font-weight:900;line-height:1;" id="quiz-timer">120</div>
         <div style="font-size:11px;color:#5a6a8a;">seconds</div>
       </div>
-      <!-- Per-question timer (Lightning) -->
+      <!-- Per-question timer (Lightning + Survival) -->
       <div id="quiz-q-timer" class="q-timer-wrap" style="display:none;">
         <div id="quiz-q-timer-val" style="font-family:&#39;Orbitron&#39;,monospace;font-size:30px;font-weight:900;line-height:1;color:#ffd700;">8</div>
-        <div style="font-size:11px;color:#5a6a8a;">per Q</div>
+        <div style="font-size:11px;color:#5a6a8a;" id="quiz-q-timer-label">per Q</div>
         <div class="q-timer-bar-wrap"><div class="q-timer-bar-fill" id="quiz-q-timer-bar" style="width:100%;"></div></div>
       </div>
       <!-- Score -->
@@ -439,7 +452,7 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
     <div class="timer-bar"><div class="timer-fill" id="quiz-timer-bar" style="width:100%;"></div></div>
     <!-- Survival lives indicator -->
     <div id="quiz-lives" style="display:none;text-align:center;padding:6px;background:rgba(239,68,68,0.1);font-size:13px;color:#ff8888;">
-      💀 Survival Mode — one wrong answer and you're out!
+      💀 Survival Mode — answer correctly before the timer runs out or you're eliminated!
     </div>
     <!-- Question -->
     <div style="display:flex;align-items:center;justify-content:center;padding:24px 20px;min-height:calc(100vh - 80px);">
@@ -576,13 +589,29 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
       <button class="pill" data-value="50" onclick="selectPill('nr-setting-count','50')">50</button>
     </div>
 
-    <span class="label">GAME TIMER</span>
-    <div class="pill-group" id="nr-setting-timer">
-      <button class="pill" data-value="60" onclick="selectPill('nr-setting-timer','60')">1 min</button>
-      <button class="pill active" data-value="120" onclick="selectPill('nr-setting-timer','120')">2 min</button>
-      <button class="pill" data-value="180" onclick="selectPill('nr-setting-timer','180')">3 min</button>
-      <button class="pill" data-value="300" onclick="selectPill('nr-setting-timer','300')">5 min</button>
-      <button class="pill" data-value="600" onclick="selectPill('nr-setting-timer','600')">10 min</button>
+    <!-- Global game timer (Classic/Lightning) -->
+    <div id="nr-global-timer-wrap">
+      <span class="label">GAME TIMER</span>
+      <div class="pill-group" id="nr-setting-timer">
+        <button class="pill" data-value="60" onclick="selectPill('nr-setting-timer','60')">1 min</button>
+        <button class="pill active" data-value="120" onclick="selectPill('nr-setting-timer','120')">2 min</button>
+        <button class="pill" data-value="180" onclick="selectPill('nr-setting-timer','180')">3 min</button>
+        <button class="pill" data-value="300" onclick="selectPill('nr-setting-timer','300')">5 min</button>
+        <button class="pill" data-value="600" onclick="selectPill('nr-setting-timer','600')">10 min</button>
+      </div>
+    </div>
+
+    <!-- Survival: seconds per question (replaces game timer) -->
+    <div id="nr-survival-timer-wrap" style="display:none;">
+      <span class="label">SECONDS PER QUESTION</span>
+      <div class="pill-group" id="nr-setting-survival-timer">
+        <button class="pill" data-value="5" onclick="selectPill('nr-setting-survival-timer','5')">5s</button>
+        <button class="pill active" data-value="8" onclick="selectPill('nr-setting-survival-timer','8')">8s</button>
+        <button class="pill" data-value="10" onclick="selectPill('nr-setting-survival-timer','10')">10s</button>
+      </div>
+      <div id="nr-survival-duration-calc" style="font-size:12px;color:#ff8888;margin-bottom:12px;padding:8px 12px;background:rgba(255,68,68,0.06);border-radius:8px;border:1px solid rgba(255,68,68,0.2);">
+        💀 20 Questions × 8s = <strong>160s total duration</strong>
+      </div>
     </div>
 
     <span class="label">GAME MODE</span>
@@ -987,42 +1016,64 @@ Answer: B</pre>
 </div>
 
 <!-- ═══ TEAM BLITZ — FINAL RESULTS ═══ -->
-<div id="page-blitz-results" class="page" style="z-index:1;padding:24px 20px 60px;justify-content:flex-start;align-items:center;">
+<div id="page-blitz-results" class="page" style="z-index:1;padding:16px 16px 24px;justify-content:flex-start;align-items:center;overflow-y:auto;">
   <div class="fade-in" style="width:100%;max-width:520px;">
-    <div class="flex-center gap12 mb24" style="justify-content:center;">
-      <div style="width:36px;height:36px;background:linear-gradient(135deg,#0040c0,#0080ff);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">🎮</div>
-      <span class="orbitron neon-text" style="font-size:20px;letter-spacing:2px;">QUIZ MATE</span>
+    <!-- Compact header -->
+    <div class="flex-center gap10 mb12" style="justify-content:center;">
+      <div style="width:28px;height:28px;background:linear-gradient(135deg,#0040c0,#0080ff);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;">🎮</div>
+      <span class="orbitron neon-text" style="font-size:16px;letter-spacing:2px;">QUIZ MATE</span>
     </div>
-    <div class="center mb20">
-      <div style="font-size:40px;">⚔️</div>
-      <h1 class="orbitron neon-text" style="font-size:28px;margin-top:8px;">Team Blitz Over!</h1>
+    <div class="center mb12">
+      <h1 class="orbitron neon-text" style="font-size:20px;">⚔️ Team Blitz Over!</h1>
     </div>
-    <!-- Winner banner -->
-    <div id="blitz-results-winner-banner" class="glass glow-border" style="border-radius:20px;padding:28px;margin-bottom:20px;text-align:center;"></div>
-    <!-- Team breakdown -->
-    <div class="grid2" style="gap:12px;margin-bottom:16px;">
-      <div class="glass glow-border" style="border-radius:16px;padding:16px;text-align:center;" id="blitz-final-a-box">
-        <div style="font-size:13px;color:#ff8888;font-weight:700;margin-bottom:8px;" id="blitz-final-a-name">🔴 Team A</div>
-        <div class="orbitron" style="font-size:40px;color:#ff8888;" id="blitz-final-a-score">0</div>
-        <div style="font-size:12px;color:#6a7a9a;margin-top:4px;" id="blitz-final-a-stats">0 rounds won · 0 perfect</div>
+    <!-- Winner banner — compact -->
+    <div id="blitz-results-winner-banner" class="glass glow-border" style="border-radius:16px;padding:16px 20px;margin-bottom:12px;text-align:center;"></div>
+    <!-- Team scores — compact 2-col -->
+    <div class="grid2" style="gap:8px;margin-bottom:10px;">
+      <div class="glass glow-border" style="border-radius:14px;padding:12px;text-align:center;" id="blitz-final-a-box">
+        <div style="font-size:12px;color:#ff8888;font-weight:700;margin-bottom:4px;" id="blitz-final-a-name">🔴 Team A</div>
+        <div class="orbitron" style="font-size:32px;color:#ff8888;" id="blitz-final-a-score">0</div>
+        <div style="font-size:11px;color:#6a7a9a;margin-top:2px;" id="blitz-final-a-stats">0 rounds · 0 perfect</div>
       </div>
-      <div class="glass glow-border" style="border-radius:16px;padding:16px;text-align:center;" id="blitz-final-b-box">
-        <div style="font-size:13px;color:#66b3ff;font-weight:700;margin-bottom:8px;" id="blitz-final-b-name">🔵 Team B</div>
-        <div class="orbitron" style="font-size:40px;color:#66b3ff;" id="blitz-final-b-score">0</div>
-        <div style="font-size:12px;color:#6a7a9a;margin-top:4px;" id="blitz-final-b-stats">0 rounds won · 0 perfect</div>
+      <div class="glass glow-border" style="border-radius:14px;padding:12px;text-align:center;" id="blitz-final-b-box">
+        <div style="font-size:12px;color:#66b3ff;font-weight:700;margin-bottom:4px;" id="blitz-final-b-name">🔵 Team B</div>
+        <div class="orbitron" style="font-size:32px;color:#66b3ff;" id="blitz-final-b-score">0</div>
+        <div style="font-size:11px;color:#6a7a9a;margin-top:2px;" id="blitz-final-b-stats">0 rounds · 0 perfect</div>
       </div>
     </div>
-    <!-- Individual accuracy -->
-    <div class="glass glow-border" style="border-radius:20px;padding:20px;margin-bottom:16px;">
-      <div class="label" style="margin-bottom:12px;">👤 YOUR PERSONAL STATS</div>
-      <div id="blitz-final-my-stats" style="text-align:center;"></div>
+    <!-- Personal stats + MVPs combined — compact -->
+    <div class="glass glow-border" style="border-radius:16px;padding:14px 16px;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="flex:1;">
+          <div style="font-size:11px;color:#6a7a9a;margin-bottom:2px;">YOUR STATS</div>
+          <div id="blitz-final-my-stats-compact" style="font-size:14px;font-weight:700;"></div>
+        </div>
+        <div style="width:1px;height:32px;background:rgba(255,255,255,0.08);"></div>
+        <div style="flex:1;">
+          <div style="font-size:11px;color:#6a7a9a;margin-bottom:2px;">MVPs</div>
+          <div id="blitz-final-mvps-compact" style="font-size:13px;"></div>
+        </div>
+      </div>
     </div>
-    <!-- MVPs -->
-    <div class="glass glow-border" style="border-radius:20px;padding:20px;">
-      <div class="label" style="margin-bottom:12px;">⭐ MVP PLAYERS</div>
-      <div id="blitz-final-mvps"></div>
+    <!-- Collapsible detailed stats -->
+    <details style="margin-bottom:12px;">
+      <summary style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:10px 14px;font-size:13px;color:#7a8ab0;cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;">
+        <span>📊 View Detailed Stats</span>
+      </summary>
+      <div style="margin-top:8px;padding:14px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:12px;">
+        <div class="label" style="margin-bottom:8px;">👤 PERSONAL STATS</div>
+        <div id="blitz-final-my-stats" style="text-align:center;margin-bottom:12px;"></div>
+        <div class="label" style="margin-bottom:8px;">⭐ MVP PLAYERS</div>
+        <div id="blitz-final-mvps"></div>
+      </div>
+    </details>
+    <!-- Post-game waiting lobby (replaces Play Again) -->
+    <div id="blitz-results-waiting-lobby" style="display:none;background:rgba(34,197,94,0.06);border:1.5px solid rgba(34,197,94,0.2);border-radius:16px;padding:16px;text-align:center;margin-bottom:12px;">
+      <div style="font-size:24px;margin-bottom:6px;animation:pulse 1.5s ease infinite;">🔄</div>
+      <div style="font-weight:700;color:#4ade80;font-size:15px;margin-bottom:4px;">Waiting for next round...</div>
+      <div style="font-size:12px;color:#7a8ab0;">You will automatically join when the host starts the next round.</div>
     </div>
-    <button class="btn-secondary mt20" onclick="showPage('landing')">🔄 Play Again</button>
+    <button onclick="showExitConfirm()" style="width:100%;background:rgba(220,38,38,0.08);border:1.5px solid rgba(220,38,38,0.3);color:#ff8888;padding:13px;border-radius:13px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">🚪 Exit Lobby</button>
   </div>
 </div>
 
@@ -1127,12 +1178,9 @@ function showPage(id){
   document.querySelectorAll('.page,.page-top').forEach(p=>p.classList.remove('active'));
   const el=document.getElementById('page-'+id);
   if(el) el.classList.add('active');
-  // Show fixed exit button on in-game/waiting screens
+  // Top-left exit button is hidden globally — glassmorphism bottom button used instead
   const exitBtn=document.getElementById('exit-lobby-btn');
-  if(exitBtn){
-    const showOn=['lobby','waiting','quiz','eliminated','blitz-lobby','blitz-quiz','blitz-reveal','blitz-results','results','team-select'];
-    exitBtn.style.display=showOn.includes(id)?'block':'none';
-  }
+  if(exitBtn)exitBtn.style.display='none';
 }
 
 function avatarColor(name){
@@ -1173,6 +1221,7 @@ function cleanupPlayerSession(){
     try{db.ref('games/'+myPin).off();}catch(e){}
     try{db.ref('games/'+myPin+'/gameState/status').off();}catch(e){}
     try{db.ref('games/'+myPin+'/gameState').off();}catch(e){}
+    try{db.ref('games/'+myPin+'/gameState/survivalQuestion').off();}catch(e){}
   }
   if(window._lightningGameStateRef){try{window._lightningGameStateRef.off();}catch(e){}window._lightningGameStateRef=null;}
   sessionStorage.removeItem('qm_session');
@@ -1300,11 +1349,55 @@ function selectPill(groupId,value){
     if(desc)desc.textContent=MODE_DESCS[value]||'';
     const blitzCfg=document.getElementById('blitz-team-config');
     const blitzTimer=document.getElementById('blitz-timer-config');
-    const globalTimer=document.getElementById('setting-timer');
+    const globalTimerWrap=document.getElementById('setting-timer')?.closest('div');
+    const globalTimerLabel=document.querySelector('[for="setting-timer"]');
+    const survivalTimerCfg=document.getElementById('survival-timer-config');
+    const settingTimerGroup=document.getElementById('setting-timer');
+    // Find the global timer pill-group and its preceding label
+    const allLabels=document.querySelectorAll('#page-host-setup .label');
+    // Hide/show global timer based on mode
+    if(settingTimerGroup){
+      // Walk up to find label + pill-group wrapper
+      let timerLabel=null;
+      allLabels.forEach(lbl=>{if(lbl.textContent.trim()==='GAME TIMER')timerLabel=lbl;});
+      const timerNote=settingTimerGroup.nextElementSibling;
+      if(timerLabel)timerLabel.style.display=(value==='survival'||value==='blitz')?'none':'';
+      settingTimerGroup.style.display=(value==='survival'||value==='blitz')?'none':'';
+      if(timerNote&&timerNote.tagName==='P')timerNote.style.display=(value==='survival'||value==='blitz')?'none':'';
+    }
     if(blitzCfg)blitzCfg.style.display=value==='blitz'?'block':'none';
     if(blitzTimer)blitzTimer.style.display=value==='blitz'?'block':'none';
-    if(globalTimer)globalTimer.parentElement&&(globalTimer.closest('.pill-group'))?null:null;
+    if(survivalTimerCfg)survivalTimerCfg.style.display=value==='survival'?'block':'none';
+    if(value==='survival')updateSurvivalDurationCalc();
   }
+  // Live update survival duration calc when count or survival-timer changes
+  if(groupId==='setting-count'||groupId==='setting-survival-timer'){
+    updateSurvivalDurationCalc();
+  }
+  if(groupId==='nr-setting-mode'){
+    // handled in selectNRModePill
+  }
+  if(groupId==='nr-setting-count'||groupId==='nr-setting-survival-timer'){
+    updateNRSurvivalDurationCalc();
+  }
+}
+
+function updateSurvivalDurationCalc(){
+  const el=document.getElementById('survival-duration-calc');
+  if(!el)return;
+  const qCount=parseInt(getSelectedPill('setting-count'))||20;
+  const secs=parseInt(getSelectedPill('setting-survival-timer'))||8;
+  const total=qCount*secs;
+  el.innerHTML=`💀 ${qCount} Questions × ${secs}s = <strong>${total}s total duration</strong>`;
+}
+
+function updateNRSurvivalDurationCalc(){
+  const el=document.getElementById('nr-survival-duration-calc');
+  if(!el)return;
+  const qCount=parseInt(getSelectedPill('nr-setting-count'))||20;
+  const secs=parseInt(getSelectedPill('nr-setting-survival-timer'))||8;
+  const total=qCount*secs;
+  el.innerHTML=`💀 ${qCount} Questions × ${secs}s = <strong>${total}s total duration</strong>`;
 }
 
 function getSelectedPill(groupId){
@@ -1349,6 +1442,12 @@ async function createGame(){
     settings.blitzTimerDuration=parseInt(getSelectedPill('setting-blitz-timer'))||12;
     settings.teamAName=(document.getElementById('blitz-team-a-name').value.trim())||'Lions 🔴';
     settings.teamBName=(document.getElementById('blitz-team-b-name').value.trim())||'Eagles 🔵';
+  }
+  if(mode==='survival'){
+    const survSecs=parseInt(getSelectedPill('setting-survival-timer'))||8;
+    settings.survivalTimerDuration=survSecs;
+    // Auto-calculate total duration from questions × seconds
+    settings.timerDuration=settings.questionCount*survSecs;
   }
 
   const btn=document.getElementById('host-create-btn');
@@ -1420,7 +1519,13 @@ function updateAdminSettingChips(){
   const modeLabels={classic:'🎮 Classic',lightning:'⚡ Lightning',survival:'💀 Survival',blitz:'⚔️ Team Blitz'};
   document.getElementById('admin-mode-chip').textContent=modeLabels[gameSettings.gameMode]||'🎮 Classic';
   document.getElementById('admin-qcount-chip').textContent=gameSettings.questionCount+' Questions';
-  document.getElementById('admin-timer-chip').textContent=gameSettings.gameMode==='blitz'?(gameSettings.blitzTimerDuration||12)+'s per Q':formatTime(gameSettings.timerDuration)+' timer';
+  if(gameSettings.gameMode==='blitz'){
+    document.getElementById('admin-timer-chip').textContent=(gameSettings.blitzTimerDuration||12)+'s per Q';
+  }else if(gameSettings.gameMode==='survival'){
+    document.getElementById('admin-timer-chip').textContent=(gameSettings.survivalTimerDuration||8)+'s per Q';
+  }else{
+    document.getElementById('admin-timer-chip').textContent=formatTime(gameSettings.timerDuration)+' timer';
+  }
   document.getElementById('admin-scoring-chip').textContent=gameSettings.gameMode==='blitz'?'⚔️ Team Vote':gameSettings.scoringMode==='speed'?'⚡ Speed Bonus':'📊 Standard';
 }
 
@@ -1447,11 +1552,15 @@ function updateAdminStatus(g){
     clearInterval(adminTimerInterval);
     const dur=gameSettings.timerDuration||120;
 
-    if(gameSettings.gameMode==='lightning'||gameSettings.gameMode==='blitz'){
+    if(gameSettings.gameMode==='lightning'||gameSettings.gameMode==='blitz'||gameSettings.gameMode==='survival'){
       if(gameSettings.gameMode==='blitz'){
         document.getElementById('admin-timer-bar-wrap').style.display='none';
         document.getElementById('admin-timer').textContent='⚔️ Team Blitz';
         document.getElementById('admin-timer').style.color='#ff8800';
+      }else if(gameSettings.gameMode==='survival'){
+        document.getElementById('admin-timer-bar-wrap').style.display='none';
+        document.getElementById('admin-timer').textContent='💀 '+(gameSettings.survivalTimerDuration||8)+'s/Q';
+        document.getElementById('admin-timer').style.color='#ff4444';
       }else{
         // Lightning: show live global countdown from Firebase globalEndTime
         document.getElementById('admin-timer-bar-wrap').style.display='block';
@@ -1648,6 +1757,11 @@ function openNextRoundModal(){
   selectPill('nr-setting-timer',String(s.timerDuration||120));
   selectNRModePill(s.gameMode||'classic');
   selectPill('nr-setting-scoring',s.scoringMode||'standard');
+  // Pre-select survival timer if applicable
+  if(s.gameMode==='survival'){
+    selectPill('nr-setting-survival-timer',String(s.survivalTimerDuration||8));
+    updateNRSurvivalDurationCalc();
+  }
   const m=document.getElementById('next-round-modal');
   m.style.display='flex';
 }
@@ -1658,14 +1772,26 @@ function selectNRModePill(value){
   selectPill('nr-setting-mode',value);
   const desc=document.getElementById('nr-mode-desc');
   if(desc)desc.textContent=MODE_DESCS[value]||'';
+  const globalWrap=document.getElementById('nr-global-timer-wrap');
+  const survivalWrap=document.getElementById('nr-survival-timer-wrap');
+  if(globalWrap)globalWrap.style.display=(value==='survival')?'none':'block';
+  if(survivalWrap)survivalWrap.style.display=(value==='survival')?'block':'none';
+  if(value==='survival')updateNRSurvivalDurationCalc();
 }
 async function adminLaunchNextRound(){
+  const newMode=getSelectedPill('nr-setting-mode')||'classic';
+  const newQCount=parseInt(getSelectedPill('nr-setting-count'))||20;
   const newSettings={
-    questionCount:parseInt(getSelectedPill('nr-setting-count'))||20,
+    questionCount:newQCount,
     timerDuration:parseInt(getSelectedPill('nr-setting-timer'))||120,
-    gameMode:getSelectedPill('nr-setting-mode')||'classic',
+    gameMode:newMode,
     scoringMode:getSelectedPill('nr-setting-scoring')||'standard'
   };
+  if(newMode==='survival'){
+    const survSecs=parseInt(getSelectedPill('nr-setting-survival-timer'))||8;
+    newSettings.survivalTimerDuration=survSecs;
+    newSettings.timerDuration=newQCount*survSecs;
+  }
   closeNextRoundModal();
   adminGameEnded=false;
   clearInterval(adminTimerInterval);
@@ -2073,10 +2199,16 @@ async function startQuiz(gameData){
   // Configure header based on game mode
   const isLightning=gameSettings.gameMode==='lightning';
   const isSurvival=gameSettings.gameMode==='survival';
-  // Survival: hide the global countdown timer (survival ends on wrong answer, not timer)
+  // Survival: show per-question timer (not global timer)
   document.getElementById('quiz-global-timer').style.display=(isLightning||isSurvival)?'none':'flex';
-  document.getElementById('quiz-q-timer').style.display=isLightning?'flex':'none';
+  document.getElementById('quiz-q-timer').style.display=(isLightning||isSurvival)?'flex':'none';
   document.getElementById('quiz-lives').style.display=isSurvival?'block':'none';
+  // Label per-question timer differently for survival vs lightning
+  const qTimerLabel=document.getElementById('quiz-q-timer-label');
+  if(qTimerLabel)qTimerLabel.textContent=isSurvival?'to answer':'per Q';
+  // Survival: color the per-question timer bar red instead of gold
+  const qTimerBar=document.getElementById('quiz-q-timer-bar');
+  if(qTimerBar&&isSurvival)qTimerBar.style.background='#ff4444';
 
   renderQuestion();
 
@@ -2091,6 +2223,18 @@ async function startQuiz(gameData){
       if(gs.globalEndTime&&!quizState.finished){
         // Start/restart the Lightning global session timer from Firebase end time
         startLightningGlobalTimer(gs.globalEndTime);
+      }
+    });
+  }else if(isSurvival){
+    // Survival: start per-question timer; no global game timer
+    startSurvivalQuestionTimer();
+    // Watch for sync-based question advancement from Firebase
+    db.ref('games/'+myPin+'/gameState/survivalQuestion').on('value',snap=>{
+      const qIdx=snap.val();
+      if(qIdx===null||qIdx===undefined)return;
+      if(qIdx>quizState.current&&quizState.selected===null&&!quizState.finished&&!quizState.eliminated){
+        // Host advanced the question — this player didn't answer in time → eliminated
+        // (already handled locally by timer, but catch any race)
       }
     });
   }else{
@@ -2127,8 +2271,7 @@ function startGlobalTimer(startTime){
     el.style.cssText='font-size:30px;font-weight:900;line-height:1;';
     document.getElementById('quiz-timer-bar').style.width=(tl/dur*100)+'%';
     document.getElementById('quiz-timer-bar').style.background=tl<20?'#ff4444':tl<40?'#ff8800':'#00ccff';
-    // Survival mode: timer expiry doesn't end the game — wrong answer does.
-    if(tl<=0&&!quizState.finished&&gameSettings.gameMode!=='survival')finishQuiz();
+    if(tl<=0&&!quizState.finished)finishQuiz();
   },300);
 }
 
@@ -2150,11 +2293,18 @@ function startLightningGlobalTimer(globalEndTime){
         valEl.style.cssText='font-size:26px;font-weight:900;line-height:1;';
       }
     }
+    // Fix: animate the visual progress bar for players, same as host
+    const barEl=document.getElementById('quiz-timer-bar');
+    if(barEl){
+      const pct=Math.max(0,Math.min(100,(tl/dur)*100));
+      barEl.style.width=pct+'%';
+      barEl.style.background=tl<20?'#ff4444':tl<40?'#ff8800':'#00ccff';
+    }
     if(remaining<=0){
       clearInterval(window.activeGameTimer);
       if(!quizState.finished)finishQuiz();
     }
-  },500);
+  },300);
 }
 
 function startQuestionTimer(){
@@ -2175,6 +2325,60 @@ function startQuestionTimer(){
     document.getElementById('quiz-q-timer-bar').style.background=tl<2?'#ff4444':tl<4?'#ff8800':'#ffd700';
     if(tl<=0&&quizState.selected===null&&!quizState.finished)timeoutQuestion();
   },100);
+}
+
+// ── SURVIVAL: per-question countdown timer ──
+function startSurvivalQuestionTimer(){
+  clearInterval(window.questionTimer);
+  const dur=gameSettings.survivalTimerDuration||8;
+  quizState.questionStartTime=Date.now();
+  const el=document.getElementById('quiz-q-timer-val');
+  const barEl=document.getElementById('quiz-q-timer-bar');
+  if(el)el.textContent=dur;
+  if(barEl){barEl.style.width='100%';barEl.style.background='#ff4444';}
+
+  window.questionTimer=setInterval(()=>{
+    if(quizState.selected!==null||quizState.finished){clearInterval(window.questionTimer);return;}
+    const elapsed=(Date.now()-quizState.questionStartTime)/1000;
+    const tl=Math.max(0,dur-elapsed);
+    const tlr=Math.ceil(tl);
+    if(el){
+      el.textContent=tlr;
+      el.style.color=tl<=2?'#ff4444':tl<=Math.floor(dur/2)?'#ff8800':'#ff8888';
+    }
+    if(barEl){
+      barEl.style.width=(tl/dur*100)+'%';
+      barEl.style.background=tl<=2?'#ff4444':tl<=Math.floor(dur/2)?'#ff8800':'#ff6666';
+    }
+    if(tl<=0&&quizState.selected===null&&!quizState.finished){
+      clearInterval(window.questionTimer);
+      timeoutSurvivalQuestion();
+    }
+  },100);
+}
+
+async function timeoutSurvivalQuestion(){
+  if(quizState.selected!==null||quizState.finished)return;
+  clearInterval(window.questionTimer);
+  quizState.selected=-1;
+  const q=activeQuestions[quizState.current];
+  // Disable all buttons and show timeout feedback
+  document.querySelectorAll('.answer-btn').forEach(b=>{
+    b.disabled=true;
+    b.style.opacity='0.5';
+  });
+  if(q)document.getElementById('opt-'+q.answer).classList.add('correct');
+  const qBox=document.getElementById('quiz-question');
+  const origHTML=qBox.innerHTML;
+  qBox.innerHTML='<span style="color:#ff4444;font-size:18px;">⏰ Too slow! You\'re eliminated!</span>';
+  quizState.answers[quizState.current]={chosen:-1,correct:false,timedOut:true};
+  try{
+    await db.ref('games/'+myPin+'/players/'+myPlayerId).update({
+      score:quizState.score,correctCount:quizState.correctCount,
+      answers:quizState.answers,eliminated:true
+    });
+  }catch(e){}
+  setTimeout(()=>eliminatePlayer(),1200);
 }
 
 async function timeoutQuestion(){
@@ -2312,6 +2516,7 @@ async function handleAnswer(idx){
     quizState.current=next;quizState.selected=null;
     renderQuestion();
     if(gameSettings.gameMode==='lightning')startQuestionTimer();
+    else if(gameSettings.gameMode==='survival')startSurvivalQuestionTimer();
   },900);
 }
 
@@ -3260,15 +3465,15 @@ async function showBlitzResults(){
 
   if(myTeamWon)showConfetti();
 
-  // Winner banner
+  // Winner banner — compact
   const banner=document.getElementById('blitz-results-winner-banner');
   if(tie){
-    banner.innerHTML=`<div style="font-size:36px;margin-bottom:8px;">🤝</div><div class="orbitron" style="font-size:22px;color:#ffd700;">IT'S A TIE!</div><div style="color:#7a8ab0;margin-top:4px;">What an even match!</div>`;
+    banner.innerHTML=`<div style="font-size:28px;margin-bottom:4px;">🤝</div><div class="orbitron" style="font-size:18px;color:#ffd700;">IT'S A TIE!</div><div style="color:#7a8ab0;margin-top:2px;font-size:13px;">What an even match!</div>`;
   }else{
     const winName=winnerA?blitzState.teamAName:blitzState.teamBName;
     const winColor=winnerA?'#ff8888':'#66b3ff';
     const winEmoji=winnerA?'🔴':'🔵';
-    banner.innerHTML=`<div style="font-size:36px;margin-bottom:8px;">${myTeamWon?'👑':'🏁'}</div><div class="orbitron" style="font-size:22px;color:${winColor};">${winEmoji} ${winName.toUpperCase()} WIN!</div><div style="color:#7a8ab0;margin-top:4px;">${myTeamWon?'Your team took the victory! 🎉':'Better luck next time!'}</div>`;
+    banner.innerHTML=`<div style="font-size:28px;margin-bottom:4px;">${myTeamWon?'👑':'🏁'}</div><div class="orbitron" style="font-size:18px;color:${winColor};">${winEmoji} ${winName.toUpperCase()} WIN!</div><div style="color:#7a8ab0;margin-top:2px;font-size:13px;">${myTeamWon?'Your team took the victory! 🎉':'Better luck next time!'}</div>`;
   }
 
   // Team final boxes
@@ -3276,18 +3481,28 @@ async function showBlitzResults(){
   document.getElementById('blitz-final-b-name').textContent='🔵 '+blitzState.teamBName;
   document.getElementById('blitz-final-a-score').textContent=blitzState.teamScoreA;
   document.getElementById('blitz-final-b-score').textContent=blitzState.teamScoreB;
-  document.getElementById('blitz-final-a-stats').textContent=blitzState.roundsWonA+' rounds won · '+blitzState.perfectA+' perfect';
-  document.getElementById('blitz-final-b-stats').textContent=blitzState.roundsWonB+' rounds won · '+blitzState.perfectB+' perfect';
+  document.getElementById('blitz-final-a-stats').textContent=blitzState.roundsWonA+' rounds · '+blitzState.perfectA+' perfect';
+  document.getElementById('blitz-final-b-stats').textContent=blitzState.roundsWonB+' rounds · '+blitzState.perfectB+' perfect';
 
   if(winnerA)document.getElementById('blitz-final-a-box').style.border='2px solid #ff8888';
   if(winnerB)document.getElementById('blitz-final-b-box').style.border='2px solid #66b3ff';
 
-  // My stats
+  // My stats — compact inline
   const total=activeQuestions.length;
+  const teamColor=blitzState.myTeam==='A'?'#ff8888':'#66b3ff';
+  const teamLabel=blitzState.myTeam==='A'?'🔴 '+blitzState.teamAName:'🔵 '+blitzState.teamBName;
+  const compactStats=document.getElementById('blitz-final-my-stats-compact');
+  if(compactStats)compactStats.innerHTML=`<span class="orbitron" style="font-size:20px;color:${teamColor};">${blitzState.myCorrectCount}/${total}</span> <span style="font-size:12px;color:#6a7a9a;">correct<br>${escHtml(myNickname)}</span>`;
+
+  // Full stats (collapsible)
   document.getElementById('blitz-final-my-stats').innerHTML=`
-    <div style="font-size:13px;color:#7a8ab0;margin-bottom:8px;">${escHtml(myNickname)} — ${blitzState.myTeam==='A'?'🔴 '+blitzState.teamAName:'🔵 '+blitzState.teamBName}</div>
-    <div class="orbitron" style="font-size:40px;color:${blitzState.myTeam==='A'?'#ff8888':'#66b3ff'};">${blitzState.myCorrectCount}/${total}</div>
+    <div style="font-size:13px;color:#7a8ab0;margin-bottom:8px;">${escHtml(myNickname)} — ${teamLabel}</div>
+    <div class="orbitron" style="font-size:36px;color:${teamColor};">${blitzState.myCorrectCount}/${total}</div>
     <div style="font-size:13px;color:#6a7a9a;margin-top:4px;">personal accuracy</div>`;
+
+  // Show waiting lobby section (replaces Play Again)
+  const waitingLobby=document.getElementById('blitz-results-waiting-lobby');
+  if(waitingLobby&&!isHost)waitingLobby.style.display='block';
 
   // MVPs from Firebase
   try{
@@ -3296,17 +3511,27 @@ async function showBlitzResults(){
     const aPlayers=players.filter(p=>p.team==='A').sort((a,b)=>(b.blitzCorrectCount||0)-(a.blitzCorrectCount||0));
     const bPlayers=players.filter(p=>p.team==='B').sort((a,b)=>(b.blitzCorrectCount||0)-(a.blitzCorrectCount||0));
     const mvpA=aPlayers[0];const mvpB=bPlayers[0];
-    document.getElementById('blitz-final-mvps').innerHTML=`
+    const mvpHtml=`
       ${mvpA?`<div class="player-chip" style="margin-bottom:8px;">
         <div class="avatar" style="background:${avatarColor(mvpA.nickname)}30;color:${avatarColor(mvpA.nickname)}">${mvpA.nickname[0].toUpperCase()}</div>
         <span style="flex:1;">🔴 ${escHtml(mvpA.nickname)}</span>
-        <span style="color:#ff8888;font-weight:700;">${mvpA.blitzCorrectCount||0}/${total} correct</span>
+        <span style="color:#ff8888;font-weight:700;">${mvpA.blitzCorrectCount||0}/${total}</span>
       </div>`:''}
       ${mvpB?`<div class="player-chip">
         <div class="avatar" style="background:${avatarColor(mvpB.nickname)}30;color:${avatarColor(mvpB.nickname)}">${mvpB.nickname[0].toUpperCase()}</div>
         <span style="flex:1;">🔵 ${escHtml(mvpB.nickname)}</span>
-        <span style="color:#66b3ff;font-weight:700;">${mvpB.blitzCorrectCount||0}/${total} correct</span>
+        <span style="color:#66b3ff;font-weight:700;">${mvpB.blitzCorrectCount||0}/${total}</span>
       </div>`:''}`;
+    document.getElementById('blitz-final-mvps').innerHTML=mvpHtml;
+    // Compact MVPs
+    const compactMvps=document.getElementById('blitz-final-mvps-compact');
+    if(compactMvps){
+      compactMvps.innerHTML=[mvpA,mvpB].filter(Boolean).map(p=>`
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
+          <span style="color:${p.team==='A'?'#ff8888':'#66b3ff'};font-size:12px;">${p.team==='A'?'🔴':'🔵'} ${escHtml(p.nickname)}</span>
+          <span style="color:#6a7a9a;font-size:11px;">${p.blitzCorrectCount||0}/${total}</span>
+        </div>`).join('');
+    }
   }catch(e){}
 
   // Listen for host launching next round from blitz results screen
@@ -3315,8 +3540,11 @@ async function showBlitzResults(){
     db.ref('games/'+myPin+'/status').on('value',statusSnap=>{
       const st=statusSnap.val();
       if(st==='next-round'){
-        const banner=document.getElementById('blitz-results-winner-banner');
-        if(banner&&banner.querySelector){}// just wait for lobby
+        // Show "next round loading" state in waiting lobby
+        if(waitingLobby){
+          waitingLobby.querySelector('div:nth-child(2)').textContent='Next round loading...';
+          waitingLobby.querySelector('div:nth-child(3)').textContent='Waiting for host to set up the next round...';
+        }
       }
       if(st==='lobby'){
         db.ref('games/'+myPin+'/status').off();
@@ -3388,9 +3616,12 @@ if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.s
       quizState={current:Math.min(answeredCount,activeQuestions.length-1),score:savedState.score||0,correctCount:savedState.correctCount||0,answers:savedState.answers||{},selected:null,finished:false,eliminated:false,questionStartTime:Date.now()};
       showPage('quiz');
       const isLightning=gameSettings.gameMode==='lightning';
-      document.getElementById('quiz-global-timer').style.display=isLightning?'none':'flex';
-      document.getElementById('quiz-q-timer').style.display=isLightning?'flex':'none';
-      document.getElementById('quiz-lives').style.display=gameSettings.gameMode==='survival'?'block':'none';
+      const isSurvivalRestore=gameSettings.gameMode==='survival';
+      document.getElementById('quiz-global-timer').style.display=(isLightning||isSurvivalRestore)?'none':'flex';
+      document.getElementById('quiz-q-timer').style.display=(isLightning||isSurvivalRestore)?'flex':'none';
+      document.getElementById('quiz-lives').style.display=isSurvivalRestore?'block':'none';
+      const qTimerLabelR=document.getElementById('quiz-q-timer-label');
+      if(qTimerLabelR)qTimerLabelR.textContent=isSurvivalRestore?'to answer':'per Q';
       renderQuestion();
       if(isLightning){
         startQuestionTimer();
@@ -3402,6 +3633,8 @@ if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.s
           if(gs.status==='ended'&&!quizState.finished){finishQuiz();return;}
           if(gs.globalEndTime&&!quizState.finished)startLightningGlobalTimer(gs.globalEndTime);
         });
+      }else if(isSurvivalRestore){
+        startSurvivalQuestionTimer();
       }else startGlobalTimer(Date.now());
       setTimeout(()=>{
         db.ref('games/'+s.pin+'/status').on('value',snap=>{if(snap.val()==='ended'&&!quizState.finished)finishQuiz();});
@@ -3418,14 +3651,41 @@ if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.s
 })();
 
 let deferredPrompt=null;
-window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;setTimeout(()=>{const b=document.getElementById('pwa-install-banner');if(b){b.style.display='flex';b.style.alignItems='center';b.style.gap='14px';}},2000);});
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault();
+  deferredPrompt=e;
+  // Only show banner once per browser session, and never if already in standalone mode
+  const isStandalone=window.matchMedia('(display-mode: standalone)').matches||('standalone' in navigator&&navigator.standalone);
+  const dismissed=sessionStorage.getItem('qm_install_dismissed');
+  if(!isStandalone&&!dismissed){
+    setTimeout(()=>{const b=document.getElementById('pwa-install-banner');if(b){b.style.display='flex';b.style.alignItems='center';b.style.gap='14px';}},3000);
+  }
+});
 
 // iOS Safari fallback
-(function(){const isIos=/iphone|ipad|ipod/i.test(navigator.userAgent);const isStandalone=('standalone' in navigator)&&navigator.standalone;if(isIos&&!isStandalone){setTimeout(()=>{const ios=document.getElementById('pwa-ios-hint');if(ios){ios.style.display='flex';ios.style.alignItems='center';ios.style.gap='14px';}},2000);}})();
+(function(){
+  const isIos=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone=('standalone' in navigator)&&navigator.standalone;
+  const dismissed=sessionStorage.getItem('qm_install_dismissed');
+  if(isIos&&!isStandalone&&!dismissed){
+    setTimeout(()=>{const ios=document.getElementById('pwa-ios-hint');if(ios){ios.style.display='flex';ios.style.alignItems='center';ios.style.gap='14px';}},3000);
+  }
+})();
 
-function installApp(){const b=document.getElementById('pwa-install-banner');if(b)b.style.display='none';if(deferredPrompt){deferredPrompt.prompt();deferredPrompt.userChoice.then(()=>{deferredPrompt=null;});}}
+function installApp(){
+  const b=document.getElementById('pwa-install-banner');
+  if(b)b.style.display='none';
+  sessionStorage.setItem('qm_install_dismissed','1');
+  if(deferredPrompt){deferredPrompt.prompt();deferredPrompt.userChoice.then(()=>{deferredPrompt=null;});}
+}
 
-function dismissInstallBanner(){const b=document.getElementById('pwa-install-banner');const ios=document.getElementById('pwa-ios-hint');if(b)b.style.display='none';if(ios)ios.style.display='none';}
+function dismissInstallBanner(){
+  const b=document.getElementById('pwa-install-banner');
+  const ios=document.getElementById('pwa-ios-hint');
+  if(b)b.style.display='none';
+  if(ios)ios.style.display='none';
+  sessionStorage.setItem('qm_install_dismissed','1');
+}
 
 window.addEventListener('appinstalled',()=>{const b=document.getElementById('pwa-install-banner');if(b)b.style.display='none';deferredPrompt=null;});
 </script>
