@@ -260,7 +260,7 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
     <div class="flex-center gap8" style="justify-content:center;margin-bottom:40px;gap:40px;margin-top:36px;">
       <div class="center"><div class="orbitron neon-text" style="font-size:28px;">10-50</div><div style="font-size:13px;color:#6a7a9a;margin-top:4px;">Questions</div></div>
       <div class="center"><div class="orbitron neon-text" style="font-size:28px;">4</div><div style="font-size:13px;color:#6a7a9a;margin-top:4px;">Game Modes</div></div>
-      <div class="center"><div class="orbitron neon-text" style="font-size:28px;">∞</div><div style="font-size:13px;color:#6a7a9a;margin-top:4px;">Players</div></div>
+      <div class="center"><div class="orbitron neon-text" style="font-size:28px;">20</div><div style="font-size:13px;color:#6a7a9a;margin-top:4px;">Max Players</div></div>
     </div>
 
     <div style="margin-top:20px;display:flex;justify-content:center;gap:8px;flex-wrap:wrap;">
@@ -905,7 +905,8 @@ Answer: B</pre>
         <div id="blitz-lobby-b-players" class="scroll-box" style="max-height:180px;"></div>
       </div>
     </div>
-    <p style="text-align:center;color:#5a6a8a;font-size:12px;">You'll see final results when the game ends</p>
+    <p style="text-align:center;color:#5a6a8a;font-size:12px;margin-bottom:16px;">You'll see final results when the game ends</p>
+    <button onclick="showExitConfirm()" style="width:100%;background:rgba(220,38,38,0.08);border:1.5px solid rgba(220,38,38,0.3);color:#ff8888;padding:12px;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">🚪 Exit Lobby</button>
   </div>
 </div>
 
@@ -1216,6 +1217,7 @@ function cleanupPlayerSession(){
   if(myPin){
     try{db.ref('games/'+myPin+'/blitzRound').off();}catch(e){}
     try{db.ref('games/'+myPin+'/blitzReactions').off();}catch(e){}
+    try{db.ref('games/'+myPin+'/blitzSignals').off();}catch(e){}
     try{db.ref('games/'+myPin+'/status').off();}catch(e){}
     try{db.ref('games/'+myPin+'/players').off();}catch(e){}
     try{db.ref('games/'+myPin).off();}catch(e){}
@@ -1421,6 +1423,50 @@ function showAdminTab(tab){
 }
 
 // ══════════════════════════════════════════
+// HOST — IP RATE LIMITING (3 rooms/hour per host fingerprint)
+// ══════════════════════════════════════════
+const HOST_RATE_LIMIT=3;
+const HOST_RATE_WINDOW=60*60*1000;
+
+function getHostFingerprint(){
+  const raw=[
+    navigator.userAgent||'',
+    navigator.language||'',
+    screen.width+'x'+screen.height,
+    Intl.DateTimeFormat().resolvedOptions().timeZone||'',
+    navigator.hardwareConcurrency||'',
+    navigator.platform||''
+  ].join('|');
+  let h=5381;
+  for(let i=0;i<raw.length;i++){h=((h<<5)+h)^raw.charCodeAt(i);h=h>>>0;}
+  return 'hfp_'+h.toString(36);
+}
+
+async function checkHostRateLimit(){
+  const fp=getHostFingerprint();
+  const now=Date.now();
+  const windowStart=now-HOST_RATE_WINDOW;
+  const ratePath='rateLimits/hosts/'+fp;
+  try{
+    const snap=await db.ref(ratePath).get();
+    const record=snap.val()||{attempts:[]};
+    const recent=(record.attempts||[]).filter(t=>t>windowStart);
+    if(recent.length>=HOST_RATE_LIMIT){
+      const oldestInWindow=Math.min(...recent);
+      const resetIn=Math.ceil((oldestInWindow+HOST_RATE_WINDOW-now)/60000);
+      throw new Error('\u23F1\uFE0F Room creation limit reached ('+HOST_RATE_LIMIT+' per hour). Please try again in ~'+resetIn+' min.');
+    }
+    recent.push(now);
+    await db.ref(ratePath).set({attempts:recent,lastSeen:now,fp});
+    return true;
+  }catch(e){
+    if(e.message.includes('Room creation limit'))throw e;
+    console.warn('Rate limit check bypassed:',e.message);
+    return true;
+  }
+}
+
+// ══════════════════════════════════════════
 // HOST — CREATE GAME
 // ══════════════════════════════════════════
 async function createGame(){
@@ -1453,6 +1499,8 @@ async function createGame(){
   const btn=document.getElementById('host-create-btn');
   btn.disabled=true;btn.textContent='Creating...';
   try{
+    // ── Rate limit check ──
+    await checkHostRateLimit();
     const existing=await db.ref('games/'+pin).get();
     if(existing.exists()&&existing.val().status!=='ended'){
       errEl.textContent='❌ PIN "'+pin+'" is already in use by another room. Choose a different one.';
@@ -1619,8 +1667,8 @@ function updateAdminPlayers(players){
     // Show team score summary for blitz
     const aPlayers=list.filter(p=>p.team==='A');
     const bPlayers=list.filter(p=>p.team==='B');
-    const aScore=aPlayers.length>0?Math.max(...aPlayers.map(p=>p.score||0)):0;
-    const bScore=bPlayers.length>0?Math.max(...bPlayers.map(p=>p.score||0)):0;
+    const aScore=aPlayers.length>0?Math.max(0,...aPlayers.map(p=>p.score||0)):0;
+    const bScore=bPlayers.length>0?Math.max(0,...bPlayers.map(p=>p.score||0)):0;
     lb.innerHTML=`
       <div style="display:flex;gap:10px;margin-bottom:12px;">
         <div style="flex:1;text-align:center;padding:12px;background:rgba(239,68,68,0.1);border-radius:12px;border:1px solid rgba(239,68,68,0.3);">
@@ -2052,6 +2100,13 @@ async function joinGame(){
     // Check for duplicate nickname
     const playersSnap=await db.ref('games/'+pin+'/players').get();
     const existingPlayers=playersSnap.val()||{};
+    // ── Hard cap: max 20 players per room ──
+    const MAX_PLAYERS_PER_ROOM=20;
+    const currentPlayerCount=Object.values(existingPlayers).filter(p=>!p.exited).length;
+    if(currentPlayerCount>=MAX_PLAYERS_PER_ROOM){
+      errEl.textContent='❌ This room is full! Maximum '+MAX_PLAYERS_PER_ROOM+' players allowed per game.';
+      errEl.classList.add('show');btn.disabled=false;btn.textContent='Join Game →';return;
+    }
     const nickTaken=Object.values(existingPlayers).some(p=>p.nickname&&p.nickname.toLowerCase()===nick.toLowerCase());
     if(nickTaken){
       errEl.textContent='❌ The nickname "'+nick+'" is already taken. Please choose a different one.';
@@ -2807,43 +2862,94 @@ async function aiGenerateQuestions(){
   statusEl.style.display='block';
   document.getElementById('ai-status-text').textContent='Groq (Llama 3.3) is crafting your questions...';
 
+  // Helper: robustly extract and parse JSON array from AI text
+  function extractJsonArray(raw){
+    // Strip markdown code fences
+    let text=raw.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
+    // Find first '[' and last ']' to extract the array portion
+    const start=text.indexOf('[');
+    if(start===-1)throw new Error('No JSON array found in response');
+    // Find the matching closing bracket
+    let depth=0,end=-1;
+    for(let i=start;i<text.length;i++){
+      if(text[i]==='[')depth++;
+      else if(text[i]===']'){depth--;if(depth===0){end=i;break;}}
+    }
+    let jsonStr;
+    if(end===-1){
+      // Truncated JSON — attempt to recover by closing open structures
+      jsonStr=text.slice(start);
+      // Count unclosed objects and arrays
+      let d=0;let inStr=false;let esc=false;
+      for(const ch of jsonStr){
+        if(esc){esc=false;continue;}
+        if(ch==='\\'){esc=true;continue;}
+        if(ch==='"'){inStr=!inStr;continue;}
+        if(inStr)continue;
+        if(ch==='{'||ch==='[')d++;
+        else if(ch==='}'||ch===']')d--;
+      }
+      // Close any open string first (most common truncation point)
+      if(inStr)jsonStr+='"';
+      // Close unclosed objects/arrays
+      while(d>0){jsonStr+='}';d--;}
+      // Ensure array closes
+      if(!jsonStr.trimEnd().endsWith(']'))jsonStr+=']';
+      // Remove trailing commas before closing brackets/braces (invalid JSON)
+      jsonStr=jsonStr.replace(/,(\s*[}\]])/g,'$1');
+    }else{
+      jsonStr=text.slice(start,end+1);
+      jsonStr=jsonStr.replace(/,(\s*[}\]])/g,'$1');
+    }
+    return JSON.parse(jsonStr);
+  }
+
   // Helper: call AI for a batch of questions
   async function fetchBatch(needed,attempt){
-    const prompt='You are a quiz expert. Generate exactly '+needed+' multiple-choice quiz questions about: "'+topic+'". Difficulty: '+difficulty+'. Rules: factually accurate, 4 options per question, only one correct answer, plausible wrong answers, vary question styles, do NOT repeat questions already generated. Respond ONLY with a valid JSON array, no other text, no markdown, no backticks: [{"q":"Question?","options":["A","B","C","D"],"answer":0},...] where answer is the 0-based index of the correct option.';
+    const prompt='You are a quiz expert. Generate exactly '+needed+' multiple-choice quiz questions about: "'+topic+'". Difficulty: '+difficulty+'. STRICT RULES: (1) Return ONLY a valid JSON array with NO other text, NO markdown, NO backticks, NO explanation. (2) Each item must have keys: "q" (string), "options" (array of exactly 4 strings), "answer" (integer 0-3, zero-based index of correct option). (3) Ensure factual accuracy. (4) All '+needed+' questions must fit entirely in the response. Example format: [{"q":"Question?","options":["A","B","C","D"],"answer":0}]';
     const res=await fetch('https://aged-bird-2087.benefit6925.workers.dev/',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({prompt})
+      body:JSON.stringify({prompt,max_tokens:4000})
     });
+    if(!res.ok)throw new Error('AI service error: '+res.status);
     const data=await res.json();
     let raw=null;
     try{raw=data.choices[0].message.content;}catch(ex){raw=null;}
     if(!raw)throw new Error('No response from AI');
-    const cleaned=raw.replace(/```json|```/g,'').trim();
-    const parsed=JSON.parse(cleaned);
+    const parsed=extractJsonArray(raw);
     if(!Array.isArray(parsed))throw new Error('Invalid response format');
-    return parsed.filter(q=>q.q&&Array.isArray(q.options)&&q.options.length===4&&typeof q.answer==='number');
+    return parsed.filter(q=>q&&q.q&&typeof q.q==='string'&&Array.isArray(q.options)&&q.options.length===4&&q.options.every(o=>typeof o==='string'&&o.trim())&&typeof q.answer==='number'&&q.answer>=0&&q.answer<=3);
   }
 
   try{
     let collected=[];
     const seenQs=new Set();
     let attempts=0;
-    const MAX_ATTEMPTS=4;
+    const MAX_ATTEMPTS=5;
+    // Use smaller batch sizes to avoid response truncation
+    const BATCH_SIZE=Math.min(10,count);
 
     while(collected.length<count&&attempts<MAX_ATTEMPTS){
       attempts++;
       const needed=count-collected.length;
+      const batchNeeded=Math.min(needed,BATCH_SIZE);
       document.getElementById('ai-status-text').textContent=
         attempts===1?'Groq (Llama 3.3) is crafting your questions...':
-        'Generating more to reach '+count+' ('+collected.length+'/'+count+' so far)...';
-      const batch=await fetchBatch(needed,attempts);
-      // Deduplicate by question text
-      for(const q of batch){
-        const key=q.q.trim().toLowerCase();
-        if(!seenQs.has(key)&&collected.length<count){
-          seenQs.add(key);
-          collected.push(q);
+        'Getting more questions ('+collected.length+'/'+count+' so far)...';
+      try{
+        const batch=await fetchBatch(batchNeeded,attempts);
+        // Deduplicate by question text
+        for(const q of batch){
+          const key=q.q.trim().toLowerCase();
+          if(!seenQs.has(key)&&collected.length<count){
+            seenQs.add(key);
+            collected.push(q);
+          }
         }
+      }catch(batchErr){
+        // Log batch error but keep trying if we have attempts left
+        if(attempts>=MAX_ATTEMPTS)throw batchErr;
+        console.warn('Batch attempt '+attempts+' failed:',batchErr.message);
       }
     }
 
@@ -3045,6 +3151,7 @@ function cleanupGameSession(){
   if(blitzState&&blitzState.revealCountdown)clearInterval(blitzState.revealCountdown);
   try{db.ref('games/'+myPin+'/blitzRound').off();}catch(e){}
   try{db.ref('games/'+myPin+'/blitzReactions').off();}catch(e){}
+  try{db.ref('games/'+myPin+'/blitzSignals').off();}catch(e){}
   try{db.ref('games/'+myPin+'/status').off();}catch(e){}
   try{db.ref('games/'+myPin+'/players').off();}catch(e){}
   try{db.ref('games/'+myPin).off();}catch(e){}
@@ -3072,6 +3179,10 @@ function startBlitzQuiz(gameData){
     suddenDeath:false,finished:false,revealCountdown:null
   };
 
+  // Reset reaction/signal rate-limit timestamps for fresh game session
+  window._lastReactionTime=0;
+  window._lastSignalTime=0;
+
   // Update score strip names
   document.getElementById('blitz-score-a-label').textContent='🔴 '+blitzState.teamAName;
   document.getElementById('blitz-score-b-label').textContent='🔵 '+blitzState.teamBName;
@@ -3095,14 +3206,31 @@ function startBlitzQuiz(gameData){
     if(round.phase==='reveal')showBlitzReveal(round);
   });
 
-  // Watch for reactions from teammates
-  db.ref('games/'+myPin+'/blitzReactions').on('value',snap=>{
-    const reactions=snap.val()||{};
-    Object.values(reactions).forEach(r=>{
-      if(r.team===blitzState.myTeam&&r.timestamp>Date.now()-5000){
-        spawnReactionBubble(r.emoji);
+  // Watch for NEW reactions from teammates (child_added fires only for new entries,
+  // preventing the full-history replay that was causing the broken/duplicate behaviour)
+  db.ref('games/'+myPin+'/blitzReactions').on('child_added',snap=>{
+    const r=snap.val();
+    if(!r)return;
+    // Only show to same team, and only if reaction is fresh (< 4 seconds old)
+    if(r.team===blitzState.myTeam&&r.timestamp>Date.now()-4000){
+      spawnReactionBubble(r.emoji);
+    }
+  });
+
+  // Watch for NEW signals from teammates (was missing — signals never reached teammates before)
+  db.ref('games/'+myPin+'/blitzSignals').on('child_added',snap=>{
+    const r=snap.val();
+    if(!r)return;
+    // Only show to same team, fresh signals only, and not the sender's own (they see it locally)
+    if(r.team===blitzState.myTeam&&r.timestamp>Date.now()-4000&&r.nickname!==myNickname){
+      const bar=document.getElementById('blitz-signals-bar');
+      if(bar){
+        bar.style.display='block';
+        bar.textContent=r.nickname+': "'+r.text+'"';
+        clearTimeout(bar._hideTimer);
+        bar._hideTimer=setTimeout(()=>{bar.style.display='none';},4000);
       }
-    });
+    }
   });
 }
 
@@ -3393,11 +3521,29 @@ function startBlitzSuddenDeath(){
 // TEAM BLITZ — REACTIONS & SIGNALS
 // ══════════════════════════════════════════
 async function sendReaction(emoji){
-  if(!blitzState.myTeam)return;
+  if(!blitzState.myTeam||!myPin)return;
+  // Rate-limit: max 1 reaction per 600ms per player to prevent spam flooding
+  const now=Date.now();
+  if(window._lastReactionTime&&now-window._lastReactionTime<600)return;
+  window._lastReactionTime=now;
   try{
-    await db.ref('games/'+myPin+'/blitzReactions/'+myPlayerId).set({
-      emoji,team:blitzState.myTeam,timestamp:Date.now()
+    // Use a timestamped key so each reaction is a distinct child (not overwriting previous)
+    const key=myPlayerId+'_'+now;
+    await db.ref('games/'+myPin+'/blitzReactions/'+key).set({
+      emoji,team:blitzState.myTeam,timestamp:now,sender:myPlayerId
     });
+    // Clean up old reaction entries for this player to prevent node growth
+    db.ref('games/'+myPin+'/blitzReactions').orderByChild('sender').equalTo(myPlayerId)
+      .once('value',snap=>{
+        const entries=snap.val()||{};
+        const keys=Object.keys(entries).sort();
+        // Keep only the 3 most recent, remove older ones
+        if(keys.length>3){
+          keys.slice(0,keys.length-3).forEach(k=>{
+            db.ref('games/'+myPin+'/blitzReactions/'+k).remove();
+          });
+        }
+      });
     spawnReactionBubble(emoji);
   }catch(e){}
 }
@@ -3412,16 +3558,36 @@ function spawnReactionBubble(emoji){
 }
 
 async function sendSignal(text){
-  if(!blitzState.myTeam)return;
+  if(!blitzState.myTeam||!myPin)return;
+  // Rate-limit: max 1 signal per 1 second
+  const now=Date.now();
+  if(window._lastSignalTime&&now-window._lastSignalTime<1000)return;
+  window._lastSignalTime=now;
   try{
-    await db.ref('games/'+myPin+'/blitzSignals/'+myPlayerId).set({
-      text,nickname:myNickname,team:blitzState.myTeam,timestamp:Date.now()
+    const key=myPlayerId+'_'+now;
+    await db.ref('games/'+myPin+'/blitzSignals/'+key).set({
+      text,nickname:myNickname,team:blitzState.myTeam,timestamp:now,sender:myPlayerId
     });
+    // Clean up stale signals for this player (keep only 2 most recent)
+    db.ref('games/'+myPin+'/blitzSignals').orderByChild('sender').equalTo(myPlayerId)
+      .once('value',snap=>{
+        const entries=snap.val()||{};
+        const keys=Object.keys(entries).sort();
+        if(keys.length>2){
+          keys.slice(0,keys.length-2).forEach(k=>{
+            db.ref('games/'+myPin+'/blitzSignals/'+k).remove();
+          });
+        }
+      });
   }catch(e){}
-  // Show signal locally
+  // Show signal locally for the sender
   const bar=document.getElementById('blitz-signals-bar');
-  if(bar){bar.style.display='block';bar.textContent=myNickname+': "'+text+'"';
-    setTimeout(()=>{bar.style.display='none';},4000);}
+  if(bar){
+    bar.style.display='block';
+    bar.textContent=myNickname+': "'+text+'"';
+    clearTimeout(bar._hideTimer);
+    bar._hideTimer=setTimeout(()=>{bar.style.display='none';},4000);
+  }
 }
 
 // ══════════════════════════════════════════
