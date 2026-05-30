@@ -646,7 +646,7 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
         <span class="orbitron neon-text" style="font-size:18px;letter-spacing:2px;">QUIZ MATE</span>
       </div>
       <div style="margin-left:auto;display:flex;gap:10px;flex-wrap:wrap;">
-        <button class="btn-primary btn-sm" id="admin-start-btn" onclick="adminStartGame()" style="background: linear-gradient(135deg, rgb(21, 128, 61), rgb(34, 197, 94)); display: none;">▶ Start Game</button>
+        <button class="btn-primary btn-sm" id="admin-start-btn" onclick="adminStartGame()" style="background:linear-gradient(135deg,#15803d,#22c55e);">▶ Start Game</button>
         <button class="btn-danger" id="admin-end-btn" onclick="adminEndGame()" style="display:none;">⏹ End Game</button>
         <button class="btn-primary btn-sm" id="admin-next-round-btn" onclick="openNextRoundModal()" style="display:none;background:linear-gradient(135deg,#15803d,#00ff66);">🔄 Next Round</button>
         <button class="btn-secondary btn-sm" onclick="adminReset()">↺ Reset</button>
@@ -656,10 +656,10 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
 
     <!-- Stats row -->
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:12px;">
-      <div class="stat-card"><div class="label" style="margin-bottom:4px;">STATUS</div><div style="font-size: 16px; font-weight: 700; color: rgb(100, 116, 139);" id="admin-status">⚫ Game Over</div></div>
+      <div class="stat-card"><div class="label" style="margin-bottom:4px;">STATUS</div><div style="font-size:16px;font-weight:700;color:#00ff66;" id="admin-status">🟢 Lobby Open</div></div>
       <div class="stat-card"><div class="label" style="margin-bottom:4px;">GAME PIN</div><div class="orbitron" style="font-size:20px;color:#00ccff;" id="admin-pin-display">0000</div></div>
       <div class="stat-card"><div class="label" style="margin-bottom:4px;">PLAYERS</div><div style="font-size:20px;font-weight:700;color:#0080ff;" id="admin-player-count">0</div></div>
-      <div class="stat-card"><div class="label" style="margin-bottom:4px;">TIME LEFT</div><div class="orbitron" style="font-size:18px;" id="admin-timer">Done</div></div>
+      <div class="stat-card"><div class="label" style="margin-bottom:4px;">TIME LEFT</div><div class="orbitron" style="font-size:18px;" id="admin-timer">—</div></div>
     </div>
 
     <!-- Settings summary -->
