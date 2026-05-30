@@ -1082,23 +1082,10 @@ Answer: B</pre>
 
 <script>
 // ══════════════════════════════════════════
-// FIREBASE CONFIG
+// COLYSEUS CLIENT
 // ══════════════════════════════════════════
 const client = new Colyseus.Client('wss://quizmate-server.onrender.com');
 let room = null;
-
-// Firebase stub — prevents crashes from remaining db.ref calls during migration
-const db = {
-  ref: () => ({
-    on: () => {},
-    off: () => {},
-    get: () => Promise.resolve({ exists: () => false, val: () => null }),
-    set: () => Promise.resolve(),
-    update: () => Promise.resolve(),
-    remove: () => Promise.resolve(),
-    push: () => Promise.resolve({ key: 'stub' }),
-  })
-};
 
 // ══════════════════════════════════════════
 // DEFAULT QUESTIONS (20 built-in)
@@ -1346,7 +1333,6 @@ function cleanupPlayerSession(){
   if(myPin){
     try{if(room){room.leave();room=null;}}catch(e){}
   }
-  if(window._lightningGameStateRef){try{window._lightningGameStateRef.off();}catch(e){}window._lightningGameStateRef=null;}
   sessionStorage.removeItem('qm_session');
   roomState='idle';
   _nextRoundJoinTaken=false;
@@ -1436,12 +1422,7 @@ function _doJoinNextRoundLobby(){
       setupLobby(g);
       showPage('lobby');
     }
-  }).catch(()=>{
-    try{db.ref('games/'+myPin+'/players').off();}catch(e){}
-    try{db.ref('games/'+myPin).off();}catch(e){}
-    setupLobby({});
-    showPage('lobby');
-  });
+  }
 }
 
 function seededShuffle(arr,seed){
@@ -1604,7 +1585,8 @@ async function createGame(){
 function setupAdminDashboard(){
   document.getElementById('admin-pin-display').textContent=myPin;
   document.getElementById('admin-pin-big').textContent=myPin;
-  document.getElementById('admin-share-url').textContent=window.location.href;
+  const gameUrl='https://benefit6925-cell.github.io/Bible-blitz/';
+  document.getElementById('admin-share-url').textContent=gameUrl;
   updateAdminSettingChips();
 
   // Colyseus handles real-time updates via setupRoomListeners()
@@ -1657,12 +1639,11 @@ function updateAdminStatus(g){
         document.getElementById('admin-timer').textContent='💀 '+(gameSettings.survivalTimerDuration||8)+'s/Q';
         document.getElementById('admin-timer').style.color='#ff4444';
       }else{
-        // Lightning: show live global countdown from Firebase globalEndTime
+        // Lightning: show live global countdown using globalEndTime from gameStarted message
         document.getElementById('admin-timer-bar-wrap').style.display='block';
         const dur=gameSettings.timerDuration||120;
-        db.ref('games/'+myPin+'/gameState/globalEndTime').get().then(snap=>{
-          const endTime=snap.val();
-          if(!endTime)return;
+        const endTime=window._lightningGlobalEndTime;
+        if(endTime){
           clearInterval(adminTimerInterval);
           adminTimerInterval=setInterval(()=>{
             const tl=Math.max(0,(endTime-Date.now())/1000);
@@ -1672,7 +1653,7 @@ function updateAdminStatus(g){
             document.getElementById('admin-timer-bar').style.background=tl<20?'#ff4444':tl<40?'#ff8800':'#ffd700';
             if(tl<=0){clearInterval(adminTimerInterval);adminEndGame();}
           },500);
-        });
+        }
       }
     }else{
       document.getElementById('admin-timer-bar-wrap').style.display='block';
@@ -1896,12 +1877,10 @@ async function adminLaunchNextRound(){
 
 
 function renderQuestionManager(){
-  db.ref('games/'+myPin+'/customQuestions').get().then(snap=>{
-    customQuestions=snap.val()?Object.values(snap.val()):[];
-    renderCustomQuestionList();
-    renderDefaultQuestionList();
-    updateQCountDisplay();
-  });
+  // customQuestions is kept in sync via room.onMessage('questionsUpdated')
+  renderCustomQuestionList();
+  renderDefaultQuestionList();
+  updateQCountDisplay();
 }
 
 function updateQCountDisplay(){
@@ -2028,13 +2007,13 @@ async function saveQuestion(){
       const idx=customQuestions.findIndex(q=>q.id===editingQId);
       if(idx!==-1){
         customQuestions[idx]={...customQuestions[idx],q:text,options:opts,answer};
-        await db.ref('games/'+myPin+'/customQuestions/'+editingQId).update({q:text,options:opts,answer});
+        room.send('updateQuestion',{question:customQuestions[idx]});
       }
     }else{
       const id='cq_'+Date.now();
       const newQ={id,q:text,options:opts,answer};
       customQuestions.push(newQ);
-      await db.ref('games/'+myPin+'/customQuestions/'+id).set(newQ);
+      room.send('addQuestion',{question:newQ});
     }
     hideQuestionForm();
     renderCustomQuestionList();
@@ -2049,9 +2028,7 @@ async function saveQuestion(){
 async function deleteQuestion(id){
   if(!confirm('Delete this question?'))return;
   customQuestions=customQuestions.filter(q=>q.id!==id);
-  try{
-    await db.ref('games/'+myPin+'/customQuestions/'+id).remove();
-  }catch(e){}
+  try{ room.send('deleteQuestion',{id}); }catch(e){}
   renderCustomQuestionList();
   updateQCountDisplay();
 }
@@ -2069,90 +2046,47 @@ async function joinGame(){
   const btn=document.getElementById('join-btn');
   btn.disabled=true;btn.textContent='Joining...';
   try{
-    const snap=await db.ref('games/'+pin).get();
-    if(!snap.exists()){
-      errEl.textContent='❌ No game found with that PIN. Check with your host.';
-      errEl.classList.add('show');btn.disabled=false;btn.textContent='Join Game →';return;
-    }
-    const g=snap.val();
-    if(g.status==='ended'){
-      errEl.textContent='❌ This game has already ended.';
-      errEl.classList.add('show');btn.disabled=false;btn.textContent='Join Game →';return;
-    }
+    // Join via Colyseus — server validates PIN, nickname uniqueness, room capacity, game status
+    room=await client.joinById(pin,{nickname:nick,isHost:false});
     myPin=pin;myNickname=nick;
-    // Check if joining mid-game — send to waiting room
-    if(g.status==='active'){
-      myPlayerId='player_'+Date.now()+'_'+Math.random().toString(36).substr(2,5);
-      // Register in waitingPlayers so host's next round picks them up
-      await db.ref('games/'+pin+'/waitingPlayers/'+myPlayerId).set({
-        id:myPlayerId,nickname:nick,joinedAt:Date.now()
-      });
-      sessionStorage.setItem('qm_session',JSON.stringify({pin,nick,playerId:myPlayerId,waiting:true}));
-      document.getElementById('waiting-name').textContent=nick;
-      document.getElementById('waiting-pin').textContent=pin;
-      showPage('waiting');
-      startWaitingMode();
-      btn.disabled=false;btn.textContent='Join Game →';
-      return;
-    }
-    // Check if this nickname was already eliminated in this game (survival mode)
-    const elimSnap=await db.ref('games/'+pin+'/eliminated/'+nick.replace(/[^a-zA-Z0-9]/g,'_')).get();
-    if(elimSnap.exists()&&g.settings&&g.settings.gameMode==='survival'&&g.status==='active'){
-      // Already eliminated — go straight to spectator view
-      myPlayerId=elimSnap.val().playerId||('player_'+Date.now());
-      activeQuestions=[];
-      gameSettings=g.settings||{};
-      quizState={current:0,score:elimSnap.val().score||0,correctCount:elimSnap.val().correctCount||0,answers:{},selected:null,finished:false,eliminated:true};
-      showPage('eliminated');
-      document.getElementById('eliminated-score').textContent=quizState.score;
-      document.getElementById('eliminated-correct').textContent=(quizState.correctCount||0)+' correct';
-      startSpectatorMode();
-      btn.disabled=false;btn.textContent='Join Game →';
-      return;
-    }
-    // Check for duplicate nickname
-    const playersSnap=await db.ref('games/'+pin+'/players').get();
-    const existingPlayers=playersSnap.val()||{};
-    // ── Hard cap: max 50 players per room ──
-    const MAX_PLAYERS_PER_ROOM=50;
-    const currentPlayerCount=Object.values(existingPlayers).filter(p=>!p.exited).length;
-    if(currentPlayerCount>=MAX_PLAYERS_PER_ROOM){
-      errEl.textContent='❌ This room is full! Maximum '+MAX_PLAYERS_PER_ROOM+' players allowed per game.';
-      errEl.classList.add('show');btn.disabled=false;btn.textContent='Join Game →';return;
-    }
-    const nickTaken=Object.values(existingPlayers).some(p=>p.nickname&&p.nickname.toLowerCase()===nick.toLowerCase());
-    if(nickTaken){
-      errEl.textContent='❌ The nickname "'+nick+'" is already taken. Please choose a different one.';
-      errEl.classList.add('show');btn.disabled=false;btn.textContent='Join Game →';return;
-    }
-    myPlayerId='player_'+Date.now()+'_'+Math.random().toString(36).substr(2,5);
-    // Team Blitz: auto-assign to the smaller team for balance, then go straight to blitz lobby
-    if(g.settings&&g.settings.gameMode==='blitz'){
-      const allExisting=Object.values(existingPlayers);
-      const countA=allExisting.filter(p=>p.team==='A').length;
-      const countB=allExisting.filter(p=>p.team==='B').length;
-      // Assign to team with fewer players; break ties by alternating (total players % 2)
-      const assignedTeam=countA<=countB?'A':'B';
-      await db.ref('games/'+pin+'/players/'+myPlayerId).set({
-        id:myPlayerId,nickname:nick,score:0,correctCount:0,
-        finished:false,eliminated:false,joinedAt:Date.now(),answers:{},team:assignedTeam
-      });
-      blitzState.myTeam=assignedTeam;
-      blitzState.teamAName=g.settings.teamAName||'Team A';
-      blitzState.teamBName=g.settings.teamBName||'Team B';
+    myPlayerId=room.sessionId;
+    setupRoomListeners();
+
+    // Server sends back initial state — listen for one-time response
+    room.onMessage('joinAck',(data)=>{
       sessionStorage.setItem('qm_session',JSON.stringify({pin,nick,playerId:myPlayerId}));
-      showBlitzAutoAssign(g,assignedTeam,countA+(assignedTeam==='A'?1:0),countB+(assignedTeam==='B'?1:0));
-    }else{
-      await db.ref('games/'+pin+'/players/'+myPlayerId).set({
-        id:myPlayerId,nickname:nick,score:0,correctCount:0,
-        finished:false,eliminated:false,joinedAt:Date.now(),answers:{}
-      });
-      sessionStorage.setItem('qm_session',JSON.stringify({pin,nick,playerId:myPlayerId}));
-      setupLobby(g);
-      showPage('lobby');
-    }
+      if(data.status==='active'){
+        // Joined mid-game — go to waiting room
+        document.getElementById('waiting-name').textContent=nick;
+        document.getElementById('waiting-pin').textContent=pin;
+        showPage('waiting');
+        startWaitingMode();
+      }else if(data.gameMode==='blitz'){
+        blitzState.myTeam=data.assignedTeam;
+        blitzState.teamAName=data.teamAName||'Team A';
+        blitzState.teamBName=data.teamBName||'Team B';
+        showBlitzAutoAssign({settings:data},data.assignedTeam,data.countA,data.countB);
+      }else{
+        setupLobby({settings:data});
+        showPage('lobby');
+      }
+    });
+
+    room.onMessage('joinError',(data)=>{
+      errEl.textContent=data.message||'❌ Could not join. Check your PIN.';
+      errEl.classList.add('show');
+      try{room.leave();room=null;}catch(e){}
+    });
+
   }catch(e){
-    errEl.textContent='Connection error: '+e.message;errEl.classList.add('show');
+    const msg=e.message||'';
+    if(msg.includes('not found')||msg.includes('404'))
+      errEl.textContent='❌ No game found with that PIN. Check with your host.';
+    else if(msg.includes('full')||msg.includes('maxClients'))
+      errEl.textContent='❌ This room is full! Maximum 50 players allowed per game.';
+    else
+      errEl.textContent='Connection error: '+msg;
+    errEl.classList.add('show');
   }
   btn.disabled=false;btn.textContent='Join Game →';
 }
@@ -2190,9 +2124,6 @@ function setupLobby(initialGame){
 // PLAYER — QUIZ
 // ══════════════════════════════════════════
 async function startQuiz(gameData){
-  db.ref('games/'+myPin).off();
-  db.ref('games/'+myPin+'/players').off();
-
   gameSettings=gameData.settings||{questionCount:20,timerDuration:120,gameMode:'classic',scoringMode:'standard'};
   activeQuestions=toArray(gameData.activeQuestions)||DEFAULT_QUESTIONS.slice(0,gameSettings.questionCount);
   gameStartTime=gameData.startTime;
@@ -2823,45 +2754,33 @@ function showBlitzAutoAssign(gameData,assignedTeam,newCountA,newCountB){
   document.getElementById('blitz-assign-card').style.borderColor=isA?'rgba(248,113,113,0.4)':'rgba(96,165,250,0.4)';
   document.getElementById('blitz-assign-card').style.boxShadow=isA?'0 0 30px rgba(248,113,113,0.15)':'0 0 30px rgba(96,165,250,0.15)';
 
-  // Live balance counter — updates as more players join
-  const updateBalance=()=>{
-    db.ref('games/'+myPin+'/players').get().then(snap=>{
-      const pl=Object.values(snap.val()||{});
-      const cA=pl.filter(p=>p.team==='A').length;
-      const cB=pl.filter(p=>p.team==='B').length;
-      const myCount=isA?cA:cB;
-      document.getElementById('blitz-assign-team-count').textContent=myCount+' player'+(myCount!==1?'s':'')+' on your team';
-      document.getElementById('blitz-assign-a-name').textContent='🔴 '+blitzState.teamAName;
-      document.getElementById('blitz-assign-b-name').textContent='🔵 '+blitzState.teamBName;
-      document.getElementById('blitz-assign-a-count').textContent=cA;
-      document.getElementById('blitz-assign-b-count').textContent=cB;
-    });
+  // Show initial balance from join data
+  const updateBalanceUI=(cA,cB)=>{
+    const myCount=isA?cA:cB;
+    document.getElementById('blitz-assign-team-count').textContent=myCount+' player'+(myCount!==1?'s':'')+' on your team';
+    document.getElementById('blitz-assign-a-name').textContent='🔴 '+blitzState.teamAName;
+    document.getElementById('blitz-assign-b-name').textContent='🔵 '+blitzState.teamBName;
+    document.getElementById('blitz-assign-a-count').textContent=cA;
+    document.getElementById('blitz-assign-b-count').textContent=cB;
   };
-  updateBalance();
+  updateBalanceUI(newCountA||0,newCountB||0);
 
-  // Live update as more players join
-  const balanceRef=db.ref('games/'+myPin+'/players');
-  balanceRef.on('value',()=>updateBalance());
+  // Live balance updates via Colyseus playersUpdated messages
+  const balanceHandler=(msg)=>{
+    const players=Object.values(msg.players||{});
+    const cA=players.filter(p=>p.team==='A').length;
+    const cB=players.filter(p=>p.team==='B').length;
+    updateBalanceUI(cA,cB);
+  };
+  if(room)room.onMessage('playersUpdated',balanceHandler);
 
   showPage('team-select');
 
   // Auto-transition to blitz lobby after 2 seconds
   setTimeout(()=>{
-    balanceRef.off();
     setupBlitzLobby();
     showPage('blitz-lobby');
   },2000);
-
-  // Also watch for game starting while on assignment screen
-  db.ref('games/'+myPin+'/status').on('value',snap=>{
-    if(snap.val()==='active'){
-      balanceRef.off();
-      db.ref('games/'+myPin+'/status').off();
-      db.ref('games/'+myPin).get().then(g=>{
-        if(g.val()&&g.val().activeQuestions)startBlitzQuiz(g.val());
-      });
-    }
-  });
 }
 
 // Legacy stub — no longer used for player flow but kept so any internal references don't break
@@ -2871,9 +2790,7 @@ function setupBlitzTeamSelect(gameData){
 async function selectTeam(team){
   // No longer called from UI — kept as safety fallback
   blitzState.myTeam=team;
-  try{ await db.ref('games/'+myPin+'/players/'+myPlayerId).update({team}); }catch(e){}
-  db.ref('games/'+myPin+'/players').off();
-  db.ref('games/'+myPin+'/status').off();
+  try{ room.send('selectTeam',{team}); }catch(e){}
   setupBlitzLobby();
   showPage('blitz-lobby');
 }
@@ -2889,63 +2806,37 @@ function setupBlitzLobby(){
   document.getElementById('blitz-lobby-myteam-name').textContent=emoji+' '+myTeamName;
   document.getElementById('blitz-lobby-myteam-name').style.color=teamColor;
 
-  db.ref('games/'+myPin+'/players').on('value',snap=>{
-    const players=Object.values(snap.val()||{});
+  // Render team lists from Colyseus playersUpdated messages
+  const renderTeams=(players)=>{
     const aPlayers=players.filter(p=>p.team==='A');
     const bPlayers=players.filter(p=>p.team==='B');
     document.getElementById('blitz-lobby-a-header').textContent='🔴 '+blitzState.teamAName+' ('+aPlayers.length+')';
     document.getElementById('blitz-lobby-b-header').textContent='🔵 '+blitzState.teamBName+' ('+bPlayers.length+')';
-
-    const renderTeamList=(players,elId,myTeam)=>
-      players.map(p=>`
+    const renderTeamList=(pl)=>pl.map(p=>`
         <div class="player-chip" style="margin-bottom:6px;">
           <div class="avatar" style="background:${avatarColor(p.nickname)}30;color:${avatarColor(p.nickname)};width:28px;height:28px;font-size:11px;">${p.nickname[0].toUpperCase()}</div>
           <span style="font-size:13px;font-weight:${p.id===myPlayerId?700:400};">${escHtml(p.nickname)}${p.id===myPlayerId?' (you)':''}</span>
         </div>`).join('');
     document.getElementById('blitz-lobby-a-players').innerHTML=renderTeamList(aPlayers);
     document.getElementById('blitz-lobby-b-players').innerHTML=renderTeamList(bPlayers);
+  };
+
+  // Initial render from last known state
+  renderTeams(Object.values(window._lastKnownPlayers||{}));
+
+  // Live updates via room messages — already handled in setupRoomListeners() playersUpdated
+  if(room)room.onMessage('playersUpdated',({players})=>{
+    renderTeams(Object.values(players||{}));
   });
 
-  db.ref('games/'+myPin).on('value',snap=>{
-    const g=snap.val();
-    if(!g)return;
-    if(g.status==='active'&&g.activeQuestions){
-      db.ref('games/'+myPin+'/players').off();
-      db.ref('games/'+myPin).off();
-      startBlitzQuiz(g);
-    }
-  });
+  // Game start handled by setupRoomListeners() gameStarted message
 }
 
 // ══════════════════════════════════════════
 // TEAM BLITZ — ADMIN START GUARD
 // ══════════════════════════════════════════
-// Patch adminStartGame to check blitz team balance
-const _origAdminStartGame=adminStartGame;
-adminStartGame=async function(){
-  if(gameSettings.gameMode==='blitz'){
-    const snap=await db.ref('games/'+myPin+'/players').get();
-    const players=Object.values(snap.val()||{});
-    const aCount=players.filter(p=>p.team==='A').length;
-    const bCount=players.filter(p=>p.team==='B').length;
-    // Auto-assign unassigned players
-    const unassigned=players.filter(p=>!p.team);
-    for(const p of unassigned){
-      const assignTo=aCount<=bCount?'A':'B';
-      await db.ref('games/'+myPin+'/players/'+p.id).update({team:assignTo});
-      if(assignTo==='A')aCount++;else bCount++;
-    }
-    const finalSnap=await db.ref('games/'+myPin+'/players').get();
-    const finalPlayers=Object.values(finalSnap.val()||{});
-    const finalA=finalPlayers.filter(p=>p.team==='A').length;
-    const finalB=finalPlayers.filter(p=>p.team==='B').length;
-    if(finalA===0||finalB===0){
-      alert('Team Blitz needs at least 1 player on each team!');
-      return;
-    }
-  }
-  await _origAdminStartGame();
-};
+// Team balance check for Blitz is handled server-side by Colyseus
+// Client simply calls adminStartGame() which sends 'startGame' to the server
 
 // ══════════════════════════════════════════
 // GAME CLEANUP — clears all timers and listeners (in-game only)
@@ -2956,13 +2847,7 @@ function cleanupGameSession(){
   clearInterval(window.blitzTimer);
   clearTimeout(_nextRoundCountdownTimer);
   if(blitzState&&blitzState.revealCountdown)clearInterval(blitzState.revealCountdown);
-  try{db.ref('games/'+myPin+'/blitzRound').off();}catch(e){}
-  try{db.ref('games/'+myPin+'/blitzReactions').off();}catch(e){}
-  try{db.ref('games/'+myPin+'/blitzSignals').off();}catch(e){}
-  try{db.ref('games/'+myPin+'/status').off();}catch(e){}
-  try{db.ref('games/'+myPin+'/players').off();}catch(e){}
-  try{db.ref('games/'+myPin).off();}catch(e){}
-  if(window._lightningGameStateRef){try{window._lightningGameStateRef.off();}catch(e){}window._lightningGameStateRef=null;}
+  // All real-time listeners are managed by Colyseus room — nothing to detach manually
 }
 
 // ══════════════════════════════════════════
@@ -2998,47 +2883,29 @@ function startBlitzQuiz(gameData){
   renderBlitzQuestion();
   startBlitzQuestionTimer();
 
-  // Watch for host force-end (single listener)
-  setTimeout(()=>{
-    db.ref('games/'+myPin+'/status').on('value',snap=>{
-      if(snap.val()==='ended'&&!blitzState.finished)finishBlitzQuiz(true);
+  // Game-end, reveal, reactions and signals all come via Colyseus onMessage
+  if(room){
+    room.onMessage('gameEnded',()=>{
+      if(!blitzState.finished)finishBlitzQuiz(true);
     });
-  },2000);
-
-  // Watch for reveal signals from Firebase (when all answered or timer expired)
-  // Single listener — detached and re-attached per question inside showBlitzReveal
-  db.ref('games/'+myPin+'/blitzRound').on('value',snap=>{
-    const round=snap.val();
-    if(!round||round.q!==blitzState.currentQ)return;
-    if(round.phase==='reveal')showBlitzReveal(round);
-  });
-
-  // Watch for NEW reactions from teammates (child_added fires only for new entries,
-  // preventing the full-history replay that was causing the broken/duplicate behaviour)
-  db.ref('games/'+myPin+'/blitzReactions').on('child_added',snap=>{
-    const r=snap.val();
-    if(!r)return;
-    // Only show to same team, and only if reaction is fresh (< 4 seconds old)
-    if(r.team===blitzState.myTeam&&r.timestamp>Date.now()-4000){
-      spawnReactionBubble(r.emoji);
-    }
-  });
-
-  // Watch for NEW signals from teammates (was missing — signals never reached teammates before)
-  db.ref('games/'+myPin+'/blitzSignals').on('child_added',snap=>{
-    const r=snap.val();
-    if(!r)return;
-    // Only show to same team, fresh signals only, and not the sender's own (they see it locally)
-    if(r.team===blitzState.myTeam&&r.timestamp>Date.now()-4000&&r.nickname!==myNickname){
-      const bar=document.getElementById('blitz-signals-bar');
-      if(bar){
-        bar.style.display='block';
-        bar.textContent=r.nickname+': "'+r.text+'"';
-        clearTimeout(bar._hideTimer);
-        bar._hideTimer=setTimeout(()=>{bar.style.display='none';},4000);
+    room.onMessage('blitzReveal',(round)=>{
+      if(round.q===blitzState.currentQ)showBlitzReveal(round);
+    });
+    room.onMessage('blitzReaction',(r)=>{
+      if(r.team===blitzState.myTeam)spawnReactionBubble(r.emoji);
+    });
+    room.onMessage('blitzSignal',(r)=>{
+      if(r.team===blitzState.myTeam&&r.nickname!==myNickname){
+        const bar=document.getElementById('blitz-signals-bar');
+        if(bar){
+          bar.style.display='block';
+          bar.textContent=r.nickname+': "'+r.text+'"';
+          clearTimeout(bar._hideTimer);
+          bar._hideTimer=setTimeout(()=>{bar.style.display='none';},4000);
+        }
       }
-    }
-  });
+    });
+  }
 }
 
 function renderBlitzQuestion(){
@@ -3108,79 +2975,24 @@ async function handleBlitzAnswer(idx){
 
 async function submitBlitzAnswer(idx){
   try{
-    await db.ref('games/'+myPin+'/players/'+myPlayerId).update({
-      [`blitzAnswers/q${blitzState.currentQ}`]:{answer:idx,team:blitzState.myTeam,timestamp:Date.now()}
-    });
-  }catch(e){}
-}
-
-async function tryTriggerBlitzReveal(){
-  // Check if ALL players have answered this question
-  try{
-    const snap=await db.ref('games/'+myPin+'/players').get();
-    const players=Object.values(snap.val()||{});
-    const allAnswered=players.every(p=>{
-      const ans=p.blitzAnswers&&p.blitzAnswers['q'+blitzState.currentQ];
-      return ans!==undefined;
-    });
-    if(!allAnswered)return;
-
-    // Compute majority votes per team
-    const aPlayers=players.filter(p=>p.team==='A');
-    const bPlayers=players.filter(p=>p.team==='B');
-    const q=activeQuestions[blitzState.currentQ];
-
-    const computeMajority=(teamPlayers)=>{
-      const votes={};
-      teamPlayers.forEach(p=>{
-        const a=p.blitzAnswers&&p.blitzAnswers['q'+blitzState.currentQ];
-        const v=a?a.answer:-1;
-        if(v>=0)votes[v]=(votes[v]||0)+1;
-      });
-      const total=teamPlayers.filter(p=>{
-        const a=p.blitzAnswers&&p.blitzAnswers['q'+blitzState.currentQ];
-        return a&&a.answer>=0;
-      }).length;
-      if(total===0)return{vote:-1,isPerfect:false,deadlock:false};
-      let best=-1,bestCount=0;
-      Object.entries(votes).forEach(([v,c])=>{if(c>bestCount){bestCount=c;best=parseInt(v);}});
-      const half=total/2;
-      const deadlock=bestCount===half&&Object.values(votes).filter(c=>c===half).length>1;
-      const isPerfect=bestCount===teamPlayers.length&&best===q.answer;
-      return{vote:deadlock?'deadlock':best,isPerfect,deadlock,votes,total};
-    };
-
-    const aResult=computeMajority(aPlayers);
-    const bResult=computeMajority(bPlayers);
-
-    const calcPoints=(result,teamSize)=>{
-      if(result.deadlock&&teamSize===2){
-        // 2-player split rule
-        return result.votes&&result.votes[activeQuestions[blitzState.currentQ].answer]?5:result.votes?-3:0;
-      }
-      if(result.deadlock)return 0;
-      if(result.vote===q.answer)return result.isPerfect?25:10;
-      return result.vote===-1?0:-3;
-    };
-
-    const aPoints=calcPoints(aResult,aPlayers.length);
-    const bPoints=calcPoints(bResult,bPlayers.length);
-
-    await db.ref('games/'+myPin+'/blitzRound').set({
-      q:blitzState.currentQ,phase:'reveal',
-      aVote:aResult.vote,aPoints,aPerfect:aResult.isPerfect,aDeadlock:aResult.deadlock,aVotes:aResult.votes||{},
-      bVote:bResult.vote,bPoints,bPerfect:bResult.isPerfect,bDeadlock:bResult.deadlock,bVotes:bResult.votes||{},
-      correctAnswer:q.answer,questionText:q.q,options:q.options,
+    room.send('blitzAnswer',{
+      questionIndex:blitzState.currentQ,
+      answer:idx,
+      team:blitzState.myTeam,
       timestamp:Date.now()
     });
   }catch(e){}
 }
 
+async function tryTriggerBlitzReveal(){
+  // Server (Colyseus) handles majority-vote computation and reveal broadcasting.
+  // Client only needs to confirm it submitted its answer via submitBlitzAnswer().
+  // The server broadcasts 'blitzReveal' to all players when all have answered or timer expires.
+}
+
 function showBlitzReveal(round){
   if(blitzState.finished)return;
   clearInterval(window.blitzTimer);
-  // Detach blitzRound listener during reveal phase to avoid duplicate triggers
-  db.ref('games/'+myPin+'/blitzRound').off();
 
   // Update running scores
   blitzState.teamScoreA=Math.max(0,blitzState.teamScoreA+round.aPoints);
@@ -3193,13 +3005,10 @@ function showBlitzReveal(round){
   // Track personal accuracy
   if(blitzState.myAnswer===round.correctAnswer)blitzState.myCorrectCount++;
 
-  // Push live score to Firebase so host dashboard updates in real time
+  // Push live score to server
   try{
     const myTeamScore=blitzState.myTeam==='A'?blitzState.teamScoreA:blitzState.teamScoreB;
-    db.ref('games/'+myPin+'/players/'+myPlayerId).update({
-      score:myTeamScore,
-      blitzCorrectCount:blitzState.myCorrectCount
-    });
+    room.send('updateBlitzScore',{score:myTeamScore,blitzCorrectCount:blitzState.myCorrectCount});
   }catch(e){}
 
   // Build reveal screen
@@ -3276,13 +3085,6 @@ function showBlitzReveal(round){
           finishBlitzQuiz(false);
         }
       }else{
-        // Re-attach blitzRound listener for next question (single, fresh listener)
-        db.ref('games/'+myPin+'/blitzRound').off();
-        db.ref('games/'+myPin+'/blitzRound').on('value',snap=>{
-          const round=snap.val();
-          if(!round||round.q!==blitzState.currentQ)return;
-          if(round.phase==='reveal')showBlitzReveal(round);
-        });
         showPage('blitz-quiz');
         renderBlitzQuestion();
         startBlitzQuestionTimer();
@@ -3303,54 +3105,20 @@ function startBlitzSuddenDeath(){
   showPage('blitz-quiz');
   renderBlitzQuestion();
   startBlitzQuestionTimer();
-  db.ref('games/'+myPin+'/blitzRound').off();
-  db.ref('games/'+myPin+'/blitzRound').on('value',snap=>{
-    const round=snap.val();
-    if(!round||round.q!==blitzState.currentQ)return;
-    if(round.phase==='reveal'){
-      // After sudden death reveal, check winner
-      const aCorrect=round.aVote===round.correctAnswer;
-      const bCorrect=round.bVote===round.correctAnswer;
-      clearInterval(blitzState.revealCountdown);
-      if(aCorrect===bCorrect){
-        // Still tied — another sudden death
-        setTimeout(()=>startBlitzSuddenDeath(),4500);
-      }else{
-        if(aCorrect)blitzState.teamScoreA+=10;
-        if(bCorrect)blitzState.teamScoreB+=10;
-        setTimeout(()=>finishBlitzQuiz(false),4500);
-      }
-    }
-  });
+  // Server broadcasts 'blitzReveal' — handled by the listener registered in startBlitzQuiz
 }
 
 // ══════════════════════════════════════════
 // TEAM BLITZ — REACTIONS & SIGNALS
 // ══════════════════════════════════════════
 async function sendReaction(emoji){
-  if(!blitzState.myTeam||!myPin)return;
+  if(!blitzState.myTeam||!myPin||!room)return;
   // Rate-limit: max 1 reaction per 600ms per player to prevent spam flooding
   const now=Date.now();
   if(window._lastReactionTime&&now-window._lastReactionTime<600)return;
   window._lastReactionTime=now;
   try{
-    // Use a timestamped key so each reaction is a distinct child (not overwriting previous)
-    const key=myPlayerId+'_'+now;
-    await db.ref('games/'+myPin+'/blitzReactions/'+key).set({
-      emoji,team:blitzState.myTeam,timestamp:now,sender:myPlayerId
-    });
-    // Clean up old reaction entries for this player to prevent node growth
-    db.ref('games/'+myPin+'/blitzReactions').orderByChild('sender').equalTo(myPlayerId)
-      .once('value',snap=>{
-        const entries=snap.val()||{};
-        const keys=Object.keys(entries).sort();
-        // Keep only the 3 most recent, remove older ones
-        if(keys.length>3){
-          keys.slice(0,keys.length-3).forEach(k=>{
-            db.ref('games/'+myPin+'/blitzReactions/'+k).remove();
-          });
-        }
-      });
+    room.send('blitzReaction',{emoji,team:blitzState.myTeam,timestamp:now});
     spawnReactionBubble(emoji);
   }catch(e){}
 }
@@ -3365,27 +3133,13 @@ function spawnReactionBubble(emoji){
 }
 
 async function sendSignal(text){
-  if(!blitzState.myTeam||!myPin)return;
+  if(!blitzState.myTeam||!myPin||!room)return;
   // Rate-limit: max 1 signal per 1 second
   const now=Date.now();
   if(window._lastSignalTime&&now-window._lastSignalTime<1000)return;
   window._lastSignalTime=now;
   try{
-    const key=myPlayerId+'_'+now;
-    await db.ref('games/'+myPin+'/blitzSignals/'+key).set({
-      text,nickname:myNickname,team:blitzState.myTeam,timestamp:now,sender:myPlayerId
-    });
-    // Clean up stale signals for this player (keep only 2 most recent)
-    db.ref('games/'+myPin+'/blitzSignals').orderByChild('sender').equalTo(myPlayerId)
-      .once('value',snap=>{
-        const entries=snap.val()||{};
-        const keys=Object.keys(entries).sort();
-        if(keys.length>2){
-          keys.slice(0,keys.length-2).forEach(k=>{
-            db.ref('games/'+myPin+'/blitzSignals/'+k).remove();
-          });
-        }
-      });
+    room.send('blitzSignal',{text,nickname:myNickname,team:blitzState.myTeam,timestamp:now});
   }catch(e){}
   // Show signal locally for the sender
   const bar=document.getElementById('blitz-signals-bar');
@@ -3406,22 +3160,18 @@ async function finishBlitzQuiz(forced){
   cleanupGameSession();
   sessionStorage.removeItem('qm_session');
 
-  // Save final personal stats
+  // Save final personal and team stats via Colyseus
   try{
-    await db.ref('games/'+myPin+'/players/'+myPlayerId).update({
-      finished:true,finishedAt:Date.now(),
+    room.send('blitzFinished',{
       blitzCorrectCount:blitzState.myCorrectCount,
       blitzTeam:blitzState.myTeam,
-      score:blitzState.myTeam==='A'?blitzState.teamScoreA:blitzState.teamScoreB
-    });
-    // Save final team scores to game node
-    await db.ref('games/'+myPin).update({
-      blitzScoreA:blitzState.teamScoreA,
-      blitzScoreB:blitzState.teamScoreB,
-      blitzRoundsWonA:blitzState.roundsWonA,
-      blitzRoundsWonB:blitzState.roundsWonB,
-      blitzPerfectA:blitzState.perfectA,
-      blitzPerfectB:blitzState.perfectB
+      score:blitzState.myTeam==='A'?blitzState.teamScoreA:blitzState.teamScoreB,
+      teamScoreA:blitzState.teamScoreA,
+      teamScoreB:blitzState.teamScoreB,
+      roundsWonA:blitzState.roundsWonA,
+      roundsWonB:blitzState.roundsWonB,
+      perfectA:blitzState.perfectA,
+      perfectB:blitzState.perfectB
     });
   }catch(e){}
 
@@ -3477,10 +3227,9 @@ async function showBlitzResults(){
   const waitingLobby=document.getElementById('blitz-results-waiting-lobby');
   if(waitingLobby&&!isHost)waitingLobby.style.display='block';
 
-  // MVPs from Firebase
+  // MVPs from last known players state (kept in sync via Colyseus messages)
   try{
-    const snap=await db.ref('games/'+myPin+'/players').get();
-    const players=Object.values(snap.val()||{});
+    const players=Object.values(window._lastKnownPlayers||{});
     const aPlayers=players.filter(p=>p.team==='A').sort((a,b)=>(b.blitzCorrectCount||0)-(a.blitzCorrectCount||0));
     const bPlayers=players.filter(p=>p.team==='B').sort((a,b)=>(b.blitzCorrectCount||0)-(a.blitzCorrectCount||0));
     const mvpA=aPlayers[0];const mvpB=bPlayers[0];
@@ -3507,26 +3256,17 @@ async function showBlitzResults(){
     }
   }catch(e){}
 
-  // Listen for host launching next round from blitz results screen
-  if(myPin&&!isHost){
-    db.ref('games/'+myPin+'/status').off();
-    db.ref('games/'+myPin+'/status').on('value',statusSnap=>{
-      const st=statusSnap.val();
-      if(st==='next-round'){
-        // Show "next round loading" state in waiting lobby
-        if(waitingLobby){
-          waitingLobby.querySelector('div:nth-child(2)').textContent='Next round loading...';
-          waitingLobby.querySelector('div:nth-child(3)').textContent='Waiting for host to set up the next round...';
-        }
-      }
-      if(st==='lobby'){
-        db.ref('games/'+myPin+'/status').off();
-        showNextRoundJoinPrompt();
-      }
-    });
-  }
+  // Next-round handling is via room.onMessage('roundReset') in setupRoomListeners()
 }
-if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/Bible-blitz/sw.js',{scope:'/Bible-blitz/'}).catch(e=>console.warn('SW:',e));});}
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    // Resolve SW path relative to the script's origin so it works on GitHub Pages
+    const swBase=location.pathname.replace(/\/[^/]*$/,'')||'';
+    const swPath=swBase+'/sw.js';
+    navigator.serviceWorker.register(swPath,{scope:swBase+'/'})
+      .catch(e=>console.warn('SW:',e));
+  });
+}
 
 // ══════════════════════════════════════════
 // SESSION RESTORE — rejoin after refresh
@@ -3537,90 +3277,48 @@ if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.s
   let s;try{s=JSON.parse(saved);}catch(e){return;}
   if(!s.pin||!s.nick||!s.playerId)return;
   try{
-    const snap=await db.ref('games/'+s.pin).get();
-    if(!snap.exists())return;
-    const g=snap.val();
-    if(g.status==='ended'){sessionStorage.removeItem('qm_session');return;}
-    // If this was a waiting player and the game is now in lobby, join normally
-    if(s.waiting&&g.status==='lobby'){
-      myPin=s.pin;myNickname=s.nick;myPlayerId=s.playerId;
-      // Check if they were promoted to players in last round transition
-      const pSnap=await db.ref('games/'+s.pin+'/players/'+s.playerId).get();
-      if(pSnap.exists()){
-        setupLobby(g);showPage('lobby');return;
-      }
-      // Otherwise register as a normal player
-      await db.ref('games/'+s.pin+'/players/'+s.playerId).set({
-        id:s.playerId,nickname:s.nick,score:0,correctCount:0,
-        finished:false,eliminated:false,joinedAt:Date.now(),answers:{}
-      });
-      setupLobby(g);showPage('lobby');return;
-    }
-    // If still in waiting (game still active)
-    if(s.waiting&&g.status==='active'){
-      myPin=s.pin;myNickname=s.nick;myPlayerId=s.playerId;
-      document.getElementById('waiting-name').textContent=s.nick;
-      document.getElementById('waiting-pin').textContent=s.pin;
-      showPage('waiting');
-      startWaitingMode();
-      return;
-    }
-    // Check player record still exists
-    const pSnap=await db.ref('games/'+s.pin+'/players/'+s.playerId).get();
-    if(!pSnap.exists())return;
-    // Restore globals
-    myPin=s.pin;myNickname=s.nick;myPlayerId=s.playerId;
-    if(g.status==='active'&&g.activeQuestions){
-      gameSettings=g.settings||{};
-      const savedState=pSnap.val();
-      if(savedState.finished){goToResults();return;}
-      if(savedState.eliminated){
-        activeQuestions=[];gameSettings=g.settings||{};
-        quizState={current:0,score:savedState.score||0,correctCount:savedState.correctCount||0,answers:{},selected:null,finished:false,eliminated:true};
-        showPage('eliminated');
-        document.getElementById('eliminated-score').textContent=quizState.score;
-        document.getElementById('eliminated-correct').textContent=(quizState.correctCount||0)+' correct';
-        startSpectatorMode();return;
-      }
-      // Resume mid-game — find the furthest unanswered question
-      const answeredCount=savedState.answers?Object.keys(savedState.answers).length:0;
-      activeQuestions=Object.values(g.activeQuestions);
-      gameStartTime=g.startTime;
-      quizState={current:Math.min(answeredCount,activeQuestions.length-1),score:savedState.score||0,correctCount:savedState.correctCount||0,answers:savedState.answers||{},selected:null,finished:false,eliminated:false,questionStartTime:Date.now()};
-      showPage('quiz');
-      const isLightning=gameSettings.gameMode==='lightning';
-      const isSurvivalRestore=gameSettings.gameMode==='survival';
-      document.getElementById('quiz-global-timer').style.display=(isLightning||isSurvivalRestore)?'none':'flex';
-      document.getElementById('quiz-q-timer').style.display=(isLightning||isSurvivalRestore)?'flex':'none';
-      document.getElementById('quiz-lives').style.display=isSurvivalRestore?'block':'none';
-      const qTimerLabelR=document.getElementById('quiz-q-timer-label');
-      if(qTimerLabelR)qTimerLabelR.textContent=isSurvivalRestore?'to answer':'per Q';
-      renderQuestion();
-      if(isLightning){
-        startQuestionTimer();
-        // Attach Lightning global timer from Firebase
-        window._lightningGameStateRef=db.ref('games/'+s.pin+'/gameState');
-        window._lightningGameStateRef.on('value',snap=>{
-          const gs=snap.val();
-          if(!gs)return;
-          if(gs.status==='ended'&&!quizState.finished){finishQuiz();return;}
-          if(gs.globalEndTime&&!quizState.finished)startLightningGlobalTimer(gs.globalEndTime);
-        });
-      }else if(isSurvivalRestore){
-        startSurvivalQuestionTimer();
-      }else startGlobalTimer(Date.now());
-      setTimeout(()=>{
-        db.ref('games/'+s.pin+'/status').on('value',snap=>{if(snap.val()==='ended'&&!quizState.finished)finishQuiz();});
-        if(isLightning){
-          db.ref('games/'+s.pin+'/gameState/status').on('value',snap=>{if(snap.val()==='ended'&&!quizState.finished)finishQuiz();});
+    // Attempt to reconnect to Colyseus room with saved session
+    room=await client.joinById(s.pin,{nickname:s.nick,isHost:false,reconnect:true,sessionId:s.playerId});
+    myPin=s.pin;myNickname=s.nick;myPlayerId=room.sessionId;
+    setupRoomListeners();
+    // Server sends 'joinAck' or 'gameState' with the current room state
+    room.onMessage('joinAck',(data)=>{
+      if(data.status==='active'){
+        if(data.eliminated){
+          quizState={current:0,score:data.score||0,correctCount:data.correctCount||0,
+            answers:{},selected:null,finished:false,eliminated:true};
+          showPage('eliminated');
+          document.getElementById('eliminated-score').textContent=quizState.score;
+          document.getElementById('eliminated-correct').textContent=(quizState.correctCount||0)+' correct';
+          startSpectatorMode();
+        }else if(data.finished){
+          quizState.score=data.score||0;
+          quizState.correctCount=data.correctCount||0;
+          goToResults();
+        }else if(data.gameMode==='blitz'){
+          blitzState.myTeam=data.team;
+          blitzState.teamAName=data.teamAName||'Team A';
+          blitzState.teamBName=data.teamBName||'Team B';
+          showPage('blitz-lobby');
+          setupBlitzLobby();
+        }else{
+          // Resume mid-game
+          startQuiz({settings:data.settings,activeQuestions:data.activeQuestions,startTime:data.startTime});
         }
-      },2000);
-    }else{
-      // Back to lobby
-      setupLobby(g);
-      showPage('lobby');
-    }
-  }catch(e){sessionStorage.removeItem('qm_session');}
+      }else if(data.waiting){
+        document.getElementById('waiting-name').textContent=s.nick;
+        document.getElementById('waiting-pin').textContent=s.pin;
+        showPage('waiting');
+        startWaitingMode();
+      }else{
+        setupLobby({settings:data.settings});
+        showPage('lobby');
+      }
+    });
+  }catch(e){
+    // Room no longer exists or session expired — clear and start fresh
+    sessionStorage.removeItem('qm_session');
+  }
 })();
 
 let deferredPrompt=null;
@@ -3631,7 +3329,7 @@ window.addEventListener('beforeinstallprompt',e=>{
   const isStandalone=window.matchMedia('(display-mode: standalone)').matches||('standalone' in navigator&&navigator.standalone);
   const dismissed=sessionStorage.getItem('qm_install_dismissed');
   if(!isStandalone&&!dismissed){
-    setTimeout(()=>{const b=document.getElementById('pwa-install-banner');if(b){b.style.display='flex';b.style.alignItems='center';b.style.gap='14px';}},3000);
+    setTimeout(()=>{const b=document.getElementById('pwa-install-banner');if(b){b.style.display='flex';b.style.alignItems='center';b.style.gap='14px';}},2000);
   }
 });
 
@@ -3641,7 +3339,7 @@ window.addEventListener('beforeinstallprompt',e=>{
   const isStandalone=('standalone' in navigator)&&navigator.standalone;
   const dismissed=sessionStorage.getItem('qm_install_dismissed');
   if(isIos&&!isStandalone&&!dismissed){
-    setTimeout(()=>{const ios=document.getElementById('pwa-ios-hint');if(ios){ios.style.display='flex';ios.style.alignItems='center';ios.style.gap='14px';}},3000);
+    setTimeout(()=>{const ios=document.getElementById('pwa-ios-hint');if(ios){ios.style.display='flex';ios.style.alignItems='center';ios.style.gap='14px';}},2000);
   }
 })();
 
