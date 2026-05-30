@@ -260,7 +260,7 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
     <div class="flex-center gap8" style="justify-content:center;margin-bottom:40px;gap:40px;margin-top:36px;">
       <div class="center"><div class="orbitron neon-text" style="font-size:28px;">10-50</div><div style="font-size:13px;color:#6a7a9a;margin-top:4px;">Questions</div></div>
       <div class="center"><div class="orbitron neon-text" style="font-size:28px;">4</div><div style="font-size:13px;color:#6a7a9a;margin-top:4px;">Game Modes</div></div>
-      <div class="center"><div class="orbitron neon-text" style="font-size:28px;">20</div><div style="font-size:13px;color:#6a7a9a;margin-top:4px;">Max Players</div></div>
+      <div class="center"><div class="orbitron neon-text" style="font-size:28px;">50</div><div style="font-size:13px;color:#6a7a9a;margin-top:4px;">Max Players</div></div>
     </div>
 
     <div style="margin-top:20px;display:flex;justify-content:center;gap:8px;flex-wrap:wrap;">
@@ -2090,8 +2090,8 @@ async function joinGame(){
     // Check for duplicate nickname
     const playersSnap=await db.ref('games/'+pin+'/players').get();
     const existingPlayers=playersSnap.val()||{};
-    // ── Hard cap: max 20 players per room ──
-    const MAX_PLAYERS_PER_ROOM=20;
+    // ── Hard cap: max 50 players per room ──
+    const MAX_PLAYERS_PER_ROOM=50;
     const currentPlayerCount=Object.values(existingPlayers).filter(p=>!p.exited).length;
     if(currentPlayerCount>=MAX_PLAYERS_PER_ROOM){
       errEl.textContent='❌ This room is full! Maximum '+MAX_PLAYERS_PER_ROOM+' players allowed per game.';
