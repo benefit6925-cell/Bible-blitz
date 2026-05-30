@@ -15,8 +15,8 @@
 <meta property="og:title" content="Quiz Mate 🎮">
 <meta property="og:description" content="The ultimate multiplayer quiz — play with friends anywhere!">
 <meta property="og:type" content="website">
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+<script src="https://unpkg.com/colyseus.js@^0.15.0/dist/colyseus.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -1084,18 +1084,8 @@ Answer: B</pre>
 // ══════════════════════════════════════════
 // FIREBASE CONFIG
 // ══════════════════════════════════════════
-const firebaseConfig={
-  apiKey:"AIzaSyC5mWTJYnQRZJ8BxGx9xQ4Xm2dQUIyjIfM",
-  authDomain:"bible-blitz.firebaseapp.com",
-  databaseURL:"https://bible-blitz-default-rtdb.firebaseio.com",
-  projectId:"bible-blitz",
-  storageBucket:"bible-blitz.firebasestorage.app",
-  messagingSenderId:"287293986494",
-  appId:"1:287293986494:web:cc2332e5edac83ae0470ef",
-  measurementId:"G-76PMZ0RBTL"
-};
-firebase.initializeApp(firebaseConfig);
-const db=firebase.database();
+const client = new Colyseus.Client('wss://quizmate-server.onrender.com');
+let room = null;
 
 // ══════════════════════════════════════════
 // DEFAULT QUESTIONS (20 built-in)
