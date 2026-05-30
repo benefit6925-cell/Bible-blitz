@@ -1087,6 +1087,19 @@ Answer: B</pre>
 const client = new Colyseus.Client('wss://quizmate-server.onrender.com');
 let room = null;
 
+// Firebase stub — prevents crashes from remaining db.ref calls during migration
+const db = {
+  ref: () => ({
+    on: () => {},
+    off: () => {},
+    get: () => Promise.resolve({ exists: () => false, val: () => null }),
+    set: () => Promise.resolve(),
+    update: () => Promise.resolve(),
+    remove: () => Promise.resolve(),
+    push: () => Promise.resolve({ key: 'stub' }),
+  })
+};
+
 // ══════════════════════════════════════════
 // DEFAULT QUESTIONS (20 built-in)
 // ══════════════════════════════════════════
@@ -1123,6 +1136,132 @@ const MODE_DESCS={
   survival:"One wrong answer and you're eliminated! Last player standing wins.",
   blitz:"⚔️ Teams vote on every question — majority decides! Reactions, signals, and sudden death tiebreakers."
 };
+
+// ══════════════════════════════════════════
+// COLYSEUS ROOM LISTENERS
+// ══════════════════════════════════════════
+function setupRoomListeners(){
+  if(!room)return;
+  window._lastKnownPlayers={};
+
+  room.onMessage('gameState',(state)=>{
+    gameSettings=state.settings||gameSettings;
+    window._lastKnownPlayers=state.players||{};
+    if(state.status==='active'&&state.activeQuestions&&state.activeQuestions.length>0){
+      if(isHost){updateAdminPlayers(state.players||{});}
+      else{startQuiz({settings:state.settings,activeQuestions:state.activeQuestions,startTime:state.startTime});}
+    }else if(state.status==='lobby'){
+      if(isHost){setupAdminDashboard();showPage('admin');}
+      else{setupLobby({settings:state.settings});showPage('lobby');}
+    }
+  });
+
+  room.onMessage('playersUpdated',({players})=>{
+    window._lastKnownPlayers=players||{};
+    if(isHost){updateAdminPlayers(players||{});}
+    // Update spectator leaderboard if on eliminated page
+    const lb=document.getElementById('spectator-leaderboard');
+    if(lb&&document.getElementById('page-eliminated').classList.contains('active')){
+      const sorted=Object.values(players||{}).sort((a,b)=>b.score-a.score);
+      lb.innerHTML=sorted.map((p,i)=>`
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(255,255,255,0.03);border-radius:10px;margin-bottom:6px;">
+          <span style="font-size:13px;color:#6a7a9a;min-width:20px;">${i+1}</span>
+          <div class="avatar" style="width:28px;height:28px;background:${avatarColor(p.nickname)}30;color:${avatarColor(p.nickname)};font-size:11px;">${p.nickname[0].toUpperCase()}</div>
+          <span style="flex:1;font-size:13px;">${escHtml(p.nickname)}${p.eliminated?' 💀':''}</span>
+          <span style="font-size:14px;font-weight:700;color:#4ade80;">${p.score}</span>
+        </div>`).join('');
+    }
+    // Update waiting room leaderboard
+    const wlb=document.getElementById('waiting-leaderboard');
+    if(wlb){
+      const sorted=Object.values(players||{}).sort((a,b)=>b.score-a.score);
+      const lbWrap=document.getElementById('waiting-live-lb');
+      if(sorted.length>0&&lbWrap)lbWrap.style.display='block';
+      wlb.innerHTML=sorted.slice(0,10).map((p,i)=>`
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(255,255,255,0.03);border-radius:10px;margin-bottom:6px;">
+          <span style="font-size:13px;color:#6a7a9a;min-width:20px;">${i+1}</span>
+          <div class="avatar" style="width:28px;height:28px;background:${avatarColor(p.nickname)}30;color:${avatarColor(p.nickname)};font-size:11px;">${p.nickname[0].toUpperCase()}</div>
+          <span style="flex:1;font-size:13px;">${escHtml(p.nickname)}${p.eliminated?' 💀':''}</span>
+          <span style="font-size:14px;font-weight:700;color:#4ade80;">${p.score}</span>
+        </div>`).join('');
+    }
+    // Update lobby player list
+    const lp=document.getElementById('lobby-players');
+    if(lp&&document.getElementById('page-lobby').classList.contains('active')){
+      const arr=Object.values(players||{});
+      document.getElementById('lobby-count').textContent='PLAYERS IN LOBBY ('+arr.length+')';
+      lp.innerHTML=arr.map(p=>`
+        <div class="player-chip">
+          <div class="avatar" style="background:${avatarColor(p.nickname)}30;color:${avatarColor(p.nickname)}">${p.nickname[0].toUpperCase()}</div>
+          <span style="font-weight:${p.id===myPlayerId?700:400};">${escHtml(p.nickname)}</span>
+          ${p.id===myPlayerId?'<span style="margin-left:auto;font-size:12px;color:#6a7a9a;">you</span>':''}
+        </div>`).join('');
+    }
+  });
+
+  room.onMessage('gameStarted',({activeQuestions,startTime,settings,globalEndTime})=>{
+    gameSettings=settings||gameSettings;
+    window._lightningGlobalEndTime=globalEndTime||null;
+    if(isHost){
+      // Host side: update admin status
+      updateAdminStatus({status:'active',startTime,settings});
+    }else{
+      startQuiz({settings,activeQuestions,startTime});
+    }
+  });
+
+  room.onMessage('gameEnded',()=>{
+    if(!quizState.finished)finishQuiz();
+    if(isHost){adminEndGame();}
+  });
+
+  room.onMessage('allFinished',()=>{
+    if(isHost)adminEndGame();
+  });
+
+  room.onMessage('roundReset',({settings,players})=>{
+    gameSettings=settings||gameSettings;
+    window._lastKnownPlayers=players||{};
+    adminGameEnded=false;
+    quizState={current:0,score:0,correctCount:0,answers:{},selected:null,finished:false,eliminated:false,questionStartTime:0};
+    clearInterval(window.activeGameTimer);
+    clearInterval(window.questionTimer);
+    clearInterval(adminTimerInterval);
+    if(isHost){
+      updateAdminSettingChips();
+      document.getElementById('admin-share-box').style.display='block';
+      document.getElementById('admin-winner-box').style.display='none';
+      document.getElementById('admin-timer-bar-wrap').style.display='none';
+      document.getElementById('admin-start-btn').style.display='';
+      document.getElementById('admin-end-btn').style.display='none';
+      const nrBtn=document.getElementById('admin-next-round-btn');
+      if(nrBtn)nrBtn.style.display='none';
+      document.getElementById('admin-timer').textContent='—';
+      showPage('admin');
+    }else{
+      showNextRoundJoinPrompt();
+    }
+  });
+
+  room.onMessage('settingsUpdated',({settings})=>{
+    gameSettings=settings;
+    updateAdminSettingChips();
+  });
+
+  room.onMessage('questionsUpdated',({questions})=>{
+    customQuestions=questions||[];
+    renderCustomQuestionList();
+    updateQCountDisplay();
+  });
+
+  room.onLeave(()=>{
+    console.log('Left room');
+  });
+
+  room.onError((code,message)=>{
+    console.error('Room error:',code,message);
+  });
+}
 
 // ══════════════════════════════════════════
 // STATE
@@ -1205,15 +1344,7 @@ function cleanupPlayerSession(){
   clearTimeout(_nextRoundCountdownTimer);
   if(blitzState&&blitzState.revealCountdown)clearInterval(blitzState.revealCountdown);
   if(myPin){
-    try{db.ref('games/'+myPin+'/blitzRound').off();}catch(e){}
-    try{db.ref('games/'+myPin+'/blitzReactions').off();}catch(e){}
-    try{db.ref('games/'+myPin+'/blitzSignals').off();}catch(e){}
-    try{db.ref('games/'+myPin+'/status').off();}catch(e){}
-    try{db.ref('games/'+myPin+'/players').off();}catch(e){}
-    try{db.ref('games/'+myPin).off();}catch(e){}
-    try{db.ref('games/'+myPin+'/gameState/status').off();}catch(e){}
-    try{db.ref('games/'+myPin+'/gameState').off();}catch(e){}
-    try{db.ref('games/'+myPin+'/gameState/survivalQuestion').off();}catch(e){}
+    try{if(room){room.leave();room=null;}}catch(e){}
   }
   if(window._lightningGameStateRef){try{window._lightningGameStateRef.off();}catch(e){}window._lightningGameStateRef=null;}
   sessionStorage.removeItem('qm_session');
@@ -1247,7 +1378,7 @@ async function confirmExitLobby(){
   const o=document.getElementById('exit-confirm-overlay');
   if(o)o.style.display='none';
   if(myPin&&myPlayerId&&!isHost){
-    try{await db.ref('games/'+myPin+'/players/'+myPlayerId).update({exited:true});}catch(e){}
+    try{room.send('playerExit',{});if(room){room.leave();room=null;}}catch(e){}
   }
   cleanupPlayerSession();
   navigateToLandingPage();
@@ -1290,23 +1421,18 @@ function playerJoinNextRoundLobby(){
 
 function _doJoinNextRoundLobby(){
   if(!myPin)return;
-  db.ref('games/'+myPin).get().then(gsnap=>{
-    const g=gsnap.val()||{};
-    quizState={current:0,score:0,correctCount:0,answers:{},selected:null,finished:false,eliminated:false,questionStartTime:0};
-    clearInterval(window.activeGameTimer);
-    clearInterval(window.questionTimer);
-    roomState='lobby';
+  const g={settings:gameSettings};
+  quizState={current:0,score:0,correctCount:0,answers:{},selected:null,finished:false,eliminated:false,questionStartTime:0};
+  clearInterval(window.activeGameTimer);
+  clearInterval(window.questionTimer);
+  roomState='lobby';
+  {
     if(g.settings&&g.settings.gameMode==='blitz'){
       blitzState.teamAName=g.settings.teamAName||'Team A';
       blitzState.teamBName=g.settings.teamBName||'Team B';
-      // Detach old blitz lobby listeners before re-setting up
-      try{db.ref('games/'+myPin+'/players').off();}catch(e){}
-      try{db.ref('games/'+myPin).off();}catch(e){}
       setupBlitzLobby();
       showPage('blitz-lobby');
     }else{
-      try{db.ref('games/'+myPin+'/players').off();}catch(e){}
-      try{db.ref('games/'+myPin).off();}catch(e){}
       setupLobby(g);
       showPage('lobby');
     }
@@ -1413,47 +1539,10 @@ function showAdminTab(tab){
 }
 
 // ══════════════════════════════════════════
-// HOST — IP RATE LIMITING (3 rooms/hour per host fingerprint)
+// HOST — RATE LIMITING (handled server-side by Colyseus)
 // ══════════════════════════════════════════
-const HOST_RATE_LIMIT=3;
-const HOST_RATE_WINDOW=60*60*1000;
-
-function getHostFingerprint(){
-  const raw=[
-    navigator.userAgent||'',
-    navigator.language||'',
-    screen.width+'x'+screen.height,
-    Intl.DateTimeFormat().resolvedOptions().timeZone||'',
-    navigator.hardwareConcurrency||'',
-    navigator.platform||''
-  ].join('|');
-  let h=5381;
-  for(let i=0;i<raw.length;i++){h=((h<<5)+h)^raw.charCodeAt(i);h=h>>>0;}
-  return 'hfp_'+h.toString(36);
-}
-
 async function checkHostRateLimit(){
-  const fp=getHostFingerprint();
-  const now=Date.now();
-  const windowStart=now-HOST_RATE_WINDOW;
-  const ratePath='rateLimits/hosts/'+fp;
-  try{
-    const snap=await db.ref(ratePath).get();
-    const record=snap.val()||{attempts:[]};
-    const recent=(record.attempts||[]).filter(t=>t>windowStart);
-    if(recent.length>=HOST_RATE_LIMIT){
-      const oldestInWindow=Math.min(...recent);
-      const resetIn=Math.ceil((oldestInWindow+HOST_RATE_WINDOW-now)/60000);
-      throw new Error('\u23F1\uFE0F Room creation limit reached ('+HOST_RATE_LIMIT+' per hour). Please try again in ~'+resetIn+' min.');
-    }
-    recent.push(now);
-    await db.ref(ratePath).set({attempts:recent,lastSeen:now,fp});
-    return true;
-  }catch(e){
-    if(e.message.includes('Room creation limit'))throw e;
-    console.warn('Rate limit check bypassed:',e.message);
-    return true;
-  }
+  return true;
 }
 
 // ══════════════════════════════════════════
@@ -1489,24 +1578,22 @@ async function createGame(){
   const btn=document.getElementById('host-create-btn');
   btn.disabled=true;btn.textContent='Creating...';
   try{
-    // ── Rate limit check ──
     await checkHostRateLimit();
-    const existing=await db.ref('games/'+pin).get();
-    if(existing.exists()&&existing.val().status!=='ended'){
-      errEl.textContent='❌ PIN "'+pin+'" is already in use by another room. Choose a different one.';
-      errEl.classList.add('show');btn.disabled=false;btn.textContent='Create Game Room →';return;
-    }
-    await db.ref('games/'+pin).set({
-      pin,status:'lobby',hostName:name,settings,
-      startTime:null,createdAt:Date.now()
+    room = await client.create('quiz_room', {
+      pin, hostName:name, isHost:true, settings
     });
-    await db.ref('games/'+pin+'/players').remove();
     myPin=pin;isHost=true;gameSettings=settings;customQuestions=[];
+    setupRoomListeners();
     setupAdminDashboard();
     showPage('admin');
     showAdminTab('dashboard');
   }catch(e){
-    errEl.textContent='Error: '+e.message;errEl.classList.add('show');
+    if(e.message&&e.message.includes('already in use')){
+      errEl.textContent='❌ PIN "'+pin+'" is already in use. Choose a different one.';
+    }else{
+      errEl.textContent='Error: '+e.message;
+    }
+    errEl.classList.add('show');
   }
   btn.disabled=false;btn.textContent='Create Game Room →';
 }
@@ -1520,37 +1607,7 @@ function setupAdminDashboard(){
   document.getElementById('admin-share-url').textContent=window.location.href;
   updateAdminSettingChips();
 
-  gameRef=db.ref('games/'+myPin);
-  playersRef=db.ref('games/'+myPin+'/players');
-  gameRef.on('value',snap=>{
-    const g=snap.val();
-    if(!g)return;
-    if(g.settings)gameSettings=g.settings;
-    updateAdminStatus(g);
-  });
-  playersRef.on('value',snap=>{
-    updateAdminPlayers(snap.val()||{});
-  });
-  // Live blitz round score listener for host dashboard
-  db.ref('games/'+myPin+'/blitzRound').on('value',snap=>{
-    const round=snap.val();
-    if(!round||gameSettings.gameMode!=='blitz')return;
-    if(round.phase==='reveal'){
-      // Update host-side team score display whenever a round reveal is written
-      const hostScoreA=document.getElementById('host-blitz-score-a');
-      const hostScoreB=document.getElementById('host-blitz-score-b');
-      if(hostScoreA&&round.aPoints!==undefined){
-        // Accumulate from player records (most reliable source)
-        db.ref('games/'+myPin+'/players').get().then(psnap=>{
-          const pl=Object.values(psnap.val()||{});
-          const aScore=Math.max(0,...pl.filter(p=>p.team==='A').map(p=>p.score||0),0);
-          const bScore=Math.max(0,...pl.filter(p=>p.team==='B').map(p=>p.score||0),0);
-          if(document.getElementById('host-blitz-score-a'))document.getElementById('host-blitz-score-a').textContent=aScore;
-          if(document.getElementById('host-blitz-score-b'))document.getElementById('host-blitz-score-b').textContent=bScore;
-        });
-      }
-    }
-  });
+  // Colyseus handles real-time updates via setupRoomListeners()
 }
 
 function updateAdminSettingChips(){
@@ -1718,24 +1775,15 @@ async function adminStartGame(){
   const btn=document.getElementById('admin-start-btn');
   btn.disabled=true;btn.textContent='Starting...';
   try{
-    // Load custom questions
-    const snap=await db.ref('games/'+myPin+'/customQuestions').get();
-    const custom=snap.val()?Object.values(snap.val()):[];
-    // Build pool: custom only; fall back to defaults only if admin has added zero questions
-    const pool=custom.length>0?custom:[...DEFAULT_QUESTIONS];
+    const pool=customQuestions.length>0?customQuestions:[...DEFAULT_QUESTIONS];
     const seed=Date.now();
     const shuffled=seededShuffle(pool,seed);
     const qCount=gameSettings.questionCount||20;
     const active=shuffled.slice(0,Math.min(qCount,pool.length));
     const now=Date.now();
     const dur=gameSettings.timerDuration||120;
-    // For Lightning mode: store authoritative end time in Firebase so all clients use it
     const globalEndTime=(gameSettings.gameMode==='lightning')?now+(dur*1000):null;
-    await db.ref('games/'+myPin).update({
-      status:'active',startTime:now,activeQuestions:active,
-      'gameState/globalEndTime':globalEndTime,
-      'gameState/status':'active'
-    });
+    room.send('startGame',{questions:active,startTime:now,globalEndTime,settings:gameSettings});
   }catch(e){
     alert('Error starting game: '+e.message);
   }
@@ -1747,15 +1795,14 @@ async function adminEndGame(){
   if(adminGameEnded)return;
   adminGameEnded=true;
   clearInterval(adminTimerInterval);
-  await db.ref('games/'+myPin).update({status:'ended','gameState/status':'ended'});
+  room.send('endGame',{});
   document.getElementById('admin-winner-box').style.display='block';
 }
 
 async function adminReset(){
   adminGameEnded=false;
   clearInterval(adminTimerInterval);
-  await db.ref('games/'+myPin).update({status:'lobby',startTime:null,activeQuestions:null});
-  await db.ref('games/'+myPin+'/players').remove();
+  room.send('resetGame',{});
   document.getElementById('admin-share-box').style.display='block';
   document.getElementById('admin-winner-box').style.display='none';
   document.getElementById('admin-timer-bar-wrap').style.display='none';
@@ -1774,10 +1821,9 @@ async function adminCloseRoom(){
   clearInterval(window.questionTimer);
   clearInterval(window.blitzTimer);
   try{
-    await db.ref('games/'+myPin).update({status:'ended'});
-    await db.ref('games/'+myPin+'/players').remove();
-    if(gameRef)gameRef.off();
-    if(playersRef)playersRef.off();
+    room.send('endGame',{});
+    room.leave();
+    room=null;
   }catch(e){}
   myPin=null;isHost=false;gameSettings={questionCount:20,timerDuration:120,gameMode:'classic',scoringMode:'standard'};
   activeQuestions=[];customQuestions=[];
@@ -1834,30 +1880,7 @@ async function adminLaunchNextRound(){
   adminGameEnded=false;
   clearInterval(adminTimerInterval);
 
-  // Signal to all clients that a new round is incoming, then reset
-  await db.ref('games/'+myPin).update({status:'next-round',settings:newSettings,startTime:null,activeQuestions:null});
-  // Small delay so clients can catch the transition
-  await new Promise(r=>setTimeout(r,800));
-  // Reset all player scores but keep them in the room
-  const playersSnap=await db.ref('games/'+myPin+'/players').get();
-  const players=playersSnap.val()||{};
-  const updates={};
-  Object.keys(players).forEach(pid=>{
-    // Preserve team assignments for Team Blitz; only reset round state
-    updates[pid]={...players[pid],score:0,correctCount:0,finished:false,eliminated:false,answers:{},finishedAt:null,blitzAnswers:null,blitzCorrectCount:0};
-  });
-  // Also add waiting players (who joined mid-game) as full players now
-  const waitingSnap=await db.ref('games/'+myPin+'/waitingPlayers').get();
-  const waiting=waitingSnap.val()||{};
-  Object.keys(waiting).forEach(pid=>{
-    // Preserve team assignment if they were in a blitz room
-    updates[pid]={...waiting[pid],score:0,correctCount:0,finished:false,eliminated:false,answers:{},finishedAt:null,blitzAnswers:null,blitzCorrectCount:0};
-  });
-  await db.ref('games/'+myPin+'/players').set(Object.keys(updates).length>0?updates:null);
-  await db.ref('games/'+myPin+'/waitingPlayers').remove();
-  await db.ref('games/'+myPin+'/eliminated').remove();
-  // Now open the lobby
-  await db.ref('games/'+myPin).update({status:'lobby',settings:newSettings});
+  room.send('nextRound',{settings:newSettings});
   gameSettings=newSettings;
   updateAdminSettingChips();
   document.getElementById('admin-share-box').style.display='block';
@@ -2138,31 +2161,7 @@ async function joinGame(){
 // PLAYER — WAITING ROOM (mid-game joiners)
 // ══════════════════════════════════════════
 function startWaitingMode(){
-  // Show live leaderboard so they can watch
-  db.ref('games/'+myPin+'/players').on('value',snap=>{
-    const players=Object.values(snap.val()||{}).sort((a,b)=>b.score-a.score);
-    const lb=document.getElementById('waiting-leaderboard');
-    const lbWrap=document.getElementById('waiting-live-lb');
-    if(!lb)return;
-    if(players.length>0&&lbWrap)lbWrap.style.display='block';
-    lb.innerHTML=players.slice(0,10).map((p,i)=>`
-      <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(255,255,255,0.03);border-radius:10px;margin-bottom:6px;">
-        <span style="font-size:13px;color:#6a7a9a;min-width:20px;">${i+1}</span>
-        <div class="avatar" style="width:28px;height:28px;background:${avatarColor(p.nickname)}30;color:${avatarColor(p.nickname)};font-size:11px;">${p.nickname[0].toUpperCase()}</div>
-        <span style="flex:1;font-size:13px;">${escHtml(p.nickname)}${p.eliminated?' 💀':''}</span>
-        <span style="font-size:14px;font-weight:700;color:#4ade80;">${p.score}</span>
-      </div>`).join('');
-  });
-  // Watch for lobby re-open (next round)
-  db.ref('games/'+myPin+'/status').on('value',snap=>{
-    const st=snap.val();
-    if(st==='lobby'){
-      db.ref('games/'+myPin+'/players').off();
-      db.ref('games/'+myPin+'/status').off();
-      // Show join/exit prompt instead of auto-redirecting
-      showNextRoundJoinPrompt();
-    }
-  });
+  // Updates handled by setupRoomListeners()
 }
 
 // ══════════════════════════════════════════
@@ -2184,40 +2183,7 @@ function setupLobby(initialGame){
     `;
   }
 
-  db.ref('games/'+myPin+'/players').on('value',snap=>{
-    const players=Object.values(snap.val()||{});
-    document.getElementById('lobby-count').textContent='PLAYERS IN LOBBY ('+players.length+')';
-    const _lp=document.getElementById('lobby-players');if(_lp)_lp.innerHTML=players.map(p=>`
-      <div class="player-chip">
-        <div class="avatar" style="background:${avatarColor(p.nickname)}30;color:${avatarColor(p.nickname)}">${p.nickname[0].toUpperCase()}</div>
-        <span style="font-weight:${p.id===myPlayerId?700:400};">${escHtml(p.nickname)}</span>
-        ${p.id===myPlayerId?'<span style="margin-left:auto;font-size:12px;color:#6a7a9a;">you</span>':''}
-      </div>`).join('');
-  });
-
-  let gameStarted=false;
-  db.ref('games/'+myPin).on('value',snap=>{
-    const g=snap.val();
-    if(!g)return;
-    if(g.status==='active'&&g.activeQuestions&&!gameStarted){
-      gameStarted=true;
-      if(g.settings&&g.settings.gameMode==='blitz'){startBlitzQuiz(g);}
-      else{startQuiz(g);}
-    }
-    if(g.status==='ended'&&!gameStarted)goToResults();
-    // Lobby settings update (e.g. mode badge refresh for next round)
-    if(g.status==='lobby'&&g.settings){
-      gameSettings=g.settings;
-      const modeLabel={classic:'🎮 Classic',lightning:'⚡ Lightning',survival:'💀 Survival'};
-      const modeClass={classic:'mode-classic',lightning:'mode-lightning',survival:'mode-survival'};
-      const m=g.settings.gameMode||'classic';
-      const _lmb=document.getElementById('lobby-mode-badge');if(_lmb)_lmb.innerHTML=`
-        <span class="mode-tag ${modeClass[m]}">${modeLabel[m]||m}</span>
-        <span class="setting-chip">${g.settings.questionCount||20} Questions</span>
-        <span class="setting-chip">${formatTime(g.settings.timerDuration||120)}</span>
-      `;
-    }
-  });
+  // Real-time updates come from setupRoomListeners()
 }
 
 // ══════════════════════════════════════════
@@ -2259,45 +2225,15 @@ async function startQuiz(gameData){
 
   if(isLightning){
     startQuestionTimer();
-    // Watch Firebase authoritative gameState for Lightning
-    window._lightningGameStateRef=db.ref('games/'+myPin+'/gameState');
-    window._lightningGameStateRef.on('value',snap=>{
-      const gs=snap.val();
-      if(!gs)return;
-      if(gs.status==='ended'&&!quizState.finished){finishQuiz();return;}
-      if(gs.globalEndTime&&!quizState.finished){
-        // Start/restart the Lightning global session timer from Firebase end time
-        startLightningGlobalTimer(gs.globalEndTime);
-      }
-    });
+    // Lightning global timer starts from gameStarted message globalEndTime
+    if(window._lightningGlobalEndTime)startLightningGlobalTimer(window._lightningGlobalEndTime);
   }else if(isSurvival){
-    // Survival: start per-question timer; no global game timer
     startSurvivalQuestionTimer();
-    // Watch for sync-based question advancement from Firebase
-    db.ref('games/'+myPin+'/gameState/survivalQuestion').on('value',snap=>{
-      const qIdx=snap.val();
-      if(qIdx===null||qIdx===undefined)return;
-      if(qIdx>quizState.current&&quizState.selected===null&&!quizState.finished&&!quizState.eliminated){
-        // Host advanced the question — this player didn't answer in time → eliminated
-        // (already handled locally by timer, but catch any race)
-      }
-    });
   }else{
     startGlobalTimer(gameData.startTime);
   }
 
-  // Watch for host force-ending game (delay attach by 2s to avoid instant trigger on join)
-  setTimeout(()=>{
-    db.ref('games/'+myPin+'/status').on('value',snap=>{
-      if(snap.val()==='ended'&&!quizState.finished)finishQuiz();
-    });
-    // Lightning: also watch gameState/status in Firebase for authoritative game-over signal
-    if(isLightning){
-      db.ref('games/'+myPin+'/gameState/status').on('value',snap=>{
-        if(snap.val()==='ended'&&!quizState.finished)finishQuiz();
-      });
-    }
-  },2000);
+  // Game end is handled by room.onMessage('gameEnded') in setupRoomListeners()
 }
 
 function startGlobalTimer(startTime){
@@ -2417,12 +2353,7 @@ async function timeoutSurvivalQuestion(){
   const origHTML=qBox.innerHTML;
   qBox.innerHTML='<span style="color:#ff4444;font-size:18px;">⏰ Too slow! You\'re eliminated!</span>';
   quizState.answers[quizState.current]={chosen:-1,correct:false,timedOut:true};
-  try{
-    await db.ref('games/'+myPin+'/players/'+myPlayerId).update({
-      score:quizState.score,correctCount:quizState.correctCount,
-      answers:quizState.answers,eliminated:true
-    });
-  }catch(e){}
+  try{room.send('submitAnswer',{questionIndex:quizState.current,answer:-1,score:quizState.score,correct:false,eliminated:true});}catch(e){}
   setTimeout(()=>eliminatePlayer(),1200);
 }
 
@@ -2441,13 +2372,7 @@ async function timeoutQuestion(){
   const origText=qBox.textContent;
   qBox.innerHTML='<span style="color:#ff4444;font-size:18px;">&#9200; Time\'s Up! Question forfeited.</span>';
   quizState.answers[quizState.current]={chosen:-1,correct:false,timedOut:true};
-  try{
-    await db.ref('games/'+myPin+'/players/'+myPlayerId).update({
-      score:quizState.score,correctCount:quizState.correctCount,
-      answers:quizState.answers,
-      ...(gameSettings.gameMode==='survival'?{eliminated:true}:{})
-    });
-  }catch(e){}
+  try{room.send('submitAnswer',{questionIndex:quizState.current,answer:-1,score:quizState.score,correct:false,eliminated:gameSettings.gameMode==='survival'});}catch(e){}
   // Survival: timeout = eliminated (no answer = wrong answer)
   if(gameSettings.gameMode==='survival'){
     setTimeout(()=>eliminatePlayer(),1200);
@@ -2518,42 +2443,13 @@ async function handleAnswer(idx){
 
   // Survival mode: wrong answer = eliminated
   if(!correct&&gameSettings.gameMode==='survival'){
-    try{
-      await db.ref('games/'+myPin+'/players/'+myPlayerId).update({
-        score:quizState.score,correctCount:quizState.correctCount,
-        answers:quizState.answers,eliminated:true
-      });
-    }catch(e){}
+    try{room.send('submitAnswer',{questionIndex:quizState.current,answer:idx,score:quizState.score,correct,eliminated:true});}catch(e){}
     setTimeout(()=>eliminatePlayer(),1200);
     return;
   }
 
-  // Save to Firebase
-  try{
-    await db.ref('games/'+myPin+'/players/'+myPlayerId).update({
-      score:quizState.score,correctCount:quizState.correctCount,answers:quizState.answers
-    });
-  }catch(e){}
-
-  // Survival: check if this player is the last survivor and is now 1 answer ahead of the last eliminated player
-  if(gameSettings.gameMode==='survival'&&correct){
-    try{
-      const snap=await db.ref('games/'+myPin+'/players').get();
-      const allPlayers=Object.values(snap.val()||{});
-      const survivors=allPlayers.filter(p=>!p.eliminated&&!p.finished);
-      if(survivors.length===1&&survivors[0].id===myPlayerId){
-        const eliminated=allPlayers.filter(p=>p.eliminated).sort((a,b)=>(b.eliminatedAt||0)-(a.eliminatedAt||0));
-        const lastEliminated=eliminated[0];
-        if(lastEliminated&&quizState.correctCount>(lastEliminated.correctCount||0)){
-          // Last player is now ahead — instant win
-          await db.ref('games/'+myPin+'/players/'+myPlayerId).update({finished:true,finishedAt:Date.now()});
-          await db.ref('games/'+myPin).update({status:'ended'});
-          finishQuiz();
-          return;
-        }
-      }
-    }catch(e){}
-  }
+  // Send answer to server
+  try{room.send('submitAnswer',{questionIndex:quizState.current,answer:idx,score:quizState.score,correct});}catch(e){}
 
   setTimeout(()=>{
     const next=quizState.current+1;
@@ -2570,70 +2466,15 @@ async function eliminatePlayer(){
   quizState.finished=true; // prevent finishQuiz() from firing on eliminated player
   clearInterval(window.activeGameTimer);
   clearInterval(window.questionTimer);
-  db.ref('games/'+myPin+'/status').off();
-  // Persist elimination permanently so rejoining is blocked
-  const nickKey=myNickname.replace(/[^a-zA-Z0-9]/g,'_');
-  try{
-    await db.ref('games/'+myPin+'/eliminated/'+nickKey).set({
-      playerId:myPlayerId,nickname:myNickname,
-      score:quizState.score,correctCount:quizState.correctCount,
-      eliminatedAt:Date.now()
-    });
-  }catch(e){}
+  try{room.send('eliminatePlayer',{score:quizState.score,correctCount:quizState.correctCount});}catch(e){}
   showPage('eliminated');
   document.getElementById('eliminated-score').textContent=quizState.score;
   document.getElementById('eliminated-correct').textContent=quizState.correctCount+'/'+activeQuestions.length+' correct';
   startSpectatorMode();
-  // If all players are now eliminated, auto-end the game
-  // Also check if only 1 player remains — if they are 1 answer ahead, they win immediately
-  try{
-    const snap=await db.ref('games/'+myPin+'/players').get();
-    const allPlayers=Object.values(snap.val()||{});
-    if(allPlayers.length>0&&allPlayers.every(p=>p.eliminated||p.finished)){
-      await db.ref('games/'+myPin).update({status:'ended'});
-    }else if(gameSettings.gameMode==='survival'){
-      // Check if exactly one player is still alive
-      const survivors=allPlayers.filter(p=>!p.eliminated&&!p.finished);
-      if(survivors.length===1){
-        // Find the most recently eliminated player's correctCount
-        const eliminated=allPlayers.filter(p=>p.eliminated).sort((a,b)=>(b.eliminatedAt||0)-(a.eliminatedAt||0));
-        const lastEliminated=eliminated[0];
-        if(lastEliminated){
-          const survivorCorrect=survivors[0].correctCount||0;
-          const lastEliminatedCorrect=lastEliminated.correctCount||0;
-          // If survivor has answered at least 1 more question correctly, declare them winner immediately
-          if(survivorCorrect>lastEliminatedCorrect){
-            await db.ref('games/'+myPin+'/players/'+survivors[0].id).update({finished:true,finishedAt:Date.now()});
-            await db.ref('games/'+myPin).update({status:'ended'});
-          }
-        }
-      }
-    }
-  }catch(e){}
 }
 
 function startSpectatorMode(){
-  // Live leaderboard on eliminated screen that updates in real time
-  db.ref('games/'+myPin+'/players').on('value',snap=>{
-    const players=Object.values(snap.val()||{}).sort((a,b)=>b.score-a.score);
-    const lb=document.getElementById('spectator-leaderboard');
-    if(!lb)return;
-    lb.innerHTML=players.map((p,i)=>`
-      <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(255,255,255,0.03);border-radius:10px;margin-bottom:6px;">
-        <span style="font-size:13px;color:#6a7a9a;min-width:20px;">${i+1}</span>
-        <div class="avatar" style="width:28px;height:28px;background:${avatarColor(p.nickname)}30;color:${avatarColor(p.nickname)};font-size:11px;">${p.nickname[0].toUpperCase()}</div>
-        <span style="flex:1;font-size:13px;${p.id===myPlayerId?'font-weight:700;color:#00ccff;':''}">${escHtml(p.nickname)}${p.eliminated?' 💀':''}</span>
-        <span style="font-size:14px;font-weight:700;color:#4ade80;">${p.score}</span>
-      </div>`).join('');
-  });
-  // Watch for game end
-  db.ref('games/'+myPin+'/status').on('value',snap=>{
-    if(snap.val()==='ended'){
-      db.ref('games/'+myPin+'/players').off();
-      db.ref('games/'+myPin+'/status').off();
-      goToResults();
-    }
-  });
+  // Live leaderboard updates come via room.onMessage('playersUpdated') in setupRoomListeners()
 }
 
 async function finishQuiz(){
@@ -2641,15 +2482,8 @@ async function finishQuiz(){
   quizState.finished=true;
   clearInterval(window.activeGameTimer);
   clearInterval(window.questionTimer);
-  db.ref('games/'+myPin+'/status').off();
-  if(window._lightningGameStateRef){window._lightningGameStateRef.off();window._lightningGameStateRef=null;}
   sessionStorage.removeItem('qm_session');
-  try{
-    await db.ref('games/'+myPin+'/players/'+myPlayerId).update({
-      score:quizState.score,correctCount:quizState.correctCount,
-      finished:true,finishedAt:Date.now()
-    });
-  }catch(e){}
+  try{room.send('playerFinished',{score:quizState.score,correctCount:quizState.correctCount});}catch(e){}
   goToResults();
 }
 
@@ -2661,8 +2495,7 @@ async function goToResults(){
   clearInterval(window.activeGameTimer);
   clearInterval(window.questionTimer);
   showPage('results');
-  const snap=await db.ref('games/'+myPin+'/players').get();
-  const players=Object.values(snap.val()||{}).sort((a,b)=>b.score-a.score||(a.finishedAt||9e15)-(b.finishedAt||9e15));
+  const players=Object.values(window._lastKnownPlayers||{}).sort((a,b)=>b.score-a.score||(a.finishedAt||9e15)-(b.finishedAt||9e15));
   const me=players.find(p=>p.id===myPlayerId)||{nickname:myNickname,score:quizState.score,correctCount:quizState.correctCount};
   const myRank=players.findIndex(p=>p.id===myPlayerId)+1||1;
   const isWinner=myRank===1&&!quizState.eliminated;
@@ -2689,23 +2522,7 @@ async function goToResults(){
       <span class="orbitron" style="font-size:15px;color:#00ccff;">${p.score}</span>
     </div>`).join('');
 
-  // Listen for host starting a new round — show join/exit prompt
-  if(myPin&&!isHost){
-    // Detach any previous status listener first
-    db.ref('games/'+myPin+'/status').off();
-    db.ref('games/'+myPin+'/status').on('value',statusSnap=>{
-      const st=statusSnap.val();
-      if(st==='next-round'){
-        const banner=document.getElementById('results-next-round-banner');
-        if(banner)banner.style.display='block';
-      }
-      if(st==='lobby'){
-        db.ref('games/'+myPin+'/status').off();
-        // Show the 5-second join/exit prompt
-        showNextRoundJoinPrompt();
-      }
-    });
-  }
+  // Next round prompt handled by room.onMessage('roundReset') in setupRoomListeners()
 }
 
 // ══════════════════════════════════════════
@@ -2752,7 +2569,7 @@ function toggleImportPanel(type){
 async function clearAllQuestions(){
   if(!confirm('Delete ALL custom questions? This cannot be undone.'))return;
   customQuestions=[];
-  await db.ref('games/'+myPin+'/customQuestions').remove();
+  try{room.send('clearQuestions',{});}catch(e){}
   renderCustomQuestionList();
   updateQCountDisplay();
 }
@@ -2763,7 +2580,7 @@ async function importQuestionsToGame(questions){
     const id='cq_'+Date.now()+'_'+Math.random().toString(36).substr(2,4);
     const newQ={id,q:q.q,options:q.options,answer:q.answer};
     customQuestions.push(newQ);
-    await db.ref('games/'+myPin+'/customQuestions/'+id).set(newQ);
+    try{room.send('addQuestion',{question:newQ});}catch(e){}
     added++;
   }
   renderCustomQuestionList();
