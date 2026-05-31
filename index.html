@@ -1531,6 +1531,13 @@ function setupRoomListeners(){
     // then 'question' → applyPhase renders first question from state.questionIndex
   });
 
+  // ── answerResult: server tells this player their correct answer + authoritative score ──
+  // This is the only way the client learns the correct answer index, since questions
+  // are sent to players with the answer field stripped (anti-cheat).
+  room.onMessage('answerResult',(data)=>{
+    if(!isHost) _applyAnswerResult(data);
+  });
+
   // ── gameEnded: phase machine (state.phase='results') is the authoritative trigger ──
   // This message is kept only for host admin UI and blitz final cleanup.
   room.onMessage('gameEnded',()=>{
@@ -2775,45 +2782,49 @@ async function handleAnswer(idx){
   document.querySelectorAll('.answer-btn').forEach(b=>b.disabled=true);
   clearInterval(window.questionTimer);
 
-  const q=activeQuestions[quizState.current];
-  const correct=idx===q.answer;
+  const qi=quizState.current;
 
-  // Visual feedback only — actual scoring is server-authoritative
-  document.getElementById('opt-'+idx).classList.add(correct?'correct':'wrong');
-  if(!correct)document.getElementById('opt-'+q.answer).classList.add('correct');
-  quizState.answers[quizState.current]={chosen:idx,correct};
+  // Show selection as neutral (cyan border) immediately — correct/wrong
+  // revealed when server sends back 'answerResult' with the correct answer index.
+  // (Server strips answers from questions before sending to players for security.)
+  const selBtn=document.getElementById('opt-'+idx);
+  if(selBtn){selBtn.style.borderColor='#00ccff';selBtn.style.background='rgba(0,204,255,0.12)';}
 
-  // Compute local score optimistically for display (server score is authoritative)
-  if(correct){
-    quizState.correctCount++;
-    const timeSpent=(Date.now()-quizState.questionStartTime)/1000;
-    let points=1;
-    if(gameSettings.gameMode==='lightning'){
-      points=timeSpent<=5?3:timeSpent<=10?2:1;
-    }else if(gameSettings.scoringMode==='speed'){
-      points=timeSpent<=3?3:timeSpent<=8?2:1;
-    }
-    quizState.score+=points;
-    document.getElementById('quiz-score').textContent=quizState.score;
-  }
+  // Send to server — server validates, scores, and replies with answerResult
+  const mode=gameSettings.gameMode;
+  try{
+    room.send('submitAnswer',{questionIndex:qi,answer:idx,score:quizState.score,correct:false});
+  }catch(e){}
+  // correct:false is a placeholder — server recomputes from its own q.answer
+}
 
-  // Survival mode: wrong answer — lock UI, tell server, server handles elimination
-  if(!correct&&gameSettings.gameMode==='survival'){
-    try{room.send('submitAnswer',{questionIndex:quizState.current,answer:idx,score:quizState.score,correct,eliminated:true});}catch(e){}
-    // Wait for server player.eliminated=true schema patch → onChange → eliminatePlayer()
-    return;
-  }
+// Called when server sends back answerResult — this is where visual feedback happens
+function _applyAnswerResult({questionIndex, correctAnswer, correct, score, correctCount}){
+  // Guard: only apply if we're still on this question
+  if(questionIndex!==quizState.current)return;
 
-  // Send answer to server
-  try{room.send('submitAnswer',{questionIndex:quizState.current,answer:idx,score:quizState.score,correct});}catch(e){}
+  quizState.answers[questionIndex]={chosen:quizState.selected,correct};
+  quizState.score=score;
+  quizState.correctCount=correctCount;
+  document.getElementById('quiz-score').textContent=score;
+
+  // Show correct/wrong colours
+  const chosenBtn=document.getElementById('opt-'+quizState.selected);
+  const correctBtn=document.getElementById('opt-'+correctAnswer);
+  if(chosenBtn)chosenBtn.classList.add(correct?'correct':'wrong');
+  if(!correct&&correctBtn)correctBtn.classList.add('correct');
+  // Clear the neutral selection highlight
+  if(chosenBtn&&!correct){chosenBtn.style.borderColor='';chosenBtn.style.background='';}
 
   const mode=gameSettings.gameMode;
-  const isLastQuestion=quizState.current>=activeQuestions.length-1;
+  const isLastQuestion=questionIndex>=activeQuestions.length-1;
 
-  // Classic & Standard: server uses a global timer and never patches questionIndex per answer.
-  // Client self-advances after a brief feedback delay so player sees correct/wrong colour.
-  // Lightning: server patches questionIndex via answer_reveal — questionIndex listener handles it.
-  // Survival correct answer: also self-advances; wrong answer waits for player.eliminated patch.
+  // Survival wrong answer: wait for player.eliminated schema patch
+  if(mode==='survival'&&!correct)return;
+
+  // Classic: self-advance after 1.5s feedback window
+  // Lightning: server patches questionIndex via answer_reveal — listener handles it
+  // Survival correct: self-advance
   if(mode==='classic'||(mode==='survival'&&correct)){
     setTimeout(()=>{
       if(quizState.finished||quizState.eliminated)return;
