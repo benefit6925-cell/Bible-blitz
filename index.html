@@ -1,5 +1,12 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- ══ GITHUB PAGES BASE PATH ══════════════════════════════════
+     This tells the browser that ALL relative URLs (scripts, images,
+     manifest, service worker) root from the /Bible-blitz/ subfolder.
+     Without this, resources fail to load when the repo is in a subfolder.
+     ══════════════════════════════════════════════════════════ -->
+<base href="https://benefit6925-cell.github.io/Bible-blitz/">
+<link rel="canonical" href="https://benefit6925-cell.github.io/Bible-blitz/">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Quiz Mate 🎮 v2</title>
@@ -2051,7 +2058,7 @@ async function createGame(){
 function setupAdminDashboard(){
   document.getElementById('admin-pin-display').textContent=myPin;
   document.getElementById('admin-pin-big').textContent=myPin;
-  document.getElementById('admin-share-url').textContent='https://tinyurl.com/Quiz-Mate';
+  document.getElementById('admin-share-url').textContent='https://benefit6925-cell.github.io/Bible-blitz/';
   updateAdminSettingChips();
   // Colyseus handles real-time updates via setupRoomListeners()
 }
@@ -2060,7 +2067,7 @@ function copyPinToClipboard(){
   navigator.clipboard.writeText(myPin||'').then(()=>showToast('📋 PIN copied: '+myPin,'#0040c0',2000)).catch(()=>{});
 }
 function copyShareLink(){
-  navigator.clipboard.writeText('https://tinyurl.com/Quiz-Mate').then(()=>showToast('🔗 Link copied!','#0040c0',2000)).catch(()=>{});
+  navigator.clipboard.writeText('https://benefit6925-cell.github.io/Bible-blitz/').then(()=>showToast('🔗 Link copied!','#0040c0',2000)).catch(()=>{});
 }
 
 function updateAdminSettingChips(){
