@@ -209,6 +209,17 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
 
 /* ── QUIZMATE CREDIT ── */
 .quizmate-credit{position:fixed;bottom:8px;left:50%;transform:translateX(-50%);font-size:11px;opacity:0.5;pointer-events:none;z-index:999;color:#7a9acc;letter-spacing:0.5px;white-space:nowrap;font-family:'DM Sans',sans-serif;}
+
+/* ── TOAST NOTIFICATIONS ── */
+.qm-toast{position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-80px);z-index:99999;padding:12px 22px;border-radius:12px;font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;color:white;box-shadow:0 4px 24px rgba(0,0,0,0.4);transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1),opacity 0.35s;opacity:0;pointer-events:none;max-width:340px;text-align:center;}
+.qm-toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
+
+/* ── GAME COUNTDOWN OVERLAY ── */
+#countdown-overlay{position:fixed;inset:0;z-index:9800;background:rgba(0,8,48,0.92);backdrop-filter:blur(12px);display:none;align-items:center;justify-content:center;flex-direction:column;}
+#countdown-overlay.show{display:flex;}
+.countdown-num{font-family:'Orbitron',monospace;font-size:120px;font-weight:900;line-height:1;color:#00ccff;text-shadow:0 0 60px rgba(0,204,255,0.6),0 0 120px rgba(0,204,255,0.3);animation:countdownPop 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards;}
+@keyframes countdownPop{0%{transform:scale(0.4);opacity:0;}100%{transform:scale(1);opacity:1;}}
+.countdown-go{font-family:'Orbitron',monospace;font-size:72px;font-weight:900;color:#00ff66;text-shadow:0 0 40px rgba(0,255,102,0.7);animation:countdownPop 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards;}
 </style>
 </head>
 <body>
@@ -235,6 +246,15 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
 <!-- PARTICLES -->
 <div id="particles" style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0;"><div class="particle" style="left: 20.0515%; width: 4.13108px; height: 4.12898px; background: rgba(168, 85, 247, 0.376); animation-duration: 12.053s; animation-delay: 6.33272s;"></div><div class="particle" style="left: 95.85%; width: 4.36318px; height: 3.47093px; background: rgba(59, 130, 246, 0.376); animation-duration: 11.4755s; animation-delay: 0.432369s;"></div><div class="particle" style="left: 0.250056%; width: 2.35667px; height: 2.41018px; background: rgba(236, 72, 153, 0.376); animation-duration: 19.9612s; animation-delay: 8.11975s;"></div><div class="particle" style="left: 61.4882%; width: 4.93774px; height: 4.40473px; background: rgba(34, 197, 94, 0.376); animation-duration: 19.6107s; animation-delay: 4.71259s;"></div><div class="particle" style="left: 32.6402%; width: 3.97369px; height: 2.49234px; background: rgba(234, 179, 8, 0.376); animation-duration: 19.4903s; animation-delay: 7.39478s;"></div><div class="particle" style="left: 0.948647%; width: 2.42042px; height: 3.12578px; background: rgba(249, 115, 22, 0.376); animation-duration: 8.14585s; animation-delay: 1.11812s;"></div><div class="particle" style="left: 71.1825%; width: 3.16762px; height: 3.34048px; background: rgba(6, 182, 212, 0.376); animation-duration: 19.278s; animation-delay: 6.2381s;"></div><div class="particle" style="left: 69.8691%; width: 3.13669px; height: 4.31652px; background: rgba(139, 92, 246, 0.376); animation-duration: 12.5248s; animation-delay: 5.11209s;"></div><div class="particle" style="left: 90.2866%; width: 3.07042px; height: 5.242px; background: rgba(168, 85, 247, 0.376); animation-duration: 8.65592s; animation-delay: 9.00484s;"></div><div class="particle" style="left: 3.90701%; width: 4.43583px; height: 2.31718px; background: rgba(59, 130, 246, 0.376); animation-duration: 18.6026s; animation-delay: 1.08383s;"></div><div class="particle" style="left: 14.3984%; width: 4.15181px; height: 3.07336px; background: rgba(236, 72, 153, 0.376); animation-duration: 16.9778s; animation-delay: 5.0741s;"></div><div class="particle" style="left: 83.1115%; width: 4.48973px; height: 5.31807px; background: rgba(34, 197, 94, 0.376); animation-duration: 14.361s; animation-delay: 0.346177s;"></div></div>
 <div id="confetti-container" style="position:fixed;inset:0;pointer-events:none;z-index:999;"></div>
+
+<!-- ═══ GAME START COUNTDOWN OVERLAY ═══ -->
+<div id="countdown-overlay">
+  <div id="countdown-number" class="countdown-num">3</div>
+  <div style="font-size:16px;color:#7a8ab0;margin-top:16px;font-family:'DM Sans',sans-serif;letter-spacing:2px;">GET READY!</div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div id="qm-toast" class="qm-toast"></div>
 
 <!-- ═══ LANDING PAGE ═══ -->
 <div id="page-landing" class="page active" style="z-index:1;">
@@ -545,7 +565,7 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
 </div>
 
 <!-- ═══ EXIT CONFIRMATION POPUP ═══ -->
-<div id="exit-confirm-overlay" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;padding:20px;">
+<div id="exit-confirm-overlay" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:20px;">
   <div class="glass glow-border fade-in" style="border-radius:20px;padding:32px;width:100%;max-width:360px;text-align:center;">
     <div style="font-size:40px;margin-bottom:12px;">🚪</div>
     <h2 style="font-size:20px;font-weight:700;margin-bottom:8px;">Exit Lobby?</h2>
@@ -676,19 +696,23 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
     <!-- Share PIN box -->
     <div id="admin-share-box" class="glass glow-border" style="border-radius:16px;padding:20px;margin-bottom:20px;text-align:center;">
       <div style="font-size:13px;color:#6a7a9a;margin-bottom:4px;">📱 SHARE THIS LINK + PIN WITH PLAYERS</div>
-      <div style="font-size:13px;color:#7a8ab0;margin-bottom:8px;word-break:break-all;" id="admin-share-url">https://benefit6925-cell.github.io/Bible-blitz/</div>
+      <div style="font-size:13px;color:#7a8ab0;margin-bottom:8px;word-break:break-all;" id="admin-share-url"></div>
       <div class="pin-display" id="admin-pin-big">0000</div>
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;">
+        <button onclick="copyPinToClipboard()" style="background:rgba(0,204,255,0.1);border:1px solid rgba(0,204,255,0.3);color:#00ccff;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">📋 Copy PIN</button>
+        <button onclick="copyShareLink()" style="background:rgba(0,128,255,0.1);border:1px solid rgba(0,128,255,0.3);color:#66b3ff;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">🔗 Copy Link</button>
+      </div>
       <div style="font-size:12px;color:#5a6a8a;margin-top:8px;">Players open that link → click Join → enter PIN</div>
     </div>
 
     <!-- Tabs -->
     <div class="admin-tabs">
-      <button class="admin-tab" id="atab-dashboard" onclick="showAdminTab(&#39;dashboard&#39;)">📊 Dashboard</button>
-      <button class="admin-tab active" id="atab-questions" onclick="showAdminTab(&#39;questions&#39;)">📝 Questions</button>
+      <button class="admin-tab active" id="atab-dashboard" onclick="showAdminTab('dashboard')">📊 Dashboard</button>
+      <button class="admin-tab" id="atab-questions" onclick="showAdminTab('questions')">📝 Questions</button>
     </div>
 
     <!-- TAB: Dashboard -->
-    <div class="admin-tab-panel" id="admin-tp-dashboard">
+    <div class="admin-tab-panel active" id="admin-tp-dashboard">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;" class="admin-grid">
         <div class="glass glow-border" style="border-radius:20px;padding:24px;">
           <div class="label">🏆 LIVE LEADERBOARD</div>
@@ -707,7 +731,7 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
     </div>
 
     <!-- TAB: Questions -->
-    <div class="admin-tab-panel active" id="admin-tp-questions">
+    <div class="admin-tab-panel" id="admin-tp-questions">
       <div class="glass glow-border" style="border-radius:20px;padding:24px;">
         <!-- Summary bar -->
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
@@ -841,6 +865,12 @@ Answer: B</pre>
       <p>No custom questions yet.</p>
       <p style="font-size:13px;margin-top:4px;">Add questions above to include them in the game!</p>
     </div></div>
+
+        <!-- Default questions accordion -->
+        <details style="margin-top:16px;">
+          <summary>📚 View Built-in Default Questions (20)</summary>
+          <div id="default-questions-list" style="margin-top:10px;max-height:300px;overflow-y:auto;"></div>
+        </details>
       </div>
     </div>
 
@@ -938,7 +968,7 @@ Answer: B</pre>
       </div>
     </div>
     <!-- Signals bar -->
-    <div id="blitz-signals-bar" style="display:none;padding:8px 20px;text-align:center;font-size:12px;color:#7a8ab0;background:rgba(168,85,247,0.06);border-bottom:1px solid rgba(255,255,255,0.04);" id="blitz-signal-display"></div>
+    <div id="blitz-signals-bar" style="display:none;padding:8px 20px;text-align:center;font-size:12px;color:#7a8ab0;background:rgba(168,85,247,0.06);border-bottom:1px solid rgba(255,255,255,0.04);"></div>
     <!-- Question area -->
     <div style="display:flex;align-items:center;justify-content:center;padding:20px;min-height:calc(100vh - 200px);">
       <div style="width:100%;max-width:600px;">
@@ -1125,94 +1155,393 @@ const MODE_DESCS={
 };
 
 // ══════════════════════════════════════════
+// PHASE MACHINE — authoritative UI driver
+// ══════════════════════════════════════════
+// Valid phases: lobby | countdown | question | answer_reveal | results | waiting_next_round | closed
+let _currentPhase = null;
+
+function applyPhase(phase, stateSnapshot) {
+  if (!phase || phase === _currentPhase) return;
+  _currentPhase = phase;
+  switch (phase) {
+    case 'lobby':
+      if (isHost) { setupAdminDashboard(); showPage('admin'); showAdminTab('dashboard'); }
+      else { setupLobby({ settings: stateSnapshot || gameSettings }); showPage('lobby'); }
+      break;
+    case 'countdown':
+      // Server-driven pre-game countdown overlay
+      if (!isHost) showGameCountdown(() => {});
+      break;
+    case 'question': {
+      // Server advanced to a question — ensure quiz UI is visible and in sync
+      if (isHost) break;
+      if (quizState.finished || quizState.eliminated) break;
+      const qi = (room && room.state) ? room.state.questionIndex : 0;
+      if (!activeQuestions || !activeQuestions.length) break;
+      const mode = gameSettings.gameMode;
+      if (mode === 'blitz') {
+        // Blitz question advance is handled by blitzReveal → showBlitzReveal
+        if (!document.getElementById('page-blitz-quiz').classList.contains('active')) {
+          showPage('blitz-quiz');
+          blitzState.currentQ = qi;
+          renderBlitzQuestion();
+          startBlitzQuestionTimer();
+        }
+      } else {
+        if (!document.getElementById('page-quiz').classList.contains('active')) {
+          // First question — launch the quiz UI
+          showPage('quiz');
+          const isLightning = mode === 'lightning';
+          const isSurvival  = mode === 'survival';
+          document.getElementById('quiz-global-timer').style.display = (isLightning || isSurvival) ? 'none' : 'flex';
+          document.getElementById('quiz-q-timer').style.display = (isLightning || isSurvival) ? 'flex' : 'none';
+          document.getElementById('quiz-lives').style.display = isSurvival ? 'block' : 'none';
+          const qTimerLabel = document.getElementById('quiz-q-timer-label');
+          if (qTimerLabel) qTimerLabel.textContent = isSurvival ? 'to answer' : 'per Q';
+          const qTimerBar = document.getElementById('quiz-q-timer-bar');
+          if (qTimerBar && isSurvival) qTimerBar.style.background = '#ff4444';
+        }
+        quizState.current = qi;
+        quizState.selected = null;
+        quizState.questionStartTime = Date.now();
+        renderQuestion();
+        if (mode === 'lightning') startQuestionTimer();
+        else if (mode === 'survival') startSurvivalQuestionTimer();
+      }
+      break;
+    }
+    case 'answer_reveal':
+      // Reveal visuals handled by existing blitzReveal / answer feedback logic — no-op here
+      break;
+    case 'results':
+      // Server declared game over — always fire results for non-eliminated non-finished players
+      if (isHost) { adminEndGame(); break; }
+      if (gameSettings.gameMode === 'blitz') {
+        if (!blitzState.finished) finishBlitzQuiz(true);
+        break;
+      }
+      if (!quizState.finished) {
+        quizState.finished = true;
+        clearInterval(window.activeGameTimer);
+        clearInterval(window.questionTimer);
+        sessionStorage.removeItem('qm_session');
+      }
+      goToResults();
+      break;
+    case 'waiting_next_round':
+      if (!isHost) showNextRoundJoinPrompt();
+      break;
+    case 'closed':
+      cleanupPlayerSession();
+      navigateToLandingPage();
+      break;
+  }
+}
+
+// ══════════════════════════════════════════
+// SCHEMA STATE LISTENERS — primary sync layer
+// ══════════════════════════════════════════
+function setupStateListeners() {
+  if (!room || !room.state) return;
+
+  // ── Phase changes ──
+  room.state.listen('phase', (newPhase) => {
+    applyPhase(newPhase, { settings: gameSettings });
+  });
+
+  // ── Server-authoritative remaining time ──
+  // Client ONLY displays this value — server owns countdown, client never ends game on tl<=0.
+  room.state.listen('remainingTime', (secs) => {
+    const quizPage = document.getElementById('page-quiz');
+    const mode = gameSettings.gameMode;
+    if (quizPage && quizPage.classList.contains('active')) {
+      const dur = (mode === 'lightning') ? (gameSettings.timerDuration || 120)
+                : (mode === 'survival')  ? (gameSettings.survivalTimerDuration || 8)
+                : (gameSettings.timerDuration || 120);
+      // Per-question timer (lightning / survival)
+      if (mode === 'lightning' || mode === 'survival') {
+        const qEl  = document.getElementById('quiz-q-timer-val');
+        const qBar = document.getElementById('quiz-q-timer-bar');
+        if (qEl)  qEl.textContent = Math.round(secs);
+        if (qBar) { qBar.style.width = (Math.min(secs, dur) / dur * 100) + '%'; }
+      } else {
+        // Classic global timer
+        const timerEl = document.getElementById('quiz-timer');
+        if (timerEl) {
+          timerEl.textContent = Math.round(secs);
+          timerEl.className = 'orbitron ' + (secs < 20 ? 'timer-critical' : 'neon-text');
+          timerEl.style.cssText = 'font-size:30px;font-weight:900;line-height:1;';
+          const bar = document.getElementById('quiz-timer-bar');
+          if (bar) {
+            bar.style.width = (Math.min(secs, dur) / dur * 100) + '%';
+            bar.style.background = secs < 20 ? '#ff4444' : secs < 40 ? '#ff8800' : '#00ccff';
+          }
+        }
+      }
+    }
+    // Blitz per-question timer
+    const blitzPage = document.getElementById('page-blitz-quiz');
+    if (blitzPage && blitzPage.classList.contains('active') && mode === 'blitz') {
+      const bDur = gameSettings.blitzTimerDuration || 12;
+      const bEl  = document.getElementById('blitz-q-timer-val');
+      const bBar = document.getElementById('blitz-q-timer-bar');
+      if (bEl)  bEl.textContent = Math.round(secs);
+      if (bBar) { bBar.style.width = (Math.min(secs, bDur) / bDur * 100) + '%'; }
+    }
+    // Admin timer display — driven by schema, no client interval needed
+    const adminTEl = document.getElementById('admin-timer');
+    if (adminTEl && isHost) {
+      const dur = gameSettings.timerDuration || 120;
+      adminTEl.textContent = formatTime ? formatTime(Math.round(secs)) : Math.round(secs) + 's';
+      adminTEl.style.color = secs < 20 ? '#ff4444' : secs < 40 ? '#ff8800' : '';
+      const adminBar = document.getElementById('admin-timer-bar');
+      if (adminBar) {
+        adminBar.style.width = (Math.min(secs, dur) / dur * 100) + '%';
+        adminBar.style.background = secs < 20 ? '#ff4444' : secs < 40 ? '#ff8800' : '#00ccff';
+      }
+    }
+  });
+
+  // ── Question index changes — server advances questions ──
+  // applyPhase('question') also handles this, but questionIndex patches are more granular
+  // (e.g. same phase but next question). We only re-render mid-game here.
+  room.state.listen('questionIndex', (newIndex) => {
+    if (newIndex === undefined || newIndex === null || newIndex < 0) return;
+    if (!activeQuestions || !activeQuestions.length) return;
+    if (isHost) return;
+    if (quizState.finished || quizState.eliminated) return;
+    const mode = gameSettings.gameMode;
+    if (mode === 'blitz') {
+      if (blitzState.currentQ === newIndex) return; // already on this question
+      blitzState.currentQ = newIndex;
+      // Render is triggered by blitzReveal → showBlitzReveal, not here
+      return;
+    }
+    if (quizState.current === newIndex) return; // already on this question
+    quizState.current = newIndex;
+    quizState.selected = null;
+    quizState.questionStartTime = Date.now();
+    if (document.getElementById('page-quiz').classList.contains('active')) {
+      renderQuestion();
+      if (mode === 'lightning') startQuestionTimer();
+      else if (mode === 'survival') startSurvivalQuestionTimer();
+    }
+  });
+
+  // ── Player schema patches (replaces playersUpdated broadcasts) ──
+  if (room.state.players) {
+    room.state.players.onAdd((player, playerId) => {
+      window._lastKnownPlayers[playerId] = _playerToPlain(player, playerId);
+      player.onChange(() => {
+        window._lastKnownPlayers[playerId] = _playerToPlain(player, playerId);
+        _refreshAllPlayerViews();
+        // Schema-driven elimination for THIS player (survival mode)
+        if (playerId === myPlayerId && player.eliminated && !quizState.eliminated) {
+          eliminatePlayer();
+        }
+      });
+      _refreshAllPlayerViews();
+    });
+    room.state.players.onRemove((player, playerId) => {
+      delete window._lastKnownPlayers[playerId];
+      _refreshAllPlayerViews();
+    });
+  }
+}
+
+// Convert a Colyseus PlayerState schema object to a plain JS object
+function _playerToPlain(player, playerId) {
+  return {
+    id: playerId,
+    nickname: player.nickname || '',
+    score: player.score || 0,
+    correctCount: player.correctCount || 0,
+    eliminated: !!player.eliminated,
+    alive: player.alive !== false,
+    team: player.team || null,
+    blitzCorrectCount: player.blitzCorrectCount || 0,
+    finishedAt: player.finishedAt || null,
+  };
+}
+
+// Central refresh for all live player views — called on any player state patch
+function _refreshAllPlayerViews() {
+  const players = window._lastKnownPlayers || {};
+  if (isHost) updateAdminPlayers(players);
+  _refreshSpectatorLeaderboard(players);
+  _refreshLobbyPlayers(players);
+  _refreshWaitingLeaderboard(players);
+  _refreshBlitzLobbyTeams(players);
+  _refreshTeamSelectCounters(players);
+}
+
+function _refreshSpectatorLeaderboard(players) {
+  const lb = document.getElementById('spectator-leaderboard');
+  if (!lb || !document.getElementById('page-eliminated').classList.contains('active')) return;
+  const sorted = Object.values(players).sort((a, b) => b.score - a.score);
+  lb.innerHTML = sorted.map((p, i) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(255,255,255,0.03);border-radius:10px;margin-bottom:6px;">
+      <span style="font-size:13px;color:#6a7a9a;min-width:20px;">${i + 1}</span>
+      <div class="avatar" style="width:28px;height:28px;background:${avatarColor(p.nickname)}30;color:${avatarColor(p.nickname)};font-size:11px;">${(p.nickname[0]||'?').toUpperCase()}</div>
+      <span style="flex:1;font-size:13px;">${escHtml(p.nickname)}${p.eliminated ? ' 💀' : ''}</span>
+      <span style="font-size:14px;font-weight:700;color:#4ade80;">${p.score}</span>
+    </div>`).join('');
+}
+
+function _refreshWaitingLeaderboard(players) {
+  const wlb = document.getElementById('waiting-leaderboard');
+  if (!wlb) return;
+  const sorted = Object.values(players).sort((a, b) => b.score - a.score);
+  const lbWrap = document.getElementById('waiting-live-lb');
+  if (sorted.length > 0 && lbWrap) lbWrap.style.display = 'block';
+  wlb.innerHTML = sorted.slice(0, 10).map((p, i) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(255,255,255,0.03);border-radius:10px;margin-bottom:6px;">
+      <span style="font-size:13px;color:#6a7a9a;min-width:20px;">${i + 1}</span>
+      <div class="avatar" style="width:28px;height:28px;background:${avatarColor(p.nickname)}30;color:${avatarColor(p.nickname)};font-size:11px;">${(p.nickname[0]||'?').toUpperCase()}</div>
+      <span style="flex:1;font-size:13px;">${escHtml(p.nickname)}${p.eliminated ? ' 💀' : ''}</span>
+      <span style="font-size:14px;font-weight:700;color:#4ade80;">${p.score}</span>
+    </div>`).join('');
+}
+
+function _refreshLobbyPlayers(players) {
+  const lp = document.getElementById('lobby-players');
+  if (!lp) return;
+  const arr = Object.values(players);
+  const lobbyCount = document.getElementById('lobby-count');
+  if (lobbyCount) lobbyCount.textContent = 'PLAYERS IN LOBBY (' + arr.length + ')';
+  lp.innerHTML = arr.map(p => `
+    <div class="player-chip">
+      <div class="avatar" style="background:${avatarColor(p.nickname)}30;color:${avatarColor(p.nickname)}">${(p.nickname[0]||'?').toUpperCase()}</div>
+      <span style="font-weight:${p.id === myPlayerId ? 700 : 400};">${escHtml(p.nickname)}</span>
+      ${p.id === myPlayerId ? '<span style="margin-left:auto;font-size:12px;color:#6a7a9a;">you</span>' : ''}
+    </div>`).join('');
+}
+
+function _refreshBlitzLobbyTeams(players) {
+  const blitzLobbyPage = document.getElementById('page-blitz-lobby');
+  if (!blitzLobbyPage || !blitzLobbyPage.classList.contains('active')) return;
+  const arr = Object.values(players);
+  const aPlayers = arr.filter(p => p.team === 'A');
+  const bPlayers = arr.filter(p => p.team === 'B');
+  const aHdr = document.getElementById('blitz-lobby-a-header');
+  const bHdr = document.getElementById('blitz-lobby-b-header');
+  if (aHdr) aHdr.textContent = '🔴 ' + blitzState.teamAName + ' (' + aPlayers.length + ')';
+  if (bHdr) bHdr.textContent = '🔵 ' + blitzState.teamBName + ' (' + bPlayers.length + ')';
+  const renderTeamList = (pl) => pl.map(p => `
+    <div class="player-chip" style="margin-bottom:6px;">
+      <div class="avatar" style="background:${avatarColor(p.nickname)}30;color:${avatarColor(p.nickname)};width:28px;height:28px;font-size:11px;">${(p.nickname[0]||'?').toUpperCase()}</div>
+      <span style="font-size:13px;font-weight:${p.id === myPlayerId ? 700 : 400};">${escHtml(p.nickname)}${p.id === myPlayerId ? ' (you)' : ''}</span>
+    </div>`).join('');
+  const aList = document.getElementById('blitz-lobby-a-players');
+  const bList = document.getElementById('blitz-lobby-b-players');
+  if (aList) aList.innerHTML = renderTeamList(aPlayers);
+  if (bList) bList.innerHTML = renderTeamList(bPlayers);
+}
+
+function _refreshTeamSelectCounters(players) {
+  const teamSelectPage = document.getElementById('page-team-select');
+  if (!teamSelectPage || !teamSelectPage.classList.contains('active')) return;
+  const arr = Object.values(players);
+  const cA = arr.filter(p => p.team === 'A').length;
+  const cB = arr.filter(p => p.team === 'B').length;
+  const aCount = document.getElementById('blitz-assign-a-count');
+  const bCount = document.getElementById('blitz-assign-b-count');
+  if (aCount) aCount.textContent = cA;
+  if (bCount) bCount.textContent = cB;
+}
+
+// ══════════════════════════════════════════
 // COLYSEUS ROOM LISTENERS
 // ══════════════════════════════════════════
 function setupRoomListeners(){
   if(!room)return;
+  // Guard: prevent duplicate listener registration on the same room object
+  if(room._listenersAttached)return;
+  room._listenersAttached=true;
   window._lastKnownPlayers={};
+
+  // Attach schema-level state listeners (primary sync layer)
+  // These fire on delta patches — much more efficient than full message payloads
+  setupStateListeners();
 
   room.onMessage('gameState',(state)=>{
     gameSettings=state.settings||gameSettings;
     window._lastKnownPlayers=state.players||{};
     if(state.status==='active'&&state.activeQuestions&&state.activeQuestions.length>0){
       if(isHost){updateAdminPlayers(state.players||{});}
-      else{startQuiz({settings:state.settings,activeQuestions:state.activeQuestions,startTime:state.startTime});}
+      else{
+        const s=state.settings||{};
+        if(s.gameMode==='blitz'){
+          startBlitzQuiz({settings:s,activeQuestions:state.activeQuestions,startTime:state.startTime});
+        }else{
+          startQuiz({settings:s,activeQuestions:state.activeQuestions,startTime:state.startTime,globalEndTime:state.globalEndTime});
+        }
+      }
     }else if(state.status==='lobby'){
-      if(isHost){setupAdminDashboard();showPage('admin');}
+      if(isHost){setupAdminDashboard();showPage('admin');showAdminTab('dashboard');}
       else{setupLobby({settings:state.settings});showPage('lobby');}
     }
   });
 
+  // playersUpdated is kept as fallback for servers that haven't migrated to schema state yet.
+  // When room.state.players schema is present, _refreshAllPlayerViews() is called from onChange
+  // listeners instead, so this message becomes a no-op in that case.
   room.onMessage('playersUpdated',({players})=>{
+    // Only use this if schema state listeners aren't active (legacy server support)
+    if(room.state && room.state.players) return; // schema listeners handle it
     window._lastKnownPlayers=players||{};
     if(isHost){updateAdminPlayers(players||{});}
-    // Update spectator leaderboard if on eliminated page
-    const lb=document.getElementById('spectator-leaderboard');
-    if(lb&&document.getElementById('page-eliminated').classList.contains('active')){
-      const sorted=Object.values(players||{}).sort((a,b)=>b.score-a.score);
-      lb.innerHTML=sorted.map((p,i)=>`
-        <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(255,255,255,0.03);border-radius:10px;margin-bottom:6px;">
-          <span style="font-size:13px;color:#6a7a9a;min-width:20px;">${i+1}</span>
-          <div class="avatar" style="width:28px;height:28px;background:${avatarColor(p.nickname)}30;color:${avatarColor(p.nickname)};font-size:11px;">${p.nickname[0].toUpperCase()}</div>
-          <span style="flex:1;font-size:13px;">${escHtml(p.nickname)}${p.eliminated?' 💀':''}</span>
-          <span style="font-size:14px;font-weight:700;color:#4ade80;">${p.score}</span>
-        </div>`).join('');
-    }
-    // Update waiting room leaderboard
-    const wlb=document.getElementById('waiting-leaderboard');
-    if(wlb){
-      const sorted=Object.values(players||{}).sort((a,b)=>b.score-a.score);
-      const lbWrap=document.getElementById('waiting-live-lb');
-      if(sorted.length>0&&lbWrap)lbWrap.style.display='block';
-      wlb.innerHTML=sorted.slice(0,10).map((p,i)=>`
-        <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(255,255,255,0.03);border-radius:10px;margin-bottom:6px;">
-          <span style="font-size:13px;color:#6a7a9a;min-width:20px;">${i+1}</span>
-          <div class="avatar" style="width:28px;height:28px;background:${avatarColor(p.nickname)}30;color:${avatarColor(p.nickname)};font-size:11px;">${p.nickname[0].toUpperCase()}</div>
-          <span style="flex:1;font-size:13px;">${escHtml(p.nickname)}${p.eliminated?' 💀':''}</span>
-          <span style="font-size:14px;font-weight:700;color:#4ade80;">${p.score}</span>
-        </div>`).join('');
-    }
-    // Update lobby player list
-    const lp=document.getElementById('lobby-players');
-    if(lp&&document.getElementById('page-lobby').classList.contains('active')){
-      const arr=Object.values(players||{});
-      document.getElementById('lobby-count').textContent='PLAYERS IN LOBBY ('+arr.length+')';
-      lp.innerHTML=arr.map(p=>`
-        <div class="player-chip">
-          <div class="avatar" style="background:${avatarColor(p.nickname)}30;color:${avatarColor(p.nickname)}">${p.nickname[0].toUpperCase()}</div>
-          <span style="font-weight:${p.id===myPlayerId?700:400};">${escHtml(p.nickname)}</span>
-          ${p.id===myPlayerId?'<span style="margin-left:auto;font-size:12px;color:#6a7a9a;">you</span>':''}
-        </div>`).join('');
-    }
+    _refreshAllPlayerViews();
   });
 
-  room.onMessage('gameStarted',({activeQuestions,startTime,settings,globalEndTime})=>{
+  // scoresUpdated / leaderboardUpdated — replaced by player.onChange() schema patches.
+  // Kept as a lightweight fallback for servers not yet on schema state.
+  room.onMessage('scoresUpdated',({players})=>{
+    if(room.state && room.state.players) return;
+    window._lastKnownPlayers=players||window._lastKnownPlayers;
+    _refreshAllPlayerViews();
+  });
+  room.onMessage('leaderboardUpdated',({players})=>{
+    if(room.state && room.state.players) return;
+    window._lastKnownPlayers=players||window._lastKnownPlayers;
+    _refreshAllPlayerViews();
+  });
+
+  // ── gameStarted: store questions + settings, let phase machine (state.phase) drive the UI ──
+  // The server sets phase='countdown' then 'question' — applyPhase() reacts to those patches.
+  // We do NOT call startQuiz() here anymore; the countdown phase listener does it.
+  room.onMessage('gameStarted',({activeQuestions:aq,startTime,settings,globalEndTime})=>{
     gameSettings=settings||gameSettings;
+    activeQuestions=toArray(aq)||[];
     window._lightningGlobalEndTime=globalEndTime||null;
     if(isHost){
-      // Host side: update admin status
       updateAdminStatus({status:'active',startTime,settings});
-    }else{
-      startQuiz({settings,activeQuestions,startTime});
     }
+    // Non-host: phase patch 'countdown' → applyPhase fires showGameCountdown
+    // then 'question' → applyPhase renders first question from state.questionIndex
   });
 
+  // ── gameEnded: phase machine (state.phase='results') is the authoritative trigger ──
+  // This message is kept only for host admin UI and blitz final cleanup.
   room.onMessage('gameEnded',()=>{
-    if(!quizState.finished)finishQuiz();
-    if(isHost){adminEndGame();}
+    if(isHost) adminEndGame();
+    // Non-host game-over is driven by applyPhase('results') — no duplicate finishQuiz() here
   });
 
   room.onMessage('allFinished',()=>{
-    if(isHost)adminEndGame();
+    if(isHost) adminEndGame();
   });
 
   room.onMessage('roundReset',({settings,players})=>{
     gameSettings=settings||gameSettings;
     window._lastKnownPlayers=players||{};
+    _currentPhase=null; // reset phase machine so next phase change applies
     adminGameEnded=false;
     quizState={current:0,score:0,correctCount:0,answers:{},selected:null,finished:false,eliminated:false,questionStartTime:0};
+    blitzState={myTeam:null,teamScoreA:0,teamScoreB:0,teamAName:settings&&settings.teamAName||'Team A',teamBName:settings&&settings.teamBName||'Team B',currentQ:0,myAnswer:null,myCorrectCount:0,roundsWonA:0,roundsWonB:0,perfectA:0,perfectB:0,suddenDeath:false,finished:false,revealCountdown:null};
     clearInterval(window.activeGameTimer);
     clearInterval(window.questionTimer);
+    clearInterval(window.blitzTimer);
     clearInterval(adminTimerInterval);
     if(isHost){
       updateAdminSettingChips();
@@ -1241,12 +1570,71 @@ function setupRoomListeners(){
     updateQCountDisplay();
   });
 
-  room.onLeave(()=>{
-    console.log('Left room');
+  // Waiting room players get this when the next round becomes active
+  room.onMessage('waitingRoundStart',({settings,players})=>{
+    gameSettings=settings||gameSettings;
+    window._lastKnownPlayers=players||{};
+    quizState={current:0,score:0,correctCount:0,answers:{},selected:null,finished:false,eliminated:false,questionStartTime:0};
+    const nro=document.getElementById('next-round-join-overlay');
+    if(nro)nro.style.display='none';
+    if(settings&&settings.gameMode==='blitz'){
+      blitzState.teamAName=settings.teamAName||'Team A';
+      blitzState.teamBName=settings.teamBName||'Team B';
+      setupBlitzLobby();
+      showPage('blitz-lobby');
+    }else{
+      setupLobby({settings});
+      showPage('lobby');
+    }
+  });
+
+  // ── Blitz message listeners (registered once here, not inside startBlitzQuiz) ──
+  room.onMessage('blitzReveal',(round)=>{
+    if(round.q===blitzState.currentQ)showBlitzReveal(round);
+  });
+  room.onMessage('blitzReaction',(r)=>{
+    if(r.team===blitzState.myTeam)spawnReactionBubble(r.emoji);
+  });
+  room.onMessage('blitzSignal',(r)=>{
+    if(r.team===blitzState.myTeam&&r.nickname!==myNickname){
+      const bar=document.getElementById('blitz-signals-bar');
+      if(bar){
+        bar.style.display='block';
+        bar.textContent=r.nickname+': "'+r.text+'"';
+        clearTimeout(bar._hideTimer);
+        bar._hideTimer=setTimeout(()=>{bar.style.display='none';},4000);
+      }
+    }
+  });
+  room.onMessage('blitzSuddenDeath',({question,questionIndex})=>{
+    if(blitzState.finished)return;
+    // Server already appended the SD question to its activeQuestions
+    // Mirror it on the client so renderBlitzQuestion() can read it
+    if(!activeQuestions[questionIndex]){
+      activeQuestions.push(question);
+    }
+    blitzState.currentQ=questionIndex;
+    blitzState.suddenDeath=true;
+    showPage('blitz-quiz');
+    renderBlitzQuestion();
+    startBlitzQuestionTimer();
+  });
+
+  room.onLeave((code)=>{
+    // code 1000 = clean leave (user triggered). Anything else = unexpected disconnect.
+    if(code!==1000&&code!==4000){
+      // Only show toast if user is actively in a game (not on landing/setup pages)
+      const activePage=document.querySelector('.page.active,.page-top.active');
+      const pageId=activePage?activePage.id:'';
+      if(pageId&&pageId!=='page-landing'&&pageId!=='page-host-setup'&&pageId!=='page-join'){
+        showToast('⚠️ Connection lost. Please refresh to rejoin.','#ff8800',5000);
+      }
+    }
   });
 
   room.onError((code,message)=>{
     console.error('Room error:',code,message);
+    showToast('Connection error: '+(message||code),'#ff4444',4000);
   });
 }
 
@@ -1258,9 +1646,8 @@ let gameSettings={questionCount:20,timerDuration:120,gameMode:'classic',scoringM
 let activeQuestions=[];
 let customQuestions=[];
 let quizState={current:0,score:0,correctCount:0,answers:{},selected:null,finished:false,eliminated:false,questionStartTime:0};
-let gameStartTime=0;
+let gameStartTime=0; // Reference only — not used for scoring
 let quizTimerInterval=null,adminTimerInterval=null,questionTimerInterval=null;
-let gameRef=null,playersRef=null;
 let editingQId=null;
 
 // ── TEAM BLITZ STATE ──
@@ -1298,6 +1685,48 @@ function showPage(id){
   // Top-left exit button is hidden globally — glassmorphism bottom button used instead
   const exitBtn=document.getElementById('exit-lobby-btn');
   if(exitBtn)exitBtn.style.display='none';
+}
+
+// ── TOAST NOTIFICATION ──
+let _toastTimer=null;
+function showToast(msg,color,duration){
+  color=color||'#0040c0';duration=duration||3000;
+  const t=document.getElementById('qm-toast');
+  if(!t)return;
+  t.textContent=msg;
+  t.style.background=color;
+  t.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer=setTimeout(()=>t.classList.remove('show'),duration);
+}
+
+// ── PRE-GAME COUNTDOWN (3-2-1-GO!) ──
+function showGameCountdown(callback){
+  const overlay=document.getElementById('countdown-overlay');
+  const numEl=document.getElementById('countdown-number');
+  if(!overlay||!numEl){if(callback)callback();return;}
+  overlay.classList.add('show');
+  const steps=[
+    {text:'3',cls:'countdown-num'},
+    {text:'2',cls:'countdown-num'},
+    {text:'1',cls:'countdown-num'},
+    {text:'GO!',cls:'countdown-go'}
+  ];
+  let i=0;
+  function tick(){
+    if(i>=steps.length){
+      overlay.classList.remove('show');
+      if(callback)callback();
+      return;
+    }
+    numEl.className=steps[i].cls;
+    numEl.textContent=steps[i].text;
+    // Re-trigger animation by removing and re-adding class
+    void numEl.offsetWidth;
+    i++;
+    setTimeout(tick,i<=3?900:600);
+  }
+  tick();
 }
 
 function avatarColor(name){
@@ -1363,8 +1792,9 @@ function cancelExitLobby(){
 async function confirmExitLobby(){
   const o=document.getElementById('exit-confirm-overlay');
   if(o)o.style.display='none';
-  if(myPin&&myPlayerId&&!isHost){
-    try{room.send('playerExit',{});if(room){room.leave();room=null;}}catch(e){}
+  if(room&&myPin&&myPlayerId&&!isHost){
+    try{room.send('playerExit',{});}catch(e){}
+    try{room.leave();room=null;}catch(e){}
   }
   cleanupPlayerSession();
   navigateToLandingPage();
@@ -1561,10 +1991,20 @@ async function createGame(){
   try{
     await checkHostRateLimit();
     room = await client.create('quiz_room', {
-      pin, hostName:name, isHost:true, settings
+      roomId: pin, pin, hostName:name, isHost:true, settings
     });
     myPin=pin;isHost=true;gameSettings=settings;customQuestions=[];
     setupRoomListeners();
+
+    // Capture hostToken from the server's joinAck so the host can re-claim
+    // ownership after a page refresh without losing the room.
+    room.onMessage('joinAck',(data)=>{
+      if(data.hostToken){
+        sessionStorage.setItem('qm_host_token',data.hostToken);
+        sessionStorage.setItem('qm_session',JSON.stringify({pin,nick:name,playerId:room.sessionId,isHost:true}));
+      }
+    });
+
     setupAdminDashboard();
     showPage('admin');
     showAdminTab('dashboard');
@@ -1585,11 +2025,16 @@ async function createGame(){
 function setupAdminDashboard(){
   document.getElementById('admin-pin-display').textContent=myPin;
   document.getElementById('admin-pin-big').textContent=myPin;
-  const gameUrl='https://benefit6925-cell.github.io/Bible-blitz/';
-  document.getElementById('admin-share-url').textContent=gameUrl;
+  document.getElementById('admin-share-url').textContent='https://tinyurl.com/Quiz-Mate';
   updateAdminSettingChips();
-
   // Colyseus handles real-time updates via setupRoomListeners()
+}
+
+function copyPinToClipboard(){
+  navigator.clipboard.writeText(myPin||'').then(()=>showToast('📋 PIN copied: '+myPin,'#0040c0',2000)).catch(()=>{});
+}
+function copyShareLink(){
+  navigator.clipboard.writeText('https://tinyurl.com/Quiz-Mate').then(()=>showToast('🔗 Link copied!','#0040c0',2000)).catch(()=>{});
 }
 
 function updateAdminSettingChips(){
@@ -1627,46 +2072,20 @@ function updateAdminStatus(g){
     if(nrBtn)nrBtn.style.display='none';
     document.getElementById('admin-share-box').style.display='none';
     clearInterval(adminTimerInterval);
-    const dur=gameSettings.timerDuration||120;
-
-    if(gameSettings.gameMode==='lightning'||gameSettings.gameMode==='blitz'||gameSettings.gameMode==='survival'){
-      if(gameSettings.gameMode==='blitz'){
-        document.getElementById('admin-timer-bar-wrap').style.display='none';
-        document.getElementById('admin-timer').textContent='⚔️ Team Blitz';
-        document.getElementById('admin-timer').style.color='#ff8800';
-      }else if(gameSettings.gameMode==='survival'){
-        document.getElementById('admin-timer-bar-wrap').style.display='none';
-        document.getElementById('admin-timer').textContent='💀 '+(gameSettings.survivalTimerDuration||8)+'s/Q';
-        document.getElementById('admin-timer').style.color='#ff4444';
-      }else{
-        // Lightning: show live global countdown using globalEndTime from gameStarted message
-        document.getElementById('admin-timer-bar-wrap').style.display='block';
-        const dur=gameSettings.timerDuration||120;
-        const endTime=window._lightningGlobalEndTime;
-        if(endTime){
-          clearInterval(adminTimerInterval);
-          adminTimerInterval=setInterval(()=>{
-            const tl=Math.max(0,(endTime-Date.now())/1000);
-            document.getElementById('admin-timer').textContent=Math.round(tl)+'s';
-            document.getElementById('admin-timer').style.color=tl<20?'#ff4444':tl<40?'#ff8800':'#ffd700';
-            document.getElementById('admin-timer-bar').style.width=(tl/dur*100)+'%';
-            document.getElementById('admin-timer-bar').style.background=tl<20?'#ff4444':tl<40?'#ff8800':'#ffd700';
-            if(tl<=0){clearInterval(adminTimerInterval);adminEndGame();}
-          },500);
-        }
-      }
+    // Timer display is driven by state.remainingTime schema patches (remainingTime listener above)
+    // Just show mode-appropriate label until first patch arrives
+    if(gameSettings.gameMode==='blitz'){
+      document.getElementById('admin-timer-bar-wrap').style.display='none';
+      document.getElementById('admin-timer').textContent='⚔️ Team Blitz';
+      document.getElementById('admin-timer').style.color='#ff8800';
+    }else if(gameSettings.gameMode==='survival'){
+      document.getElementById('admin-timer-bar-wrap').style.display='none';
+      document.getElementById('admin-timer').textContent='💀 '+(gameSettings.survivalTimerDuration||8)+'s/Q';
+      document.getElementById('admin-timer').style.color='#ff4444';
     }else{
+      // Classic / lightning: schema remainingTime listener updates admin-timer
       document.getElementById('admin-timer-bar-wrap').style.display='block';
-      const startT=g.startTime;
-      adminTimerInterval=setInterval(()=>{
-        const elapsed=(Date.now()-startT)/1000;
-        const tl=Math.max(0,dur-elapsed);
-        document.getElementById('admin-timer').textContent=Math.round(tl)+'s';
-        document.getElementById('admin-timer').style.color=tl<20?'#ff4444':tl<40?'#ff8800':'#00ccff';
-        document.getElementById('admin-timer-bar').style.width=(tl/dur*100)+'%';
-        document.getElementById('admin-timer-bar').style.background=tl<20?'#ff4444':tl<40?'#ff8800':'#00ccff';
-        if(tl<=0){clearInterval(adminTimerInterval);adminEndGame();}
-      },500);
+      document.getElementById('admin-timer').textContent=formatTime(gameSettings.timerDuration||120);
     }
   }else if(g.status==='ended'){
     startBtn.style.display='none';endBtn.style.display='none';
@@ -1761,10 +2180,8 @@ async function adminStartGame(){
     const shuffled=seededShuffle(pool,seed);
     const qCount=gameSettings.questionCount||20;
     const active=shuffled.slice(0,Math.min(qCount,pool.length));
-    const now=Date.now();
-    const dur=gameSettings.timerDuration||120;
-    const globalEndTime=(gameSettings.gameMode==='lightning')?now+(dur*1000):null;
-    room.send('startGame',{questions:active,startTime:now,globalEndTime,settings:gameSettings});
+    // Server computes startTime and globalEndTime authoritatively
+    room.send('startGame',{questions:active,settings:gameSettings});
   }catch(e){
     alert('Error starting game: '+e.message);
   }
@@ -1776,14 +2193,14 @@ async function adminEndGame(){
   if(adminGameEnded)return;
   adminGameEnded=true;
   clearInterval(adminTimerInterval);
-  room.send('endGame',{});
+  try{if(room)room.send('endGame',{});}catch(e){}
   document.getElementById('admin-winner-box').style.display='block';
 }
 
 async function adminReset(){
   adminGameEnded=false;
   clearInterval(adminTimerInterval);
-  room.send('resetGame',{});
+  try{if(room)room.send('resetGame',{});}catch(e){}
   document.getElementById('admin-share-box').style.display='block';
   document.getElementById('admin-winner-box').style.display='none';
   document.getElementById('admin-timer-bar-wrap').style.display='none';
@@ -1802,9 +2219,7 @@ async function adminCloseRoom(){
   clearInterval(window.questionTimer);
   clearInterval(window.blitzTimer);
   try{
-    room.send('endGame',{});
-    room.leave();
-    room=null;
+    if(room){room.send('endGame',{});room.leave();room=null;}
   }catch(e){}
   myPin=null;isHost=false;gameSettings={questionCount:20,timerDuration:120,gameMode:'classic',scoringMode:'standard'};
   activeQuestions=[];customQuestions=[];
@@ -1857,11 +2272,17 @@ async function adminLaunchNextRound(){
     newSettings.survivalTimerDuration=survSecs;
     newSettings.timerDuration=newQCount*survSecs;
   }
+  if(newMode==='blitz'){
+    // Preserve team names from current settings for blitz next round
+    newSettings.blitzTimerDuration=gameSettings.blitzTimerDuration||12;
+    newSettings.teamAName=gameSettings.teamAName||'Lions 🔴';
+    newSettings.teamBName=gameSettings.teamBName||'Eagles 🔵';
+  }
   closeNextRoundModal();
   adminGameEnded=false;
   clearInterval(adminTimerInterval);
 
-  room.send('nextRound',{settings:newSettings});
+  try{if(room)room.send('nextRound',{settings:newSettings});}catch(e){}
   gameSettings=newSettings;
   updateAdminSettingChips();
   document.getElementById('admin-share-box').style.display='block';
@@ -2042,19 +2463,22 @@ async function joinGame(){
   const errEl=document.getElementById('join-error');
   errEl.classList.remove('show');
   if(!nick){errEl.textContent='Please enter a nickname';errEl.classList.add('show');return;}
-  if(!pin){errEl.textContent='Please enter the game PIN';errEl.classList.add('show');return;}
+  if(!pin||pin.length<4){errEl.textContent='Please enter a valid game PIN (min 4 characters)';errEl.classList.add('show');return;}
   const btn=document.getElementById('join-btn');
   btn.disabled=true;btn.textContent='Joining...';
   try{
     // Join via Colyseus — server validates PIN, nickname uniqueness, room capacity, game status
-    room=await client.joinById(pin,{nickname:nick,isHost:false});
+    room=await client.joinById(pin,{pin,nickname:nick,isHost:false});
     myPin=pin;myNickname=nick;
     myPlayerId=room.sessionId;
     setupRoomListeners();
 
     // Server sends back initial state — listen for one-time response
     room.onMessage('joinAck',(data)=>{
-      sessionStorage.setItem('qm_session',JSON.stringify({pin,nick,playerId:myPlayerId}));
+      btn.disabled=false;btn.textContent='Join Game →';
+      // Persist reconnect token — this is the key that survives a page refresh
+      if(data.reconnectToken) sessionStorage.setItem('qm_reconnect_token',data.reconnectToken);
+      sessionStorage.setItem('qm_session',JSON.stringify({pin,nick,playerId:myPlayerId,reconnectToken:data.reconnectToken||''}));
       if(data.status==='active'){
         // Joined mid-game — go to waiting room
         document.getElementById('waiting-name').textContent=nick;
@@ -2073,12 +2497,14 @@ async function joinGame(){
     });
 
     room.onMessage('joinError',(data)=>{
+      btn.disabled=false;btn.textContent='Join Game →';
       errEl.textContent=data.message||'❌ Could not join. Check your PIN.';
       errEl.classList.add('show');
       try{room.leave();room=null;}catch(e){}
     });
 
   }catch(e){
+    btn.disabled=false;btn.textContent='Join Game →';
     const msg=e.message||'';
     if(msg.includes('not found')||msg.includes('404'))
       errEl.textContent='❌ No game found with that PIN. Check with your host.';
@@ -2095,7 +2521,13 @@ async function joinGame(){
 // PLAYER — WAITING ROOM (mid-game joiners)
 // ══════════════════════════════════════════
 function startWaitingMode(){
-  // Updates handled by setupRoomListeners()
+  // Seed the leaderboard immediately from schema state (preferred) or last known state
+  const schemaPlayers = (room && room.state && room.state.players)
+    ? Object.fromEntries([...room.state.players.entries()].map(([id, p]) => [id, _playerToPlain(p, id)]))
+    : null;
+  const players = schemaPlayers || window._lastKnownPlayers || {};
+  _refreshWaitingLeaderboard(players);
+  // Live updates driven by player.onChange() schema patches
 }
 
 // ══════════════════════════════════════════
@@ -2107,13 +2539,13 @@ function setupLobby(initialGame){
   // Show mode badge if settings available
   if(initialGame&&initialGame.settings){
     const s=initialGame.settings;
-    const modeLabel={classic:'🎮 Classic',lightning:'⚡ Lightning',survival:'💀 Survival'};
-    const modeClass={classic:'mode-classic',lightning:'mode-lightning',survival:'mode-survival'};
+    const modeLabel={classic:'🎮 Classic',lightning:'⚡ Lightning',survival:'💀 Survival',blitz:'⚔️ Team Blitz'};
+    const modeClass={classic:'mode-classic',lightning:'mode-lightning',survival:'mode-survival',blitz:'mode-blitz'};
     const m=s.gameMode||'classic';
     const _lmb=document.getElementById('lobby-mode-badge');if(_lmb)_lmb.innerHTML=`
-      <span class="mode-tag ${modeClass[m]}">${modeLabel[m]||m}</span>
+      <span class="mode-tag ${modeClass[m]||'mode-classic'}">${modeLabel[m]||m}</span>
       <span class="setting-chip">${s.questionCount||20} Questions</span>
-      <span class="setting-chip">${formatTime(s.timerDuration||120)}</span>
+      ${m!=='blitz'?`<span class="setting-chip">${formatTime(s.timerDuration||120)}</span>`:'<span class="setting-chip">'+(s.blitzTimerDuration||12)+'s per Q</span>'}
     `;
   }
 
@@ -2125,10 +2557,12 @@ function setupLobby(initialGame){
 // ══════════════════════════════════════════
 async function startQuiz(gameData){
   gameSettings=gameData.settings||{questionCount:20,timerDuration:120,gameMode:'classic',scoringMode:'standard'};
-  activeQuestions=toArray(gameData.activeQuestions)||DEFAULT_QUESTIONS.slice(0,gameSettings.questionCount);
+  // Only load questions if not already loaded from gameStarted message
+  if(gameData.activeQuestions&&gameData.activeQuestions.length){
+    activeQuestions=toArray(gameData.activeQuestions);
+  }
   gameStartTime=gameData.startTime;
 
-  // Guard: if no questions loaded, don't start
   if(!activeQuestions||activeQuestions.length===0){
     alert('No questions loaded. Please ask the host to restart the game.');
     return;
@@ -2138,57 +2572,60 @@ async function startQuiz(gameData){
 
   showPage('quiz');
 
-  // Configure header based on game mode
   const isLightning=gameSettings.gameMode==='lightning';
   const isSurvival=gameSettings.gameMode==='survival';
-  // Survival: show per-question timer (not global timer)
   document.getElementById('quiz-global-timer').style.display=(isLightning||isSurvival)?'none':'flex';
   document.getElementById('quiz-q-timer').style.display=(isLightning||isSurvival)?'flex':'none';
   document.getElementById('quiz-lives').style.display=isSurvival?'block':'none';
-  // Label per-question timer differently for survival vs lightning
   const qTimerLabel=document.getElementById('quiz-q-timer-label');
   if(qTimerLabel)qTimerLabel.textContent=isSurvival?'to answer':'per Q';
-  // Survival: color the per-question timer bar red instead of gold
   const qTimerBar=document.getElementById('quiz-q-timer-bar');
   if(qTimerBar&&isSurvival)qTimerBar.style.background='#ff4444';
 
+  // Sync to schema questionIndex if already set
+  if(room&&room.state&&room.state.questionIndex>=0){
+    quizState.current=room.state.questionIndex;
+  }
   renderQuestion();
 
+  // Timers below are UI-ONLY (animate countdown display).
+  // They NEVER call finishQuiz() or advance questions — server state.phase=results does that.
   if(isLightning){
     startQuestionTimer();
-    // Lightning global timer starts from gameStarted message globalEndTime
-    if(window._lightningGlobalEndTime)startLightningGlobalTimer(window._lightningGlobalEndTime);
+    const gEndTime=gameData.globalEndTime||window._lightningGlobalEndTime;
+    if(gEndTime)startLightningGlobalTimer(gEndTime);
   }else if(isSurvival){
     startSurvivalQuestionTimer();
   }else{
-    startGlobalTimer(gameData.startTime);
+    startGlobalTimerDisplay(gameData.startTime);
   }
-
-  // Game end is handled by room.onMessage('gameEnded') in setupRoomListeners()
 }
 
-function startGlobalTimer(startTime){
+// Classic mode: UI-only countdown display. Server state.phase=results triggers goToResults().
+function startGlobalTimerDisplay(startTime){
   const dur=gameSettings.timerDuration||120;
   clearInterval(window.activeGameTimer);
-  // Always count down from full duration starting NOW on the player's device.
-  // This avoids ANY clock skew between host and player ever ending the game instantly.
-  const localCountdownStart=Date.now();
+  const syncStart=(startTime&&startTime>Date.now()-dur*1000)?startTime:Date.now();
   window.activeGameTimer=setInterval(()=>{
-    const elapsed=(Date.now()-localCountdownStart)/1000;
+    const elapsed=(Date.now()-syncStart)/1000;
     const tl=Math.max(0,dur-elapsed);
     const tlr=Math.round(tl);
     const el=document.getElementById('quiz-timer');
-    el.textContent=tlr;
-    el.className='orbitron '+(tl<20?'timer-critical':'neon-text');
-    el.style.cssText='font-size:30px;font-weight:900;line-height:1;';
+    if(el){
+      el.textContent=tlr;
+      el.className='orbitron '+(tl<20?'timer-critical':'neon-text');
+      el.style.cssText='font-size:30px;font-weight:900;line-height:1;';
+    }
     document.getElementById('quiz-timer-bar').style.width=(tl/dur*100)+'%';
     document.getElementById('quiz-timer-bar').style.background=tl<20?'#ff4444':tl<40?'#ff8800':'#00ccff';
-    if(tl<=0&&!quizState.finished)finishQuiz();
+    // DO NOT call finishQuiz() — server state.phase='results' drives game over
+    if(tl<=0) clearInterval(window.activeGameTimer);
   },300);
 }
 
-// Lightning Mode: authoritative global session timer driven by Firebase globalEndTime
+// Lightning Mode: UI-only global session timer. Server state.phase=results drives game over.
 function startLightningGlobalTimer(globalEndTime){
+  if(!globalEndTime){return;}
   clearInterval(window.activeGameTimer);
   const dur=gameSettings.timerDuration||120;
   window.activeGameTimer=setInterval(()=>{
@@ -2205,17 +2642,14 @@ function startLightningGlobalTimer(globalEndTime){
         valEl.style.cssText='font-size:26px;font-weight:900;line-height:1;';
       }
     }
-    // Fix: animate the visual progress bar for players, same as host
     const barEl=document.getElementById('quiz-timer-bar');
     if(barEl){
       const pct=Math.max(0,Math.min(100,(tl/dur)*100));
       barEl.style.width=pct+'%';
       barEl.style.background=tl<20?'#ff4444':tl<40?'#ff8800':'#00ccff';
     }
-    if(remaining<=0){
-      clearInterval(window.activeGameTimer);
-      if(!quizState.finished)finishQuiz();
-    }
+    // DO NOT call finishQuiz() — server state.phase='results' drives game over
+    if(remaining<=0) clearInterval(window.activeGameTimer);
   },300);
 }
 
@@ -2235,11 +2669,22 @@ function startQuestionTimer(){
     el.style.color=tl<2?'#ff4444':tl<4?'#ff8800':'#ffd700';
     document.getElementById('quiz-q-timer-bar').style.width=(tl/dur*100)+'%';
     document.getElementById('quiz-q-timer-bar').style.background=tl<2?'#ff4444':tl<4?'#ff8800':'#ffd700';
-    if(tl<=0&&quizState.selected===null&&!quizState.finished)timeoutQuestion();
+    // Server's _onQuestionTimeout advances the question via state.questionIndex patch.
+    // Client only locks options visually on local timeout to provide instant feedback.
+    if(tl<=0&&quizState.selected===null&&!quizState.finished){
+      clearInterval(window.questionTimer);
+      // Lock buttons — server will send submitAnswer rejection if duplicate
+      document.querySelectorAll('.answer-btn').forEach(b=>{b.disabled=true;b.style.opacity='0.4';});
+      const qBox=document.getElementById('quiz-question');
+      if(qBox)qBox.innerHTML='<span style="color:#ff4444;font-size:18px;">&#9200; Time\'s Up! Waiting for server...</span>';
+      quizState.selected=-1;
+      // Notify server (server ignores if already timed out server-side)
+      try{room.send('submitAnswer',{questionIndex:quizState.current,answer:-1,score:quizState.score,correct:false});}catch(e){}
+    }
   },100);
 }
 
-// ── SURVIVAL: per-question countdown timer ──
+// ── SURVIVAL: per-question countdown timer (UI animation only) ──
 function startSurvivalQuestionTimer(){
   clearInterval(window.questionTimer);
   const dur=gameSettings.survivalTimerDuration||8;
@@ -2262,59 +2707,31 @@ function startSurvivalQuestionTimer(){
       barEl.style.width=(tl/dur*100)+'%';
       barEl.style.background=tl<=2?'#ff4444':tl<=Math.floor(dur/2)?'#ff8800':'#ff6666';
     }
+    // Client locks UI and notifies server — server's _onQuestionTimeout does the actual elimination
     if(tl<=0&&quizState.selected===null&&!quizState.finished){
       clearInterval(window.questionTimer);
-      timeoutSurvivalQuestion();
+      quizState.selected=-1;
+      document.querySelectorAll('.answer-btn').forEach(b=>{b.disabled=true;b.style.opacity='0.5';});
+      const q=activeQuestions[quizState.current];
+      if(q){const ob=document.getElementById('opt-'+q.answer);if(ob)ob.classList.add('correct');}
+      const qBox=document.getElementById('quiz-question');
+      if(qBox)qBox.innerHTML='<span style="color:#ff4444;font-size:18px;">⏰ Too slow! Waiting for server...</span>';
+      quizState.answers[quizState.current]={chosen:-1,correct:false,timedOut:true};
+      // Server's eliminatePlayer logic fires from _onQuestionTimeout — client notifies only
+      try{room.send('submitAnswer',{questionIndex:quizState.current,answer:-1,score:quizState.score,correct:false,eliminated:true});}catch(e){}
+      // State patch player.eliminated=true will fire → applyPhase or onChange handles UI
     }
   },100);
 }
 
 async function timeoutSurvivalQuestion(){
-  if(quizState.selected!==null||quizState.finished)return;
-  clearInterval(window.questionTimer);
-  quizState.selected=-1;
-  const q=activeQuestions[quizState.current];
-  // Disable all buttons and show timeout feedback
-  document.querySelectorAll('.answer-btn').forEach(b=>{
-    b.disabled=true;
-    b.style.opacity='0.5';
-  });
-  if(q)document.getElementById('opt-'+q.answer).classList.add('correct');
-  const qBox=document.getElementById('quiz-question');
-  const origHTML=qBox.innerHTML;
-  qBox.innerHTML='<span style="color:#ff4444;font-size:18px;">⏰ Too slow! You\'re eliminated!</span>';
-  quizState.answers[quizState.current]={chosen:-1,correct:false,timedOut:true};
-  try{room.send('submitAnswer',{questionIndex:quizState.current,answer:-1,score:quizState.score,correct:false,eliminated:true});}catch(e){}
-  setTimeout(()=>eliminatePlayer(),1200);
+  // Legacy stub — timeout handling is now inline in startSurvivalQuestionTimer().
 }
 
 async function timeoutQuestion(){
-  if(quizState.selected!==null||quizState.finished)return;
-  clearInterval(window.questionTimer);
-  quizState.selected=-1;
-  const q=activeQuestions[quizState.current];
-  // Show "Time's Up" flash on all buttons — no correct answer revealed, question forfeited
-  document.querySelectorAll('.answer-btn').forEach(b=>{
-    b.disabled=true;
-    b.style.opacity='0.4';
-  });
-  // Show timeout indicator
-  const qBox=document.getElementById('quiz-question');
-  const origText=qBox.textContent;
-  qBox.innerHTML='<span style="color:#ff4444;font-size:18px;">&#9200; Time\'s Up! Question forfeited.</span>';
-  quizState.answers[quizState.current]={chosen:-1,correct:false,timedOut:true};
-  try{room.send('submitAnswer',{questionIndex:quizState.current,answer:-1,score:quizState.score,correct:false,eliminated:gameSettings.gameMode==='survival'});}catch(e){}
-  // Survival: timeout = eliminated (no answer = wrong answer)
-  if(gameSettings.gameMode==='survival'){
-    setTimeout(()=>eliminatePlayer(),1200);
-    return;
-  }
-  setTimeout(()=>{
-    const next=quizState.current+1;
-    if(next>=activeQuestions.length){finishQuiz();return;}
-    quizState.current=next;quizState.selected=null;
-    renderQuestion();startQuestionTimer();
-  },1200);
+  // Legacy function — question timeout UI is now inline in startQuestionTimer().
+  // Server's _onQuestionTimeout advances questionIndex via schema patch.
+  // This stub is kept to avoid reference errors from any remaining call sites.
 }
 
 function renderQuestion(){
@@ -2323,7 +2740,7 @@ function renderQuestion(){
   if(!q)return;
   const total=activeQuestions.length;
   document.getElementById('quiz-progress-label').textContent='Question '+(i+1)+' of '+total;
-  document.getElementById('quiz-progress-bar').style.width=(i/total*100)+'%';
+  document.getElementById('quiz-progress-bar').style.width=((i+1)/total*100)+'%';
   document.getElementById('quiz-q-num').textContent='QUESTION '+(i+1);
   document.getElementById('quiz-question').textContent=q.q;
   document.getElementById('quiz-score').textContent=quizState.score;
@@ -2332,69 +2749,58 @@ function renderQuestion(){
       <span style="font-size:12px;color:#6a7a9a;margin-right:8px;">${['A','B','C','D'][idx]}</span>${escHtml(opt)}
     </button>`
   ).join('');
-  // Only set questionStartTime here for non-lightning modes.
-  // Lightning mode sets it in startQuestionTimer() to avoid double-setting.
-  if(gameSettings.gameMode!=='lightning') quizState.questionStartTime=Date.now();
+  // Always reset questionStartTime here for accurate speed bonus / survival timer
+  // Lightning mode will override this immediately in startQuestionTimer()
+  quizState.questionStartTime=Date.now();
 }
 
 async function handleAnswer(idx){
   if(quizState.selected!==null||quizState.finished)return;
   quizState.selected=idx;
+  document.querySelectorAll('.answer-btn').forEach(b=>b.disabled=true);
   clearInterval(window.questionTimer);
 
   const q=activeQuestions[quizState.current];
   const correct=idx===q.answer;
-  const timeSpent=(Date.now()-quizState.questionStartTime)/1000;
 
-  // Calculate points
-  let points=0;
-  if(correct){
-    quizState.correctCount++;
-    if(gameSettings.gameMode==='lightning'){
-      // Speed tiers: <5s = 3pts, <10s = 2pts, else = 1pt
-      points=timeSpent<=5?3:timeSpent<=10?2:1;
-    }else if(gameSettings.scoringMode==='speed'){
-      // Classic speed bonus: faster = more points (scaled by game timer)
-      const dur=gameSettings.timerDuration||120;
-      const elapsed=(Date.now()-gameStartTime)/1000;
-      const frac=elapsed/dur;
-      points=frac<0.25?3:frac<0.5?2:1;
-    }else{
-      points=1;
-    }
-    quizState.score+=points;
-  }
-
-  // Visual feedback
-  document.querySelectorAll('.answer-btn').forEach(b=>b.disabled=true);
+  // Visual feedback only — actual scoring is server-authoritative
   document.getElementById('opt-'+idx).classList.add(correct?'correct':'wrong');
   if(!correct)document.getElementById('opt-'+q.answer).classList.add('correct');
-  document.getElementById('quiz-score').textContent=quizState.score;
   quizState.answers[quizState.current]={chosen:idx,correct};
 
-  // Survival mode: wrong answer = eliminated
+  // Compute local score optimistically for display (server score is authoritative)
+  if(correct){
+    quizState.correctCount++;
+    const timeSpent=(Date.now()-quizState.questionStartTime)/1000;
+    let points=1;
+    if(gameSettings.gameMode==='lightning'){
+      points=timeSpent<=5?3:timeSpent<=10?2:1;
+    }else if(gameSettings.scoringMode==='speed'){
+      points=timeSpent<=3?3:timeSpent<=8?2:1;
+    }
+    quizState.score+=points;
+    document.getElementById('quiz-score').textContent=quizState.score;
+  }
+
+  // Survival mode: wrong answer — lock UI, tell server, server handles elimination
   if(!correct&&gameSettings.gameMode==='survival'){
     try{room.send('submitAnswer',{questionIndex:quizState.current,answer:idx,score:quizState.score,correct,eliminated:true});}catch(e){}
-    setTimeout(()=>eliminatePlayer(),1200);
+    // Wait for server player.eliminated=true schema patch → onChange → eliminatePlayer()
     return;
   }
 
-  // Send answer to server
+  // Send answer to server — server validates, scores, and advances questionIndex when ready
   try{room.send('submitAnswer',{questionIndex:quizState.current,answer:idx,score:quizState.score,correct});}catch(e){}
 
-  setTimeout(()=>{
-    const next=quizState.current+1;
-    if(next>=activeQuestions.length){finishQuiz();return;}
-    quizState.current=next;quizState.selected=null;
-    renderQuestion();
-    if(gameSettings.gameMode==='lightning')startQuestionTimer();
-    else if(gameSettings.gameMode==='survival')startSurvivalQuestionTimer();
-  },900);
+  // Classic / lightning: server questionIndex patch fires → setupStateListeners re-renders.
+  // For the last question: server _endGame() sets phase=results → applyPhase handles it.
+  // No client-side finishQuiz() or next-question logic here.
 }
 
 async function eliminatePlayer(){
+  if(quizState.eliminated)return; // idempotent
   quizState.eliminated=true;
-  quizState.finished=true; // prevent finishQuiz() from firing on eliminated player
+  quizState.finished=true;
   clearInterval(window.activeGameTimer);
   clearInterval(window.questionTimer);
   try{room.send('eliminatePlayer',{score:quizState.score,correctCount:quizState.correctCount});}catch(e){}
@@ -2404,10 +2810,6 @@ async function eliminatePlayer(){
   startSpectatorMode();
 }
 
-function startSpectatorMode(){
-  // Live leaderboard updates come via room.onMessage('playersUpdated') in setupRoomListeners()
-}
-
 async function finishQuiz(){
   if(quizState.finished)return;
   quizState.finished=true;
@@ -2415,8 +2817,21 @@ async function finishQuiz(){
   clearInterval(window.questionTimer);
   sessionStorage.removeItem('qm_session');
   try{room.send('playerFinished',{score:quizState.score,correctCount:quizState.correctCount});}catch(e){}
-  goToResults();
+  // Do NOT call goToResults() here — server sets phase=results which applyPhase handles.
+  // For classic mode where player may finish before timer: wait for server phase patch.
 }
+
+function startSpectatorMode(){
+  // Immediately render leaderboard from schema state if available, else last known
+  const schemaPlayers = (room && room.state && room.state.players)
+    ? Object.fromEntries([...room.state.players.entries()].map(([id, p]) => [id, _playerToPlain(p, id)]))
+    : null;
+  const players = schemaPlayers || window._lastKnownPlayers || {};
+  _refreshSpectatorLeaderboard(players);
+  // Live updates now driven by player.onChange() schema patches
+}
+
+// finishQuiz is defined above
 
 // ══════════════════════════════════════════
 // RESULTS
@@ -2426,10 +2841,19 @@ async function goToResults(){
   clearInterval(window.activeGameTimer);
   clearInterval(window.questionTimer);
   showPage('results');
-  const players=Object.values(window._lastKnownPlayers||{}).sort((a,b)=>b.score-a.score||(a.finishedAt||9e15)-(b.finishedAt||9e15));
-  const me=players.find(p=>p.id===myPlayerId)||{nickname:myNickname,score:quizState.score,correctCount:quizState.correctCount};
+  // Prefer schema state players (most up-to-date) then fall back to last known
+  const schemaPlayers = (room && room.state && room.state.players)
+    ? Object.fromEntries([...room.state.players.entries()].map(([id, p]) => [id, _playerToPlain(p, id)]))
+    : null;
+  const players=(Object.values(schemaPlayers||window._lastKnownPlayers||{})).sort((a,b)=>b.score-a.score||(a.finishedAt||9e15)-(b.finishedAt||9e15));
+  // Build a synthetic 'me' entry from local state if server hasn't synced yet
+  const meFromState={id:myPlayerId,nickname:myNickname,score:quizState.score,correctCount:quizState.correctCount,eliminated:quizState.eliminated};
+  const me=players.find(p=>p.id===myPlayerId)||meFromState;
+  // Use score from local state if server score not yet reflected
+  if(me.score===undefined||me.score===null)me.score=quizState.score;
+  if(me.correctCount===undefined||me.correctCount===null)me.correctCount=quizState.correctCount;
   const myRank=players.findIndex(p=>p.id===myPlayerId)+1||1;
-  const isWinner=myRank===1&&!quizState.eliminated;
+  const isWinner=myRank===1&&!quizState.eliminated&&players.length>0;
   const total=activeQuestions.length||gameSettings.questionCount||20;
   if(!myPlayerId)return; // safety: not fully joined yet
 
@@ -2765,14 +3189,7 @@ function showBlitzAutoAssign(gameData,assignedTeam,newCountA,newCountB){
   };
   updateBalanceUI(newCountA||0,newCountB||0);
 
-  // Live balance updates via Colyseus playersUpdated messages
-  const balanceHandler=(msg)=>{
-    const players=Object.values(msg.players||{});
-    const cA=players.filter(p=>p.team==='A').length;
-    const cB=players.filter(p=>p.team==='B').length;
-    updateBalanceUI(cA,cB);
-  };
-  if(room)room.onMessage('playersUpdated',balanceHandler);
+  // Live balance updates handled by the consolidated playersUpdated handler in setupRoomListeners()
 
   showPage('team-select');
 
@@ -2806,30 +3223,14 @@ function setupBlitzLobby(){
   document.getElementById('blitz-lobby-myteam-name').textContent=emoji+' '+myTeamName;
   document.getElementById('blitz-lobby-myteam-name').style.color=teamColor;
 
-  // Render team lists from Colyseus playersUpdated messages
-  const renderTeams=(players)=>{
-    const aPlayers=players.filter(p=>p.team==='A');
-    const bPlayers=players.filter(p=>p.team==='B');
-    document.getElementById('blitz-lobby-a-header').textContent='🔴 '+blitzState.teamAName+' ('+aPlayers.length+')';
-    document.getElementById('blitz-lobby-b-header').textContent='🔵 '+blitzState.teamBName+' ('+bPlayers.length+')';
-    const renderTeamList=(pl)=>pl.map(p=>`
-        <div class="player-chip" style="margin-bottom:6px;">
-          <div class="avatar" style="background:${avatarColor(p.nickname)}30;color:${avatarColor(p.nickname)};width:28px;height:28px;font-size:11px;">${p.nickname[0].toUpperCase()}</div>
-          <span style="font-size:13px;font-weight:${p.id===myPlayerId?700:400};">${escHtml(p.nickname)}${p.id===myPlayerId?' (you)':''}</span>
-        </div>`).join('');
-    document.getElementById('blitz-lobby-a-players').innerHTML=renderTeamList(aPlayers);
-    document.getElementById('blitz-lobby-b-players').innerHTML=renderTeamList(bPlayers);
-  };
+  // Initial render from schema state (preferred) or last known state
+  const schemaPlayers = (room && room.state && room.state.players)
+    ? Object.fromEntries([...room.state.players.entries()].map(([id, p]) => [id, _playerToPlain(p, id)]))
+    : null;
+  const players = schemaPlayers || window._lastKnownPlayers || {};
+  _refreshBlitzLobbyTeams(players);
 
-  // Initial render from last known state
-  renderTeams(Object.values(window._lastKnownPlayers||{}));
-
-  // Live updates via room messages — already handled in setupRoomListeners() playersUpdated
-  if(room)room.onMessage('playersUpdated',({players})=>{
-    renderTeams(Object.values(players||{}));
-  });
-
-  // Game start handled by setupRoomListeners() gameStarted message
+  // Live updates driven by player.onChange() schema patches — no manual handler needed
 }
 
 // ══════════════════════════════════════════
@@ -2882,30 +3283,8 @@ function startBlitzQuiz(gameData){
   showPage('blitz-quiz');
   renderBlitzQuestion();
   startBlitzQuestionTimer();
-
-  // Game-end, reveal, reactions and signals all come via Colyseus onMessage
-  if(room){
-    room.onMessage('gameEnded',()=>{
-      if(!blitzState.finished)finishBlitzQuiz(true);
-    });
-    room.onMessage('blitzReveal',(round)=>{
-      if(round.q===blitzState.currentQ)showBlitzReveal(round);
-    });
-    room.onMessage('blitzReaction',(r)=>{
-      if(r.team===blitzState.myTeam)spawnReactionBubble(r.emoji);
-    });
-    room.onMessage('blitzSignal',(r)=>{
-      if(r.team===blitzState.myTeam&&r.nickname!==myNickname){
-        const bar=document.getElementById('blitz-signals-bar');
-        if(bar){
-          bar.style.display='block';
-          bar.textContent=r.nickname+': "'+r.text+'"';
-          clearTimeout(bar._hideTimer);
-          bar._hideTimer=setTimeout(()=>{bar.style.display='none';},4000);
-        }
-      }
-    });
-  }
+  // Blitz message listeners (blitzReveal, blitzReaction, blitzSignal, blitzSuddenDeath)
+  // are registered once in setupRoomListeners() — no duplicate registration here.
 }
 
 function renderBlitzQuestion(){
@@ -2915,13 +3294,13 @@ function renderBlitzQuestion(){
   blitzState.myAnswer=null;
   const total=activeQuestions.length;
   document.getElementById('blitz-quiz-progress-label').textContent='Question '+(i+1)+' of '+total;
-  document.getElementById('blitz-quiz-progress-bar').style.width=(i/total*100)+'%';
+  document.getElementById('blitz-quiz-progress-bar').style.width=((i+1)/total*100)+'%';
   document.getElementById('blitz-q-num').textContent='QUESTION '+(i+1);
   document.getElementById('blitz-question').textContent=q.q;
   document.getElementById('blitz-score-a').textContent=blitzState.teamScoreA;
   document.getElementById('blitz-score-b').textContent=blitzState.teamScoreB;
   const answerStatus=document.getElementById('blitz-answer-status');
-  answerStatus.style.display='none';
+  if(answerStatus)answerStatus.style.display='none';
   const opts=document.getElementById('blitz-quiz-options');
   opts.innerHTML=q.options.map((opt,idx)=>
     `<button class="answer-btn" id="blitz-opt-${idx}" onclick="handleBlitzAnswer(${idx})">
@@ -2963,7 +3342,7 @@ async function handleBlitzAnswer(idx){
   if(blitzState.myAnswer!==null)return;
   blitzState.myAnswer=idx;
   clearInterval(window.blitzTimer);
-
+  // Lock all options immediately — server validates, client cannot resubmit
   document.querySelectorAll('.answer-btn').forEach(b=>b.disabled=true);
   document.getElementById('blitz-opt-'+idx).style.background='rgba(168,85,247,0.25)';
   document.getElementById('blitz-opt-'+idx).style.borderColor='#00ccff';
@@ -2995,8 +3374,9 @@ function showBlitzReveal(round){
   clearInterval(window.blitzTimer);
 
   // Update running scores
-  blitzState.teamScoreA=Math.max(0,blitzState.teamScoreA+round.aPoints);
-  blitzState.teamScoreB=Math.max(0,blitzState.teamScoreB+round.bPoints);
+  // FIX: Use server-authoritative running totals; fall back to delta if old server
+  blitzState.teamScoreA=(round.teamScoreA!==undefined)?round.teamScoreA:Math.max(0,blitzState.teamScoreA+round.aPoints);
+  blitzState.teamScoreB=(round.teamScoreB!==undefined)?round.teamScoreB:Math.max(0,blitzState.teamScoreB+round.bPoints);
   if(round.aVote===round.correctAnswer)blitzState.roundsWonA++;
   if(round.bVote===round.correctAnswer)blitzState.roundsWonB++;
   if(round.aPerfect)blitzState.perfectA++;
@@ -3078,12 +3458,12 @@ function showBlitzReveal(round){
       clearInterval(blitzState.revealCountdown);
       blitzState.currentQ++;
       if(blitzState.currentQ>=activeQuestions.length){
-        // Check for tie — sudden death
-        if(blitzState.teamScoreA===blitzState.teamScoreB){
-          startBlitzSuddenDeath();
-        }else{
+        // FIX: Sudden death is server-driven via 'blitzSuddenDeath' message.
+        // Only finish if scores differ; if tied, server will send the sudden death question.
+        if(blitzState.teamScoreA!==blitzState.teamScoreB){
           finishBlitzQuiz(false);
         }
+        // If tied and not in sudden death: wait for server 'blitzSuddenDeath' message
       }else{
         showPage('blitz-quiz');
         renderBlitzQuestion();
@@ -3275,15 +3655,70 @@ if('serviceWorker' in navigator){
   const saved=sessionStorage.getItem('qm_session');
   if(!saved)return;
   let s;try{s=JSON.parse(saved);}catch(e){return;}
-  if(!s.pin||!s.nick||!s.playerId)return;
+  if(!s.pin||!s.nick)return;
+
+  const reconnectToken=sessionStorage.getItem('qm_reconnect_token')||s.reconnectToken||'';
+  const hostToken=sessionStorage.getItem('qm_host_token')||'';
+  const wasHost=!!s.isHost||!!hostToken;
+
   try{
-    // Attempt to reconnect to Colyseus room with saved session
-    room=await client.joinById(s.pin,{nickname:s.nick,isHost:false,reconnect:true,sessionId:s.playerId});
+    // Send back both tokens — server uses them to restore identity
+    room=await client.joinById(s.pin,{
+      pin:s.pin,
+      nickname:s.nick,
+      isHost:wasHost,
+      reconnectToken:reconnectToken,
+      hostToken:hostToken,
+    });
     myPin=s.pin;myNickname=s.nick;myPlayerId=room.sessionId;
+    if(wasHost){isHost=true;}
     setupRoomListeners();
-    // Server sends 'joinAck' or 'gameState' with the current room state
+
     room.onMessage('joinAck',(data)=>{
-      if(data.status==='active'){
+      // Always refresh tokens from the server's response
+      if(data.reconnectToken) sessionStorage.setItem('qm_reconnect_token',data.reconnectToken);
+      if(data.hostToken)      sessionStorage.setItem('qm_host_token',data.hostToken);
+
+      // ── Host re-join after refresh ──
+      if(wasHost){
+        gameSettings=data.settings||gameSettings||{};
+        setupAdminDashboard();
+        showPage('admin');
+        showAdminTab('dashboard');
+        return;
+      }
+
+      // ── Player: fully restored mid-game state ──
+      if(data.status==='reconnected'){
+        quizState={
+          current:data.questionIndex||0,
+          score:data.score||0,
+          correctCount:data.correctCount||0,
+          answers:{},selected:null,
+          finished:data.finished||false,
+          eliminated:data.eliminated||false,
+          questionStartTime:Date.now()
+        };
+        if(data.eliminated){
+          showPage('eliminated');
+          document.getElementById('eliminated-score').textContent=quizState.score;
+          document.getElementById('eliminated-correct').textContent=(quizState.correctCount||0)+' correct';
+          startSpectatorMode();
+        }else if(data.finished){
+          goToResults();
+        }else if(data.gameMode==='blitz'){
+          blitzState.myTeam=data.assignedTeam||data.team;
+          blitzState.teamAName=data.teamAName||'Team A';
+          blitzState.teamBName=data.teamBName||'Team B';
+          window._lightningGlobalEndTime=data.globalEndTime||null;
+          showPage('blitz-quiz');
+          startBlitzQuiz({settings:data.settings,activeQuestions:data.activeQuestions});
+        }else{
+          window._lightningGlobalEndTime=data.globalEndTime||null;
+          startQuiz({settings:data.settings,activeQuestions:data.activeQuestions,startTime:data.startTime,globalEndTime:data.globalEndTime});
+        }
+      // ── Player: joined mid-game but no saved token matched (new seat) ──
+      }else if(data.status==='active'||data.waiting){
         if(data.eliminated){
           quizState={current:0,score:data.score||0,correctCount:data.correctCount||0,
             answers:{},selected:null,finished:false,eliminated:true};
@@ -3292,24 +3727,20 @@ if('serviceWorker' in navigator){
           document.getElementById('eliminated-correct').textContent=(quizState.correctCount||0)+' correct';
           startSpectatorMode();
         }else if(data.finished){
-          quizState.score=data.score||0;
-          quizState.correctCount=data.correctCount||0;
+          quizState.score=data.score||0;quizState.correctCount=data.correctCount||0;
           goToResults();
         }else if(data.gameMode==='blitz'){
-          blitzState.myTeam=data.team;
+          blitzState.myTeam=data.assignedTeam||data.team;
           blitzState.teamAName=data.teamAName||'Team A';
           blitzState.teamBName=data.teamBName||'Team B';
+          window._lightningGlobalEndTime=data.globalEndTime||null;
           showPage('blitz-lobby');
           setupBlitzLobby();
         }else{
-          // Resume mid-game
-          startQuiz({settings:data.settings,activeQuestions:data.activeQuestions,startTime:data.startTime});
+          window._lightningGlobalEndTime=data.globalEndTime||null;
+          startQuiz({settings:data.settings,activeQuestions:data.activeQuestions,startTime:data.startTime,globalEndTime:data.globalEndTime});
         }
-      }else if(data.waiting){
-        document.getElementById('waiting-name').textContent=s.nick;
-        document.getElementById('waiting-pin').textContent=s.pin;
-        showPage('waiting');
-        startWaitingMode();
+      // ── Lobby / waiting_next_round ──
       }else{
         setupLobby({settings:data.settings});
         showPage('lobby');
@@ -3318,6 +3749,8 @@ if('serviceWorker' in navigator){
   }catch(e){
     // Room no longer exists or session expired — clear and start fresh
     sessionStorage.removeItem('qm_session');
+    sessionStorage.removeItem('qm_reconnect_token');
+    sessionStorage.removeItem('qm_host_token');
   }
 })();
 
