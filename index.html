@@ -332,15 +332,28 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
         <button class="pill" data-value="50" onclick="selectPill(&#39;setting-count&#39;,&#39;50&#39;)">50</button>
       </div>
 
-      <span class="label">GAME TIMER</span>
-      <div class="pill-group" id="setting-timer">
-        <button class="pill" data-value="60" onclick="selectPill(&#39;setting-timer&#39;,&#39;60&#39;)">1 min</button>
-        <button class="pill active" data-value="120" onclick="selectPill(&#39;setting-timer&#39;,&#39;120&#39;)">2 min</button>
-        <button class="pill" data-value="180" onclick="selectPill(&#39;setting-timer&#39;,&#39;180&#39;)">3 min</button>
-        <button class="pill" data-value="300" onclick="selectPill(&#39;setting-timer&#39;,&#39;300&#39;)">5 min</button>
-        <button class="pill" data-value="600" onclick="selectPill(&#39;setting-timer&#39;,&#39;600&#39;)">10 min</button>
+      <!-- Classic mode: global game timer -->
+      <div id="classic-timer-config">
+        <span class="label">GAME TIMER</span>
+        <div class="pill-group" id="setting-timer">
+          <button class="pill" data-value="60" onclick="selectPill(&#39;setting-timer&#39;,&#39;60&#39;)">1 min</button>
+          <button class="pill active" data-value="120" onclick="selectPill(&#39;setting-timer&#39;,&#39;120&#39;)">2 min</button>
+          <button class="pill" data-value="180" onclick="selectPill(&#39;setting-timer&#39;,&#39;180&#39;)">3 min</button>
+          <button class="pill" data-value="300" onclick="selectPill(&#39;setting-timer&#39;,&#39;300&#39;)">5 min</button>
+          <button class="pill" data-value="600" onclick="selectPill(&#39;setting-timer&#39;,&#39;600&#39;)">10 min</button>
+        </div>
       </div>
-      <p style="font-size:12px;color:#5a6a8a;margin-top:-10px;margin-bottom:16px;">⚡ Lightning mode uses per-question timer instead</p>
+      <!-- Lightning mode: per-question timer (replaces global timer) -->
+      <div id="lightning-timer-config" style="display:none;">
+        <span class="label">SECONDS PER QUESTION</span>
+        <div class="pill-group" id="setting-lightning-timer">
+          <button class="pill active" data-value="5" onclick="selectPill(&#39;setting-lightning-timer&#39;,&#39;5&#39;)">5s</button>
+          <button class="pill" data-value="8" onclick="selectPill(&#39;setting-lightning-timer&#39;,&#39;8&#39;)">8s</button>
+          <button class="pill" data-value="10" onclick="selectPill(&#39;setting-lightning-timer&#39;,&#39;10&#39;)">10s</button>
+          <button class="pill" data-value="12" onclick="selectPill(&#39;setting-lightning-timer&#39;,&#39;12&#39;)">12s</button>
+        </div>
+        <p style="font-size:12px;color:#5a6a8a;margin-top:6px;margin-bottom:0;">⚡ Speed earns bonus points — answer faster for 3×, 2× or 1× score.</p>
+      </div>
 
       <span class="label">GAME MODE</span>
       <div class="pill-group" id="setting-mode">
@@ -616,7 +629,7 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
       <button class="pill" data-value="50" onclick="selectPill('nr-setting-count','50')">50</button>
     </div>
 
-    <!-- Global game timer (Classic/Lightning) -->
+    <!-- Classic mode: global game timer -->
     <div id="nr-global-timer-wrap">
       <span class="label">GAME TIMER</span>
       <div class="pill-group" id="nr-setting-timer">
@@ -625,6 +638,16 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
         <button class="pill" data-value="180" onclick="selectPill('nr-setting-timer','180')">3 min</button>
         <button class="pill" data-value="300" onclick="selectPill('nr-setting-timer','300')">5 min</button>
         <button class="pill" data-value="600" onclick="selectPill('nr-setting-timer','600')">10 min</button>
+      </div>
+    </div>
+    <!-- Lightning mode: per-question timer -->
+    <div id="nr-lightning-timer-wrap" style="display:none;">
+      <span class="label">SECONDS PER QUESTION</span>
+      <div class="pill-group" id="nr-setting-lightning-timer">
+        <button class="pill active" data-value="5" onclick="selectPill('nr-setting-lightning-timer','5')">5s</button>
+        <button class="pill" data-value="8" onclick="selectPill('nr-setting-lightning-timer','8')">8s</button>
+        <button class="pill" data-value="10" onclick="selectPill('nr-setting-lightning-timer','10')">10s</button>
+        <button class="pill" data-value="12" onclick="selectPill('nr-setting-lightning-timer','12')">12s</button>
       </div>
     </div>
 
@@ -1150,13 +1173,21 @@ const DEFAULT_QUESTIONS=[
   {q:"What is the capital of Brazil?",options:["Rio de Janeiro","Sao Paulo","Brasilia","Salvador"],answer:2},
 ];
 
-const LIGHTNING_Q_DURATION=5;
+// Lightning per-question duration — read from gameSettings so host-selected
+// value flows everywhere without touching every call site.
+// Default 5s keeps current behaviour when not explicitly set.
+const _LIGHTNING_Q_DEFAULT=5;
+function getLightningQDuration(){
+  return(gameSettings&&gameSettings.lightningQDuration)?parseInt(gameSettings.lightningQDuration):_LIGHTNING_Q_DEFAULT;
+}
+// Backward-compat alias used by existing call sites
+Object.defineProperty(window,'LIGHTNING_Q_DURATION',{get:()=>getLightningQDuration(),configurable:true});
 const COLORS=["#00ccff","#0080ff","#0080ff","#00ff66","#ffd700","#ff8800","#06b6d4","#8b5cf6"];
 const MEDAL_COLORS=["#ffd700","#7a8ab0","#ff8800"];
 const MEDAL_EMOJIS=["🥇","🥈","🥉"];
 const MODE_DESCS={
   classic:"Standard quiz with a shared countdown timer. Answer all questions before time runs out.",
-  lightning:"Each question has an 8-second per-question timer. Speed earns bonus points (3/2/1).",
+  lightning:"Each question has its own countdown (5–12s). Answer faster for bonus points (3×, 2×, 1×). No mercy!",
   survival:"One wrong answer and you're eliminated! Last player standing wins.",
   blitz:"⚔️ Teams vote on every question — majority decides! Reactions, signals, and sudden death tiebreakers."
 };
@@ -1274,9 +1305,8 @@ function setupStateListeners() {
     const mode = gameSettings.gameMode;
     if (quizPage && quizPage.classList.contains('active')) {
       if (mode === 'survival') {
-        // Survival: client 100ms interval (startSurvivalQuestionTimer) owns digit + bar
-        // for smooth sub-second animation. Schema patch (1s) only corrects the digit
-        // to stay server-authoritative; bar is left to the interval to avoid jank.
+        // Survival: the 100ms client interval owns digit + bar for smooth animation.
+        // Schema (1s) only corrects the digit to prevent server-drift.
         const el = document.getElementById('quiz-q-timer-val');
         if (el && quizState.selected === null && !quizState.finished) {
           const sDur = gameSettings.survivalTimerDuration || 8;
@@ -1285,22 +1315,21 @@ function setupStateListeners() {
           el.style.color = clamped <= 2 ? '#ff4444' : clamped <= Math.floor(sDur/2) ? '#ff8800' : '#ff8888';
         }
       } else if (mode === 'lightning') {
-        // Lightning: schema drives the bar AND anchors the digit every 1s.
-        // The client 100ms interval (startQuestionTimer) only smooths the digit
-        // between schema ticks — both write the digit but that's fine since
-        // they agree on the value (client uses elapsed time from same start point).
+        // Lightning: schema drives bar + anchors digit every 1s.
+        // Client 100ms interval smooths digit between ticks — both agree on value.
+        const dur = LIGHTNING_Q_DURATION;
         const qBar = document.getElementById('quiz-q-timer-bar');
         if (qBar) {
           qBar.style.transition = 'none';
-          const pct = Math.max(0, Math.min(100, (secs / LIGHTNING_Q_DURATION) * 100));
+          const pct = Math.max(0, Math.min(100, (secs / dur) * 100));
           qBar.style.width = pct + '%';
-          qBar.style.background = secs < 2 ? '#ff4444' : secs < Math.ceil(LIGHTNING_Q_DURATION/2) ? '#ff8800' : '#ffd700';
+          qBar.style.background = secs < 2 ? '#ff4444' : secs < Math.ceil(dur/2) ? '#ff8800' : '#ffd700';
         }
-        // Anchor digit to server value each 1s tick to prevent client drift
+        // Anchor digit to server value each 1s tick to prevent drift
         const dEl = document.getElementById('quiz-q-timer-val');
         if (dEl && quizState.selected === null && !quizState.finished) {
           dEl.textContent = Math.max(0, Math.ceil(secs));
-          dEl.style.color = secs < 2 ? '#ff4444' : secs < Math.ceil(LIGHTNING_Q_DURATION/2) ? '#ff8800' : '#ffd700';
+          dEl.style.color = secs < 2 ? '#ff4444' : secs < Math.ceil(dur/2) ? '#ff8800' : '#ffd700';
         }
       } else {
         // Classic global timer
@@ -1319,9 +1348,8 @@ function setupStateListeners() {
         }
       }
     }
-    // Blitz per-question timer: client 100ms interval (startBlitzQuestionTimer) owns
-    // digit + bar for smooth animation. Schema patch (1s) only corrects the digit
-    // to prevent drift; bar ownership stays with the interval to avoid jank.
+    // Blitz: client 100ms interval (startBlitzQuestionTimer) owns digit + bar.
+    // Schema (1s) only corrects digit to prevent drift.
     const blitzPage = document.getElementById('page-blitz-quiz');
     if (!isHost && blitzPage && blitzPage.classList.contains('active') && mode === 'blitz') {
       const bDur = gameSettings.blitzTimerDuration || 12;
@@ -1676,14 +1704,41 @@ function setupRoomListeners(){
     startBlitzQuestionTimer();
   });
 
-  room.onLeave((code)=>{
-    // code 1000 = clean leave (user triggered). Anything else = unexpected disconnect.
-    if(code!==1000&&code!==4000){
-      // Only show toast if user is actively in a game (not on landing/setup pages)
-      const activePage=document.querySelector('.page.active,.page-top.active');
-      const pageId=activePage?activePage.id:'';
-      if(pageId&&pageId!=='page-landing'&&pageId!=='page-host-setup'&&pageId!=='page-join'){
-        showToast('⚠️ Connection lost. Please refresh to rejoin.','#ff8800',5000);
+  room.onLeave(async (code)=>{
+    // 1000 = clean leave, 4000 = server kicked (deliberate). Ignore both.
+    if(code===1000||code===4000) return;
+    // Ignore if we're on a non-game page (landing / setup / join).
+    const activePage=document.querySelector('.page.active,.page-top.active');
+    const pageId=activePage?activePage.id:'';
+    if(!pageId||pageId==='page-landing'||pageId==='page-host-setup'||pageId==='page-join') return;
+
+    // Silent exponential-backoff rejoin — player never has to touch anything.
+    const MAX_ATTEMPTS=5;
+    const BASE_DELAY_MS=800;
+    for(let attempt=1;attempt<=MAX_ATTEMPTS;attempt++){
+      const delay=BASE_DELAY_MS*Math.pow(1.8,attempt-1); // 0.8s, 1.4s, 2.6s, 4.6s, 8.3s
+      await new Promise(r=>setTimeout(r,delay));
+      const saved=sessionStorage.getItem('qm_session');
+      if(!saved) break; // session was cleared (deliberate logout)
+      try{
+        const s=JSON.parse(saved);
+        const reconnectToken=sessionStorage.getItem('qm_reconnect_token')||s.reconnectToken||'';
+        const hostToken=sessionStorage.getItem('qm_host_token')||'';
+        room=await client.joinById(s.pin,{
+          pin:s.pin,
+          nickname:s.nick,
+          isHost:!!s.isHost,
+          reconnectToken,
+          hostToken,
+        });
+        // Hooked up — re-register all listeners and we're back in the game.
+        setupRoomListeners();
+        return; // success — stop retrying
+      }catch(e){
+        if(attempt===MAX_ATTEMPTS){
+          showToast('⚠️ Connection lost. Please refresh to rejoin.','#ff4444',10000);
+        }
+        // else: silently retry after next delay
       }
     }
   });
@@ -1693,6 +1748,47 @@ function setupRoomListeners(){
     showToast('Connection error: '+(message||code),'#ff4444',4000);
   });
 }
+
+// ══════════════════════════════════════════
+// MOBILE / NETWORK RECONNECT
+// Handles iOS/Android backgrounding and device going offline.
+// Uses the same token-rejoin path as onLeave — no user action needed.
+// ══════════════════════════════════════════
+let _rejoinInProgress=false;
+async function _silentRejoin(){
+  if(_rejoinInProgress) return;
+  // If socket is still open, nothing to do.
+  try{if(room&&room.connection&&room.connection.ws&&room.connection.ws.readyState===WebSocket.OPEN)return;}catch(_){}
+  const saved=sessionStorage.getItem('qm_session');
+  if(!saved) return;
+  _rejoinInProgress=true;
+  const MAX_ATTEMPTS=4;
+  const BASE_DELAY_MS=600;
+  for(let attempt=1;attempt<=MAX_ATTEMPTS;attempt++){
+    if(attempt>1) await new Promise(r=>setTimeout(r,BASE_DELAY_MS*Math.pow(2,attempt-2)));
+    try{
+      const s=JSON.parse(saved);
+      const reconnectToken=sessionStorage.getItem('qm_reconnect_token')||s.reconnectToken||'';
+      const hostToken=sessionStorage.getItem('qm_host_token')||'';
+      room=await client.joinById(s.pin,{
+        pin:s.pin,nickname:s.nick,isHost:!!s.isHost,reconnectToken,hostToken,
+      });
+      setupRoomListeners();
+      _rejoinInProgress=false;
+      return;
+    }catch(e){
+      if(attempt===MAX_ATTEMPTS){
+        showToast('⚠️ Connection lost. Please refresh to rejoin.','#ff4444',10000);
+      }
+    }
+  }
+  _rejoinInProgress=false;
+}
+
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible') _silentRejoin();
+});
+window.addEventListener('online',()=>{ _silentRejoin(); });
 
 // ══════════════════════════════════════════
 // STATE
@@ -1941,14 +2037,19 @@ function selectPill(groupId,value){
     // Find the global timer pill-group and its preceding label
     const allLabels=document.querySelectorAll('#page-host-setup .label');
     // Hide/show global timer based on mode
+    // Show/hide the classic-timer and lightning-timer config sections
+    const classicTimerCfg=document.getElementById('classic-timer-config');
+    const lightningTimerCfg=document.getElementById('lightning-timer-config');
+    if(classicTimerCfg)classicTimerCfg.style.display=(value==='classic')?'block':'none';
+    if(lightningTimerCfg)lightningTimerCfg.style.display=(value==='lightning')?'block':'none';
     if(settingTimerGroup){
       // Walk up to find label + pill-group wrapper
       let timerLabel=null;
       allLabels.forEach(lbl=>{if(lbl.textContent.trim()==='GAME TIMER')timerLabel=lbl;});
       const timerNote=settingTimerGroup.nextElementSibling;
-      if(timerLabel)timerLabel.style.display=(value==='survival'||value==='blitz')?'none':'';
-      settingTimerGroup.style.display=(value==='survival'||value==='blitz')?'none':'';
-      if(timerNote&&timerNote.tagName==='P')timerNote.style.display=(value==='survival'||value==='blitz')?'none':'';
+      if(timerLabel)timerLabel.style.display=(value==='survival'||value==='blitz'||value==='lightning')?'none':'';
+      settingTimerGroup.style.display=(value==='survival'||value==='blitz'||value==='lightning')?'none':'';
+      if(timerNote&&timerNote.tagName==='P')timerNote.style.display=(value==='survival'||value==='blitz'||value==='lightning')?'none':'';
     }
     if(blitzCfg)blitzCfg.style.display=value==='blitz'?'block':'none';
     if(blitzTimer)blitzTimer.style.display=value==='blitz'?'block':'none';
@@ -2027,6 +2128,7 @@ async function createGame(){
   const settings={
     questionCount:parseInt(getSelectedPill('setting-count'))||20,
     timerDuration:parseInt(getSelectedPill('setting-timer'))||120,
+    lightningQDuration:(getSelectedPill('setting-mode')==='lightning')?parseInt(getSelectedPill('setting-lightning-timer'))||5:undefined,
     gameMode:mode,
     scoringMode:getSelectedPill('setting-scoring')||'standard'
   };
@@ -2315,8 +2417,10 @@ function selectNRModePill(value){
   if(desc)desc.textContent=MODE_DESCS[value]||'';
   const globalWrap=document.getElementById('nr-global-timer-wrap');
   const survivalWrap=document.getElementById('nr-survival-timer-wrap');
-  if(globalWrap)globalWrap.style.display=(value==='survival')?'none':'block';
+  const lightningWrap=document.getElementById('nr-lightning-timer-wrap');
+  if(globalWrap)globalWrap.style.display=(value==='survival'||value==='lightning'||value==='blitz')?'none':'block';
   if(survivalWrap)survivalWrap.style.display=(value==='survival')?'block':'none';
+  if(lightningWrap)lightningWrap.style.display=(value==='lightning')?'block':'none';
   if(value==='survival')updateNRSurvivalDurationCalc();
 }
 async function adminLaunchNextRound(){
@@ -2332,6 +2436,11 @@ async function adminLaunchNextRound(){
     const survSecs=parseInt(getSelectedPill('nr-setting-survival-timer'))||8;
     newSettings.survivalTimerDuration=survSecs;
     newSettings.timerDuration=newQCount*survSecs;
+  }
+  if(newMode==='lightning'){
+    const lSecs=parseInt(getSelectedPill('nr-setting-lightning-timer'))||5;
+    newSettings.lightningQDuration=lSecs;
+    newSettings.timerDuration=newQCount*lSecs;
   }
   if(newMode==='blitz'){
     // Preserve team names from current settings for blitz next round
