@@ -1170,7 +1170,18 @@ function applyPhase(phase, stateSnapshot) {
       break;
     case 'countdown':
       // Server-driven pre-game countdown overlay
-      if (!isHost) showGameCountdown(() => {});
+      if (!isHost) {
+        const _snapStartTime = (room && room.state) ? room.state.questionStartedAt : 0;
+        showGameCountdown(() => {
+          // After the countdown animation finishes, start the global timer display for classic mode.
+          // Lightning/survival/blitz timers are started by applyPhase('question') instead.
+          const _mode = gameSettings.gameMode;
+          if (_mode === 'classic') {
+            const _st = window._gameStartTime || _snapStartTime || Date.now();
+            startGlobalTimerDisplay(_st);
+          }
+        });
+      }
       break;
     case 'question': {
       // Server advanced to a question — ensure quiz UI is visible and in sync
@@ -1361,6 +1372,7 @@ function _playerToPlain(player, playerId) {
     team: player.team || null,
     blitzCorrectCount: player.blitzCorrectCount || 0,
     finishedAt: player.finishedAt || null,
+    isHost: !!player.isHost,
   };
 }
 
@@ -1378,7 +1390,7 @@ function _refreshAllPlayerViews() {
 function _refreshSpectatorLeaderboard(players) {
   const lb = document.getElementById('spectator-leaderboard');
   if (!lb || !document.getElementById('page-eliminated').classList.contains('active')) return;
-  const sorted = Object.values(players).sort((a, b) => b.score - a.score);
+  const sorted = Object.values(players).filter(p=>!p.isHost).sort((a, b) => b.score - a.score);
   lb.innerHTML = sorted.map((p, i) => `
     <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(255,255,255,0.03);border-radius:10px;margin-bottom:6px;">
       <span style="font-size:13px;color:#6a7a9a;min-width:20px;">${i + 1}</span>
@@ -1391,7 +1403,7 @@ function _refreshSpectatorLeaderboard(players) {
 function _refreshWaitingLeaderboard(players) {
   const wlb = document.getElementById('waiting-leaderboard');
   if (!wlb) return;
-  const sorted = Object.values(players).sort((a, b) => b.score - a.score);
+  const sorted = Object.values(players).filter(p=>!p.isHost).sort((a, b) => b.score - a.score);
   const lbWrap = document.getElementById('waiting-live-lb');
   if (sorted.length > 0 && lbWrap) lbWrap.style.display = 'block';
   wlb.innerHTML = sorted.slice(0, 10).map((p, i) => `
@@ -1406,8 +1418,7 @@ function _refreshWaitingLeaderboard(players) {
 function _refreshLobbyPlayers(players) {
   const lp = document.getElementById('lobby-players');
   if (!lp) return;
-  const arr = Object.values(players);
-  const lobbyCount = document.getElementById('lobby-count');
+  const arr = Object.values(players).filter(p=>!p.isHost);
   if (lobbyCount) lobbyCount.textContent = 'PLAYERS IN LOBBY (' + arr.length + ')';
   lp.innerHTML = arr.map(p => `
     <div class="player-chip">
@@ -1420,8 +1431,7 @@ function _refreshLobbyPlayers(players) {
 function _refreshBlitzLobbyTeams(players) {
   const blitzLobbyPage = document.getElementById('page-blitz-lobby');
   if (!blitzLobbyPage || !blitzLobbyPage.classList.contains('active')) return;
-  const arr = Object.values(players);
-  const aPlayers = arr.filter(p => p.team === 'A');
+  const arr = Object.values(players).filter(p=>!p.isHost);
   const bPlayers = arr.filter(p => p.team === 'B');
   const aHdr = document.getElementById('blitz-lobby-a-header');
   const bHdr = document.getElementById('blitz-lobby-b-header');
@@ -1441,8 +1451,7 @@ function _refreshBlitzLobbyTeams(players) {
 function _refreshTeamSelectCounters(players) {
   const teamSelectPage = document.getElementById('page-team-select');
   if (!teamSelectPage || !teamSelectPage.classList.contains('active')) return;
-  const arr = Object.values(players);
-  const cA = arr.filter(p => p.team === 'A').length;
+  const arr = Object.values(players).filter(p=>!p.isHost);
   const cB = arr.filter(p => p.team === 'B').length;
   const aCount = document.getElementById('blitz-assign-a-count');
   const bCount = document.getElementById('blitz-assign-b-count');
@@ -1514,6 +1523,7 @@ function setupRoomListeners(){
     gameSettings=settings||gameSettings;
     activeQuestions=toArray(aq)||[];
     window._lightningGlobalEndTime=globalEndTime||null;
+    window._gameStartTime=startTime||null;  // used by classic mode timer after countdown
     if(isHost){
       updateAdminStatus({status:'active',startTime,settings});
     }
@@ -2098,7 +2108,7 @@ function updateAdminStatus(g){
 }
 
 function updateAdminPlayers(players){
-  const list=Object.values(players).sort((a,b)=>b.score-a.score||(a.finishedAt||9e15)-(b.finishedAt||9e15));
+  const list=Object.values(players).filter(p=>!p.isHost).sort((a,b)=>b.score-a.score||(a.finishedAt||9e15)-(b.finishedAt||9e15));
   const qCount=gameSettings.questionCount||20;
   document.getElementById('admin-player-count').textContent=list.length;
   document.getElementById('admin-players-label').textContent='👥 CONNECTED PLAYERS ('+list.length+')';
@@ -2195,6 +2205,11 @@ async function adminEndGame(){
   clearInterval(adminTimerInterval);
   try{if(room)room.send('endGame',{});}catch(e){}
   document.getElementById('admin-winner-box').style.display='block';
+  document.getElementById('admin-start-btn').style.display='none';
+  document.getElementById('admin-end-btn').style.display='none';
+  document.getElementById('admin-timer-bar-wrap').style.display='none';
+  const nrBtn=document.getElementById('admin-next-round-btn');
+  if(nrBtn)nrBtn.style.display='';
 }
 
 async function adminReset(){
@@ -2789,12 +2804,30 @@ async function handleAnswer(idx){
     return;
   }
 
-  // Send answer to server — server validates, scores, and advances questionIndex when ready
+  // Send answer to server
   try{room.send('submitAnswer',{questionIndex:quizState.current,answer:idx,score:quizState.score,correct});}catch(e){}
 
-  // Classic / lightning: server questionIndex patch fires → setupStateListeners re-renders.
-  // For the last question: server _endGame() sets phase=results → applyPhase handles it.
-  // No client-side finishQuiz() or next-question logic here.
+  const mode=gameSettings.gameMode;
+  const isLastQuestion=quizState.current>=activeQuestions.length-1;
+
+  // Classic & Standard: server uses a global timer and never patches questionIndex per answer.
+  // Client self-advances after a brief feedback delay so player sees correct/wrong colour.
+  // Lightning: server patches questionIndex via answer_reveal — questionIndex listener handles it.
+  // Survival correct answer: also self-advances; wrong answer waits for player.eliminated patch.
+  if(mode==='classic'||(mode==='survival'&&correct)){
+    setTimeout(()=>{
+      if(quizState.finished||quizState.eliminated)return;
+      if(isLastQuestion){
+        finishQuiz();
+      }else{
+        quizState.current++;
+        quizState.selected=null;
+        quizState.questionStartTime=Date.now();
+        renderQuestion();
+        if(mode==='survival')startSurvivalQuestionTimer();
+      }
+    },1500);
+  }
 }
 
 async function eliminatePlayer(){
@@ -2845,7 +2878,7 @@ async function goToResults(){
   const schemaPlayers = (room && room.state && room.state.players)
     ? Object.fromEntries([...room.state.players.entries()].map(([id, p]) => [id, _playerToPlain(p, id)]))
     : null;
-  const players=(Object.values(schemaPlayers||window._lastKnownPlayers||{})).sort((a,b)=>b.score-a.score||(a.finishedAt||9e15)-(b.finishedAt||9e15));
+  const players=(Object.values(schemaPlayers||window._lastKnownPlayers||{})).filter(p=>!p.isHost).sort((a,b)=>b.score-a.score||(a.finishedAt||9e15)-(b.finishedAt||9e15));
   // Build a synthetic 'me' entry from local state if server hasn't synced yet
   const meFromState={id:myPlayerId,nickname:myNickname,score:quizState.score,correctCount:quizState.correctCount,eliminated:quizState.eliminated};
   const me=players.find(p=>p.id===myPlayerId)||meFromState;
