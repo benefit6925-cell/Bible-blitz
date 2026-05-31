@@ -1274,18 +1274,33 @@ function setupStateListeners() {
     const mode = gameSettings.gameMode;
     if (quizPage && quizPage.classList.contains('active')) {
       if (mode === 'survival') {
-        // Survival: schema drives the bar (transition:none avoids fighting 1s ticks)
-        const sDur = gameSettings.survivalTimerDuration || 8;
-        const qBar = document.getElementById('quiz-q-timer-bar');
-        if (qBar) { qBar.style.transition='none'; qBar.style.width = (Math.max(0,Math.min(secs,sDur))/sDur*100)+'%'; }
+        // Survival: client 100ms interval (startSurvivalQuestionTimer) owns digit + bar
+        // for smooth sub-second animation. Schema patch (1s) only corrects the digit
+        // to stay server-authoritative; bar is left to the interval to avoid jank.
+        const el = document.getElementById('quiz-q-timer-val');
+        if (el && quizState.selected === null && !quizState.finished) {
+          const sDur = gameSettings.survivalTimerDuration || 8;
+          const clamped = Math.max(0, Math.min(secs, sDur));
+          el.textContent = Math.ceil(clamped);
+          el.style.color = clamped <= 2 ? '#ff4444' : clamped <= Math.floor(sDur/2) ? '#ff8800' : '#ff8888';
+        }
       } else if (mode === 'lightning') {
-        // Lightning: schema drives the bar; client interval drives the digit only
+        // Lightning: schema drives the bar AND anchors the digit every 1s.
+        // The client 100ms interval (startQuestionTimer) only smooths the digit
+        // between schema ticks — both write the digit but that's fine since
+        // they agree on the value (client uses elapsed time from same start point).
         const qBar = document.getElementById('quiz-q-timer-bar');
         if (qBar) {
           qBar.style.transition = 'none';
           const pct = Math.max(0, Math.min(100, (secs / LIGHTNING_Q_DURATION) * 100));
           qBar.style.width = pct + '%';
           qBar.style.background = secs < 2 ? '#ff4444' : secs < Math.ceil(LIGHTNING_Q_DURATION/2) ? '#ff8800' : '#ffd700';
+        }
+        // Anchor digit to server value each 1s tick to prevent client drift
+        const dEl = document.getElementById('quiz-q-timer-val');
+        if (dEl && quizState.selected === null && !quizState.finished) {
+          dEl.textContent = Math.max(0, Math.ceil(secs));
+          dEl.style.color = secs < 2 ? '#ff4444' : secs < Math.ceil(LIGHTNING_Q_DURATION/2) ? '#ff8800' : '#ffd700';
         }
       } else {
         // Classic global timer
@@ -1304,12 +1319,17 @@ function setupStateListeners() {
         }
       }
     }
-    // Blitz per-question timer bar (players only — host sees admin overview)
+    // Blitz per-question timer: client 100ms interval (startBlitzQuestionTimer) owns
+    // digit + bar for smooth animation. Schema patch (1s) only corrects the digit
+    // to prevent drift; bar ownership stays with the interval to avoid jank.
     const blitzPage = document.getElementById('page-blitz-quiz');
     if (!isHost && blitzPage && blitzPage.classList.contains('active') && mode === 'blitz') {
       const bDur = gameSettings.blitzTimerDuration || 12;
-      const bBar = document.getElementById('blitz-q-timer-bar');
-      if (bBar) { bBar.style.transition='none'; bBar.style.width = (Math.max(0,Math.min(secs,bDur))/bDur*100)+'%'; }
+      const clamped = Math.max(0, Math.min(secs, bDur));
+      const dEl = document.getElementById('blitz-q-timer-val');
+      if (dEl && !blitzState.finished && blitzState.myAnswer === null) {
+        dEl.textContent = Math.ceil(clamped);
+      }
     }
     // Admin timer display — driven by schema, no client interval needed
     const adminTEl = document.getElementById('admin-timer');
@@ -1386,6 +1406,8 @@ function _playerToPlain(player, playerId) {
     blitzCorrectCount: player.blitzCorrectCount || 0,
     finishedAt: player.finishedAt || null,
     isHost: !!player.isHost,
+    answeredIndex: typeof player.answeredIndex === 'number' ? player.answeredIndex : -1,
+    finished: !!player.finished,
   };
 }
 
@@ -2192,7 +2214,7 @@ function updateAdminPlayers(players){
         <div class="avatar" style="background:${avatarColor(p.nickname)}30;color:${avatarColor(p.nickname)}">${p.nickname[0].toUpperCase()}</div>
         <div style="flex:1;">
           <div style="font-weight:500;font-size:14px;">${escHtml(p.nickname)}${p.eliminated?' 💀':''}</div>
-          <div style="font-size:12px;color:#5a6a8a;">${isBlitz?(p.team==='A'?'🔴 '+(gameSettings.teamAName||'Team A'):p.team==='B'?'🔵 '+(gameSettings.teamBName||'Team B'):'No team yet'):(p.answers?Object.keys(p.answers).length:0)+'/'+qCount+' answered'}</div>
+          <div style="font-size:12px;color:#5a6a8a;">${isBlitz?(p.team==='A'?'🔴 '+(gameSettings.teamAName||'Team A'):p.team==='B'?'🔵 '+(gameSettings.teamBName||'Team B'):'No team yet'):((p.answeredIndex!=null&&p.answeredIndex>=0?p.answeredIndex+1:0)+'/'+qCount+' answered')+(p.finished?' ✅':'')}</div>
         </div>
         ${p.finished?'<span style="font-size:18px;">✅</span>':''}
       </div>`).join('');
