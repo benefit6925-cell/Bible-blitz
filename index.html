@@ -1432,6 +1432,7 @@ function _refreshLobbyPlayers(players) {
   const lp = document.getElementById('lobby-players');
   if (!lp) return;
   const arr = Object.values(players).filter(p=>!p.isHost);
+  const lobbyCount = document.getElementById('lobby-count');
   if (lobbyCount) lobbyCount.textContent = 'PLAYERS IN LOBBY (' + arr.length + ')';
   lp.innerHTML = arr.map(p => `
     <div class="player-chip">
@@ -2716,7 +2717,7 @@ function startQuestionTimer(){
       clearInterval(window.questionTimer);
       document.querySelectorAll('.answer-btn').forEach(b=>{b.disabled=true;b.style.opacity='0.4';});
       const qBox=document.getElementById('quiz-question');
-      if(qBox)qBox.innerHTML='<span style="color:#ff4444;font-size:18px;">&#9200; Time's Up! Waiting for server...</span>';
+      if(qBox)qBox.innerHTML='<span style="color:#ff4444;font-size:18px;">&#9200; Time\'s Up! Waiting for server...</span>';
       quizState.selected=-1;
       try{room.send('submitAnswer',{questionIndex:quizState.current,answer:-1,score:quizState.score,correct:false});}catch(e){}
     }
