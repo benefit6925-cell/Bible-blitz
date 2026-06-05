@@ -1298,79 +1298,74 @@ function setupStateListeners() {
     applyPhase(newPhase, { settings: gameSettings });
   });
 
-  // ── Server-authoritative remaining time ──
-  // Client ONLY displays this value — server owns countdown, client never ends game on tl<=0.
-  room.state.listen('remainingTime', (secs) => {
-    const quizPage = document.getElementById('page-quiz');
+  // ── FIX 1: phaseEndTime patch — restart RAF timer when server sets a new end time ──
+  // This fires once per phase (not every second), so no more timer jumping.
+  room.state.listen('phaseEndTime', (endTimeMs) => {
+    if (!endTimeMs || endTimeMs <= 0) return;
     const mode = gameSettings.gameMode;
+    const now = Date.now();
+    const remaining = Math.max(0, (endTimeMs - now) / 1000);
+    if (remaining <= 0) return; // already expired — ignore
+
+    // Restart the appropriate RAF timer with the server's authoritative end time
+    if (!isHost) {
+      if (mode === 'classic') {
+        startGlobalTimerDisplay(null); // will read phaseEndTime from schema
+      } else if (mode === 'lightning' && document.getElementById('page-quiz').classList.contains('active')) {
+        startQuestionTimer();
+      } else if (mode === 'survival' && document.getElementById('page-quiz').classList.contains('active')) {
+        startSurvivalQuestionTimer();
+      } else if (mode === 'blitz' && document.getElementById('page-blitz-quiz').classList.contains('active')) {
+        startBlitzQuestionTimer();
+      }
+    }
+    // Admin timer display — driven from phaseEndTime directly
+    if (isHost) {
+      const dur = gameSettings.timerDuration || 120;
+      const adminTEl = document.getElementById('admin-timer');
+      const adminBar = document.getElementById('admin-timer-bar');
+      if(window._adminRAF){cancelAnimationFrame(window._adminRAF);window._adminRAF=null;}
+      function adminTick(){
+        const tl=Math.max(0,(endTimeMs-Date.now())/1000);
+        if(adminTEl){
+          adminTEl.textContent=typeof formatTime==='function'?formatTime(Math.round(tl)):Math.round(tl)+'s';
+          adminTEl.style.color=tl<20?'#ff4444':tl<40?'#ff8800':'';
+        }
+        if(adminBar){
+          adminBar.style.transition='none';
+          adminBar.style.width=(Math.min(tl,dur)/dur*100)+'%';
+          adminBar.style.background=tl<20?'#ff4444':tl<40?'#ff8800':'#00ccff';
+        }
+        if(tl>0)window._adminRAF=requestAnimationFrame(adminTick);
+        else window._adminRAF=null;
+      }
+      window._adminRAF=requestAnimationFrame(adminTick);
+    }
+  });
+
+  // ── remainingTime — kept only as a last-resort fallback for servers not yet on phaseEndTime ──
+  // FIX 1: this listener no longer drives animation — RAF loops own the visuals.
+  // It only runs if phaseEndTime is zero (old server), providing graceful degradation.
+  room.state.listen('remainingTime', (secs) => {
+    if (room.state && room.state.phaseEndTime > 0) return; // phaseEndTime takes over
+    // Legacy fallback: update digit display only (no bar animation)
+    const mode = gameSettings.gameMode;
+    const quizPage = document.getElementById('page-quiz');
     if (quizPage && quizPage.classList.contains('active')) {
-      if (mode === 'survival') {
-        // Survival: the 100ms client interval owns digit + bar for smooth animation.
-        // Schema (1s) only corrects the digit to prevent server-drift.
+      if (mode === 'lightning' || mode === 'survival') {
         const el = document.getElementById('quiz-q-timer-val');
         if (el && quizState.selected === null && !quizState.finished) {
-          const sDur = gameSettings.survivalTimerDuration || 8;
-          const clamped = Math.max(0, Math.min(secs, sDur));
-          el.textContent = Math.ceil(clamped);
-          el.style.color = clamped <= 2 ? '#ff4444' : clamped <= Math.floor(sDur/2) ? '#ff8800' : '#ff8888';
-        }
-      } else if (mode === 'lightning') {
-        // Lightning: schema drives bar + anchors digit every 1s.
-        // Client 100ms interval smooths digit between ticks — both agree on value.
-        const dur = LIGHTNING_Q_DURATION;
-        const qBar = document.getElementById('quiz-q-timer-bar');
-        if (qBar) {
-          qBar.style.transition = 'none';
-          const pct = Math.max(0, Math.min(100, (secs / dur) * 100));
-          qBar.style.width = pct + '%';
-          qBar.style.background = secs < 2 ? '#ff4444' : secs < Math.ceil(dur/2) ? '#ff8800' : '#ffd700';
-        }
-        // Anchor digit to server value each 1s tick to prevent drift
-        const dEl = document.getElementById('quiz-q-timer-val');
-        if (dEl && quizState.selected === null && !quizState.finished) {
-          dEl.textContent = Math.max(0, Math.ceil(secs));
-          dEl.style.color = secs < 2 ? '#ff4444' : secs < Math.ceil(dur/2) ? '#ff8800' : '#ffd700';
+          el.textContent = Math.max(0, Math.ceil(secs));
         }
       } else {
-        // Classic global timer
-        const gDur = gameSettings.timerDuration || 120;
         const timerEl = document.getElementById('quiz-timer');
-        if (timerEl) {
-          timerEl.textContent = Math.round(secs);
-          timerEl.className = 'orbitron ' + (secs < 20 ? 'timer-critical' : 'neon-text');
-          timerEl.style.cssText = 'font-size:30px;font-weight:900;line-height:1;';
-          const bar = document.getElementById('quiz-timer-bar');
-          if (bar) {
-            bar.style.transition = 'none';
-            bar.style.width = (Math.min(secs, gDur) / gDur * 100) + '%';
-            bar.style.background = secs < 20 ? '#ff4444' : secs < 40 ? '#ff8800' : '#00ccff';
-          }
-        }
+        if (timerEl) timerEl.textContent = Math.round(secs);
       }
     }
-    // Blitz: client 100ms interval (startBlitzQuestionTimer) owns digit + bar.
-    // Schema (1s) only corrects digit to prevent drift.
-    const blitzPage = document.getElementById('page-blitz-quiz');
-    if (!isHost && blitzPage && blitzPage.classList.contains('active') && mode === 'blitz') {
-      const bDur = gameSettings.blitzTimerDuration || 12;
-      const clamped = Math.max(0, Math.min(secs, bDur));
-      const dEl = document.getElementById('blitz-q-timer-val');
-      if (dEl && !blitzState.finished && blitzState.myAnswer === null) {
-        dEl.textContent = Math.ceil(clamped);
-      }
-    }
-    // Admin timer display — driven by schema, no client interval needed
     const adminTEl = document.getElementById('admin-timer');
     if (adminTEl && isHost) {
-      const gDur = gameSettings.timerDuration || 120;
       adminTEl.textContent = typeof formatTime === 'function' ? formatTime(Math.round(secs)) : Math.round(secs) + 's';
       adminTEl.style.color = secs < 20 ? '#ff4444' : secs < 40 ? '#ff8800' : '';
-      const adminBar = document.getElementById('admin-timer-bar');
-      if (adminBar) {
-        adminBar.style.transition = 'none';
-        adminBar.style.width = (Math.min(secs, gDur) / gDur * 100) + '%';
-        adminBar.style.background = secs < 20 ? '#ff4444' : secs < 40 ? '#ff8800' : '#00ccff';
-      }
     }
   });
 
@@ -1626,6 +1621,10 @@ function setupRoomListeners(){
     clearInterval(window.questionTimer);
     clearInterval(window.blitzTimer);
     clearInterval(adminTimerInterval);
+    if(window._activeGameRAF){cancelAnimationFrame(window._activeGameRAF);window._activeGameRAF=null;}
+    if(window._questionRAF){cancelAnimationFrame(window._questionRAF);window._questionRAF=null;}
+    if(window._blitzRAF){cancelAnimationFrame(window._blitzRAF);window._blitzRAF=null;}
+    if(window._adminRAF){cancelAnimationFrame(window._adminRAF);window._adminRAF=null;}
     if(isHost){
       updateAdminSettingChips();
       document.getElementById('admin-share-box').style.display='block';
@@ -1911,6 +1910,11 @@ function cleanupPlayerSession(){
   clearInterval(adminTimerInterval);
   clearTimeout(_nextRoundCountdownTimer);
   if(blitzState&&blitzState.revealCountdown)clearInterval(blitzState.revealCountdown);
+  // FIX 1: cancel all RAF animation loops
+  if(window._activeGameRAF){cancelAnimationFrame(window._activeGameRAF);window._activeGameRAF=null;}
+  if(window._questionRAF){cancelAnimationFrame(window._questionRAF);window._questionRAF=null;}
+  if(window._blitzRAF){cancelAnimationFrame(window._blitzRAF);window._blitzRAF=null;}
+  if(window._adminRAF){cancelAnimationFrame(window._adminRAF);window._adminRAF=null;}
   if(myPin){
     try{if(room){room.leave();room=null;}}catch(e){}
   }
@@ -2261,7 +2265,8 @@ function updateAdminPlayers(players){
   document.getElementById('admin-player-count').textContent=list.length;
   document.getElementById('admin-players-label').textContent='👥 CONNECTED PLAYERS ('+list.length+')';
 
-  // For Team Blitz: compute live team scores from players' blitzAnswers progression
+  // For Team Blitz: read authoritative team scores from schema state, not player fields.
+  // FIX 4: state.teamScoreA/B are server-computed; never derive from player.score max.
   const isBlitz=gameSettings.gameMode==='blitz';
 
   // Leaderboard
@@ -2270,10 +2275,11 @@ function updateAdminPlayers(players){
     lb.innerHTML='<p style="color:#5a6a8a;font-size:14px;">No players yet</p>';
   }else if(isBlitz){
     // Show team score summary for blitz
-    const aPlayers=list.filter(p=>p.team==='A');
-    const bPlayers=list.filter(p=>p.team==='B');
-    const aScore=aPlayers.length>0?Math.max(0,...aPlayers.map(p=>p.score||0)):0;
-    const bScore=bPlayers.length>0?Math.max(0,...bPlayers.map(p=>p.score||0)):0;
+    // FIX 4: Read team scores from the schema state directly — never compute from player.score.
+    // state.teamScoreA/B are the only authoritative team totals; player.score is per-player
+    // and means something different in blitz (individual correct count), not team score.
+    const aScore=(room&&room.state)?room.state.teamScoreA:0;
+    const bScore=(room&&room.state)?room.state.teamScoreB:0;
     lb.innerHTML=`
       <div style="display:flex;gap:10px;margin-bottom:12px;">
         <div style="flex:1;text-align:center;padding:12px;background:rgba(239,68,68,0.1);border-radius:12px;border:1px solid rgba(239,68,68,0.3);">
@@ -2381,6 +2387,10 @@ async function adminCloseRoom(){
   clearInterval(window.activeGameTimer);
   clearInterval(window.questionTimer);
   clearInterval(window.blitzTimer);
+  if(window._activeGameRAF){cancelAnimationFrame(window._activeGameRAF);window._activeGameRAF=null;}
+  if(window._questionRAF){cancelAnimationFrame(window._questionRAF);window._questionRAF=null;}
+  if(window._blitzRAF){cancelAnimationFrame(window._blitzRAF);window._blitzRAF=null;}
+  if(window._adminRAF){cancelAnimationFrame(window._adminRAF);window._adminRAF=null;}
   try{
     if(room){room.send('endGame',{});room.leave();room=null;}
   }catch(e){}
@@ -2772,13 +2782,24 @@ async function startQuiz(gameData){
 }
 
 // Classic mode: UI-only countdown display. Server state.phase=results triggers goToResults().
+// FIX 1: driven by phaseEndTime (server epoch) via requestAnimationFrame — no setInterval drift.
 function startGlobalTimerDisplay(startTime){
   const dur=gameSettings.timerDuration||120;
   clearInterval(window.activeGameTimer);
-  const syncStart=(startTime&&startTime>Date.now()-dur*1000)?startTime:Date.now();
-  window.activeGameTimer=setInterval(()=>{
-    const elapsed=(Date.now()-syncStart)/1000;
-    const tl=Math.max(0,dur-elapsed);
+  if(window._activeGameRAF){cancelAnimationFrame(window._activeGameRAF);window._activeGameRAF=null;}
+
+  // Prefer phaseEndTime from schema if available (most accurate); fall back to startTime+dur
+  function getEndTime(){
+    if(room&&room.state&&room.state.phaseEndTime&&room.state.phaseEndTime>Date.now()-dur*1000){
+      return room.state.phaseEndTime;
+    }
+    const syncStart=(startTime&&startTime>Date.now()-dur*1000)?startTime:Date.now();
+    return syncStart+(dur*1000);
+  }
+  const endTime=getEndTime();
+
+  function tick(){
+    const tl=Math.max(0,(endTime-Date.now())/1000);
     const tlr=Math.round(tl);
     const el=document.getElementById('quiz-timer');
     if(el){
@@ -2786,101 +2807,127 @@ function startGlobalTimerDisplay(startTime){
       el.className='orbitron '+(tl<20?'timer-critical':'neon-text');
       el.style.cssText='font-size:30px;font-weight:900;line-height:1;';
     }
-    document.getElementById('quiz-timer-bar').style.width=(tl/dur*100)+'%';
-    document.getElementById('quiz-timer-bar').style.background=tl<20?'#ff4444':tl<40?'#ff8800':'#00ccff';
-    // DO NOT call finishQuiz() — server state.phase='results' drives game over
-    if(tl<=0) clearInterval(window.activeGameTimer);
-  },300);
+    const bar=document.getElementById('quiz-timer-bar');
+    if(bar){
+      bar.style.width=(tl/dur*100)+'%';
+      bar.style.background=tl<20?'#ff4444':tl<40?'#ff8800':'#00ccff';
+    }
+    if(tl>0){window._activeGameRAF=requestAnimationFrame(tick);}
+    else{window._activeGameRAF=null;}
+  }
+  window._activeGameRAF=requestAnimationFrame(tick);
 }
 
 // Lightning Mode: UI-only global session timer. Server state.phase=results drives game over.
+// FIX 1: driven by phaseEndTime via requestAnimationFrame.
 function startLightningGlobalTimer(globalEndTime){
   if(!globalEndTime){return;}
   clearInterval(window.activeGameTimer);
+  if(window._activeGameRAF){cancelAnimationFrame(window._activeGameRAF);window._activeGameRAF=null;}
   const dur=gameSettings.timerDuration||120;
-  window.activeGameTimer=setInterval(()=>{
-    const remaining=Math.max(0,globalEndTime-Date.now());
-    const tl=remaining/1000;
+
+  function tick(){
+    const tl=Math.max(0,(globalEndTime-Date.now())/1000);
     const tlr=Math.round(tl);
     const el=document.getElementById('quiz-global-timer');
-    if(el){
-      el.style.display='flex';
-      const valEl=document.getElementById('quiz-timer');
-      if(valEl){
-        valEl.textContent=tlr;
-        valEl.className='orbitron '+(tl<20?'timer-critical':'neon-text');
-        valEl.style.cssText='font-size:26px;font-weight:900;line-height:1;';
-      }
+    if(el) el.style.display='flex';
+    const valEl=document.getElementById('quiz-timer');
+    if(valEl){
+      valEl.textContent=tlr;
+      valEl.className='orbitron '+(tl<20?'timer-critical':'neon-text');
+      valEl.style.cssText='font-size:26px;font-weight:900;line-height:1;';
     }
     const barEl=document.getElementById('quiz-timer-bar');
     if(barEl){
-      const pct=Math.max(0,Math.min(100,(tl/dur)*100));
-      barEl.style.width=pct+'%';
+      barEl.style.width=Math.max(0,Math.min(100,(tl/dur)*100))+'%';
       barEl.style.background=tl<20?'#ff4444':tl<40?'#ff8800':'#00ccff';
     }
-    // DO NOT call finishQuiz() — server state.phase='results' drives game over
-    if(remaining<=0) clearInterval(window.activeGameTimer);
-  },300);
+    if(tl>0){window._activeGameRAF=requestAnimationFrame(tick);}
+    else{window._activeGameRAF=null;}
+  }
+  window._activeGameRAF=requestAnimationFrame(tick);
 }
 
 function startQuestionTimer(){
   clearInterval(window.questionTimer);
+  if(window._questionRAF){cancelAnimationFrame(window._questionRAF);window._questionRAF=null;}
   const dur=LIGHTNING_Q_DURATION;
   quizState.questionStartTime=Date.now();
-  // Schema listener owns the bar width (avoids fighting with CSS transitions).
-  // Client interval only drives the digit display for smooth sub-second updates.
+
+  // FIX 1: use phaseEndTime from schema if available, else fall back to local startTime
+  const endTime=(room&&room.state&&room.state.phaseEndTime&&room.state.phaseEndTime>Date.now())
+    ?room.state.phaseEndTime
+    :Date.now()+(dur*1000);
+
   const initVal=document.getElementById('quiz-q-timer-val');
   if(initVal){initVal.textContent=dur;initVal.style.color='#ffd700';}
   const initBar=document.getElementById('quiz-q-timer-bar');
   if(initBar){initBar.style.transition='none';initBar.style.width='100%';initBar.style.background='#ffd700';}
 
-  window.questionTimer=setInterval(()=>{
-    const elapsed=(Date.now()-quizState.questionStartTime)/1000;
-    const tl=Math.max(0,dur-elapsed);
-    const tlr=Math.ceil(tl);
-    // Only update the number — bar is owned by schema remainingTime listener (1s ticks)
+  let timedOutFired=false;
+  function tick(){
+    const tl=Math.max(0,(endTime-Date.now())/1000);
     const el=document.getElementById('quiz-q-timer-val');
     if(el){
-      el.textContent=tlr;
+      el.textContent=Math.ceil(tl);
       el.style.color=tl<2?'#ff4444':tl<Math.ceil(dur/2)?'#ff8800':'#ffd700';
     }
-    if(tl<=0&&quizState.selected===null&&!quizState.finished){
-      clearInterval(window.questionTimer);
-      document.querySelectorAll('.answer-btn').forEach(b=>{b.disabled=true;b.style.opacity='0.4';});
-      const qBox=document.getElementById('quiz-question');
-      if(qBox)qBox.innerHTML='<span style="color:#ff4444;font-size:18px;">&#9200; Time\'s Up! Waiting for server...</span>';
-      quizState.selected=-1;
-      try{room.send('submitAnswer',{questionIndex:quizState.current,answer:-1,score:quizState.score,correct:false});}catch(e){}
+    const bar=document.getElementById('quiz-q-timer-bar');
+    if(bar){
+      bar.style.transition='none';
+      bar.style.width=(tl/dur*100)+'%';
+      bar.style.background=tl<2?'#ff4444':tl<Math.ceil(dur/2)?'#ff8800':'#ffd700';
     }
-  },100);
+    if(tl<=0&&!timedOutFired){
+      timedOutFired=true;
+      window._questionRAF=null;
+      if(quizState.selected===null&&!quizState.finished){
+        document.querySelectorAll('.answer-btn').forEach(b=>{b.disabled=true;b.style.opacity='0.4';});
+        const qBox=document.getElementById('quiz-question');
+        if(qBox)qBox.innerHTML='<span style="color:#ff4444;font-size:18px;">&#9200; Time\'s Up! Waiting for server...</span>';
+        quizState.selected=-1;
+        try{room.send('submitAnswer',{questionIndex:quizState.current,answer:-1,score:quizState.score,correct:false});}catch(e){}
+      }
+      return;
+    }
+    if(tl>0)window._questionRAF=requestAnimationFrame(tick);
+  }
+  window._questionRAF=requestAnimationFrame(tick);
 }
 
 // ── SURVIVAL: per-question countdown timer (UI animation only) ──
+// FIX 1: driven by phaseEndTime via requestAnimationFrame — no setInterval drift.
 function startSurvivalQuestionTimer(){
   clearInterval(window.questionTimer);
+  if(window._questionRAF){cancelAnimationFrame(window._questionRAF);window._questionRAF=null;}
   const dur=gameSettings.survivalTimerDuration||8;
   quizState.questionStartTime=Date.now();
+
+  // Use phaseEndTime from schema if available (authoritative server clock)
+  const endTime=(room&&room.state&&room.state.phaseEndTime&&room.state.phaseEndTime>Date.now())
+    ?room.state.phaseEndTime
+    :Date.now()+(dur*1000);
+
   const el=document.getElementById('quiz-q-timer-val');
   const barEl=document.getElementById('quiz-q-timer-bar');
   if(el)el.textContent=dur;
   if(barEl){barEl.style.width='100%';barEl.style.background='#ff4444';}
 
-  window.questionTimer=setInterval(()=>{
-    if(quizState.selected!==null||quizState.finished){clearInterval(window.questionTimer);return;}
-    const elapsed=(Date.now()-quizState.questionStartTime)/1000;
-    const tl=Math.max(0,dur-elapsed);
-    const tlr=Math.ceil(tl);
+  let timedOutFired=false;
+  function tick(){
+    if(quizState.selected!==null||quizState.finished){window._questionRAF=null;return;}
+    const tl=Math.max(0,(endTime-Date.now())/1000);
     if(el){
-      el.textContent=tlr;
+      el.textContent=Math.ceil(tl);
       el.style.color=tl<=2?'#ff4444':tl<=Math.floor(dur/2)?'#ff8800':'#ff8888';
     }
     if(barEl){
       barEl.style.width=(tl/dur*100)+'%';
       barEl.style.background=tl<=2?'#ff4444':tl<=Math.floor(dur/2)?'#ff8800':'#ff6666';
     }
-    // Client locks UI and notifies server — server's _onQuestionTimeout does the actual elimination
-    if(tl<=0&&quizState.selected===null&&!quizState.finished){
-      clearInterval(window.questionTimer);
+    if(tl<=0&&!timedOutFired){
+      timedOutFired=true;
+      window._questionRAF=null;
       quizState.selected=-1;
       document.querySelectorAll('.answer-btn').forEach(b=>{b.disabled=true;b.style.opacity='0.5';});
       const q=activeQuestions[quizState.current];
@@ -2888,11 +2935,12 @@ function startSurvivalQuestionTimer(){
       const qBox=document.getElementById('quiz-question');
       if(qBox)qBox.innerHTML='<span style="color:#ff4444;font-size:18px;">⏰ Too slow! Waiting for server...</span>';
       quizState.answers[quizState.current]={chosen:-1,correct:false,timedOut:true};
-      // Server's eliminatePlayer logic fires from _onQuestionTimeout — client notifies only
       try{room.send('submitAnswer',{questionIndex:quizState.current,answer:-1,score:quizState.score,correct:false,eliminated:true});}catch(e){}
-      // State patch player.eliminated=true will fire → applyPhase or onChange handles UI
+      return;
     }
-  },100);
+    if(tl>0)window._questionRAF=requestAnimationFrame(tick);
+  }
+  window._questionRAF=requestAnimationFrame(tick);
 }
 
 async function timeoutSurvivalQuestion(){
@@ -2941,10 +2989,11 @@ async function handleAnswer(idx){
 
   // Send to server — server validates, scores, and replies with answerResult
   const mode=gameSettings.gameMode;
+  // FIX 4: Send only what the server needs — questionIndex and answer.
+  // score and correct are intentionally omitted: server computes them authoritatively.
   try{
-    room.send('submitAnswer',{questionIndex:qi,answer:idx,score:quizState.score,correct:false});
+    room.send('submitAnswer',{questionIndex:qi,answer:idx});
   }catch(e){}
-  // correct:false is a placeholder — server recomputes from its own q.answer
 }
 
 // Called when server sends back answerResult — this is where visual feedback happens
@@ -2996,7 +3045,10 @@ async function eliminatePlayer(){
   quizState.finished=true;
   clearInterval(window.activeGameTimer);
   clearInterval(window.questionTimer);
-  try{room.send('eliminatePlayer',{score:quizState.score,correctCount:quizState.correctCount});}catch(e){}
+  // FIX 4: Do NOT send 'eliminatePlayer' to the server — that handler doesn't exist
+  // server-side (intentionally). Elimination is set by the server via player.eliminated
+  // schema patch in submitAnswer → survival wrong answer path.
+  // This function is now UI-only: it reacts to the schema patch, not drives it.
   showPage('eliminated');
   document.getElementById('eliminated-score').textContent=quizState.score;
   document.getElementById('eliminated-correct').textContent=quizState.correctCount+'/'+activeQuestions.length+' correct';
@@ -3441,7 +3493,11 @@ function cleanupGameSession(){
   clearInterval(window.blitzTimer);
   clearTimeout(_nextRoundCountdownTimer);
   if(blitzState&&blitzState.revealCountdown)clearInterval(blitzState.revealCountdown);
-  // All real-time listeners are managed by Colyseus room — nothing to detach manually
+  // FIX 1: cancel all RAF animation loops
+  if(window._activeGameRAF){cancelAnimationFrame(window._activeGameRAF);window._activeGameRAF=null;}
+  if(window._questionRAF){cancelAnimationFrame(window._questionRAF);window._questionRAF=null;}
+  if(window._blitzRAF){cancelAnimationFrame(window._blitzRAF);window._blitzRAF=null;}
+  if(window._adminRAF){cancelAnimationFrame(window._adminRAF);window._adminRAF=null;}
 }
 
 // ══════════════════════════════════════════
@@ -3507,31 +3563,39 @@ function renderBlitzQuestion(){
 function startBlitzQuestionTimer(){
   if(isHost)return; // host sees admin overview, not player quiz
   clearInterval(window.blitzTimer);
+  if(window._blitzRAF){cancelAnimationFrame(window._blitzRAF);window._blitzRAF=null;}
   const dur=gameSettings.blitzTimerDuration||12;
-  const start=Date.now();
+
+  // FIX 1: use phaseEndTime from schema if available
+  const endTime=(room&&room.state&&room.state.phaseEndTime&&room.state.phaseEndTime>Date.now())
+    ?room.state.phaseEndTime
+    :Date.now()+(dur*1000);
+
   document.getElementById('blitz-q-timer-val').textContent=dur;
   document.getElementById('blitz-q-timer-bar').style.width='100%';
   let timedOutFired=false;
 
-  window.blitzTimer=setInterval(async()=>{
-    if(blitzState.finished){clearInterval(window.blitzTimer);return;}
-    const elapsed=(Date.now()-start)/1000;
-    const tl=Math.max(0,dur-elapsed);
+  function tick(){
+    if(blitzState.finished){window._blitzRAF=null;return;}
+    const tl=Math.max(0,(endTime-Date.now())/1000);
     document.getElementById('blitz-q-timer-val').textContent=Math.ceil(tl);
-    document.getElementById('blitz-q-timer-bar').style.width=(tl/dur*100)+'%';
-    document.getElementById('blitz-q-timer-bar').style.background=tl<3?'#ff4444':tl<6?'#ff8800':'#ffd700';
+    const bar=document.getElementById('blitz-q-timer-bar');
+    if(bar){
+      bar.style.width=(tl/dur*100)+'%';
+      bar.style.background=tl<3?'#ff4444':tl<6?'#ff8800':'#ffd700';
+    }
     if(tl<=0&&!timedOutFired){
       timedOutFired=true;
-      clearInterval(window.blitzTimer);
-      // Submit blank if unanswered
+      window._blitzRAF=null;
       if(blitzState.myAnswer===null){
-        await submitBlitzAnswer(-1);
+        submitBlitzAnswer(-1);
       }
-      // Only the host triggers reveal to prevent race conditions;
-      // if no host is online every player tries but tryTriggerBlitzReveal is idempotent
-      await tryTriggerBlitzReveal();
+      // Server handles reveal via _scheduleBlitzRevealTimeout — client just submits answer
+      return;
     }
-  },100);
+    if(tl>0)window._blitzRAF=requestAnimationFrame(tick);
+  }
+  window._blitzRAF=requestAnimationFrame(tick);
 }
 
 async function handleBlitzAnswer(idx){
@@ -3572,8 +3636,11 @@ function showBlitzReveal(round){
 
   // Update running scores
   // FIX: Use server-authoritative running totals; fall back to delta if old server
-  blitzState.teamScoreA=(round.teamScoreA!==undefined)?round.teamScoreA:Math.max(0,blitzState.teamScoreA+round.aPoints);
-  blitzState.teamScoreB=(round.teamScoreB!==undefined)?round.teamScoreB:Math.max(0,blitzState.teamScoreB+round.bPoints);
+  // FIX 4: Server is the only source of truth for team scores.
+  // Always read from the authoritative running totals broadcast in blitzReveal.
+  // Never accumulate locally — that was the source of host/player score desync.
+  blitzState.teamScoreA=round.teamScoreA!==undefined?round.teamScoreA:blitzState.teamScoreA;
+  blitzState.teamScoreB=round.teamScoreB!==undefined?round.teamScoreB:blitzState.teamScoreB;
   if(round.aVote===round.correctAnswer)blitzState.roundsWonA++;
   if(round.bVote===round.correctAnswer)blitzState.roundsWonB++;
   if(round.aPerfect)blitzState.perfectA++;
@@ -3582,11 +3649,9 @@ function showBlitzReveal(round){
   // Track personal accuracy
   if(blitzState.myAnswer===round.correctAnswer)blitzState.myCorrectCount++;
 
-  // Push live score to server
-  try{
-    const myTeamScore=blitzState.myTeam==='A'?blitzState.teamScoreA:blitzState.teamScoreB;
-    room.send('updateBlitzScore',{score:myTeamScore,blitzCorrectCount:blitzState.myCorrectCount});
-  }catch(e){}
+  // FIX 4: No client→server score push. Server already computed and broadcast
+  // the authoritative teamScoreA/B in the blitzReveal message above.
+  // updateBlitzScore is removed — clients render what the server sends.
 
   // Build reveal screen
   const q=activeQuestions[blitzState.currentQ];
@@ -3643,7 +3708,12 @@ function showBlitzReveal(round){
 
   showPage('blitz-reveal');
 
-  // 4-second countdown then next question
+  // FIX 4: Client no longer drives question advancement.
+  // The countdown is UI-only. The server's state.questionIndex patch (via the
+  // state.onChange listener in setupRoomListeners) advances the question when
+  // the server transitions to the next 'question' phase.
+  // Sudden death is handled exclusively by the 'blitzSuddenDeath' message.
+  // The client never increments blitzState.currentQ here — only the server patch does.
   let secs=4;
   const countEl=document.getElementById('blitz-reveal-countdown');
   clearInterval(blitzState.revealCountdown);
@@ -3653,19 +3723,8 @@ function showBlitzReveal(round){
     if(countEl)countEl.textContent=secs>0?'Next question in '+secs+'...':'Moving on...';
     if(secs<=0){
       clearInterval(blitzState.revealCountdown);
-      blitzState.currentQ++;
-      if(blitzState.currentQ>=activeQuestions.length){
-        // FIX: Sudden death is server-driven via 'blitzSuddenDeath' message.
-        // Only finish if scores differ; if tied, server will send the sudden death question.
-        if(blitzState.teamScoreA!==blitzState.teamScoreB){
-          finishBlitzQuiz(false);
-        }
-        // If tied and not in sudden death: wait for server 'blitzSuddenDeath' message
-      }else{
-        showPage('blitz-quiz');
-        renderBlitzQuestion();
-        startBlitzQuestionTimer();
-      }
+      // Do nothing — server state.questionIndex patch fires renderBlitzQuestion() via
+      // the questionIndex onChange listener registered in setupRoomListeners().
     }
   },1000);
 }
@@ -3673,16 +3732,19 @@ function showBlitzReveal(round){
 // ══════════════════════════════════════════
 // TEAM BLITZ — SUDDEN DEATH
 // ══════════════════════════════════════════
-function startBlitzSuddenDeath(){
+function startBlitzSuddenDeath(serverData){
+  // FIX 4: Server is authoritative on sudden death question content and index.
+  // The question was already appended server-side; the blitzSuddenDeath message
+  // carries the exact question object and index. We use those — never reconstruct locally.
   blitzState.suddenDeath=true;
-  // Add a bonus question (cycle back to first if needed)
-  const sdQ=activeQuestions[0];
-  activeQuestions.push({...sdQ,q:'⚡ SUDDEN DEATH: '+sdQ.q});
-  blitzState.currentQ=activeQuestions.length-1;
+  if(serverData&&serverData.question&&serverData.questionIndex!==undefined){
+    // Use the server-provided question (may have modified text e.g. '⚡ SUDDEN DEATH: ...')
+    activeQuestions[serverData.questionIndex]=serverData.question;
+    blitzState.currentQ=serverData.questionIndex;
+  }
   showPage('blitz-quiz');
   renderBlitzQuestion();
   startBlitzQuestionTimer();
-  // Server broadcasts 'blitzReveal' — handled by the listener registered in startBlitzQuiz
 }
 
 // ══════════════════════════════════════════
