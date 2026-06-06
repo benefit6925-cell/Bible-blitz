@@ -1192,16 +1192,12 @@ function applyPhase(phase, stateSnapshot) {
   switch (phase) {
     case 'lobby':
       if (isHost) { setupAdminDashboard(); showPage('admin'); showAdminTab('dashboard'); }
-      else if (gameSettings && gameSettings.gameMode === 'blitz') {
-        // Blitz players must go to blitz-lobby, not the generic lobby.
-        // This fires when roundReset transitions phase back to 'lobby'.
-        blitzState.finished = false;
-        blitzState.teamAName = (gameSettings && gameSettings.teamAName) || blitzState.teamAName || 'Team A';
-        blitzState.teamBName = (gameSettings && gameSettings.teamBName) || blitzState.teamBName || 'Team B';
-        setupBlitzLobby();
-        showPage('blitz-lobby');
-      }
-      else { setupLobby({ settings: stateSnapshot || gameSettings }); showPage('lobby'); }
+      // Non-host lobby routing is handled entirely by the roundReset message,
+      // which arrives AFTER gameSettings is updated to the new mode.
+      // Doing it here is wrong — gameSettings still holds the OLD mode when
+      // the phase patch arrives, causing players to land on the wrong lobby.
+      // The roundReset handler calls showNextRoundJoinPrompt() → _doJoinNextRoundLobby()
+      // which routes correctly based on the already-updated gameSettings.
       break;
     case 'countdown':
       // Server-driven pre-game countdown overlay
@@ -1284,9 +1280,10 @@ function applyPhase(phase, stateSnapshot) {
       break;
     case 'waiting_next_round':
       if (!isHost) {
-        // All modes including blitz show the join prompt here.
-        // Fires 8s after game ends. _doJoinNextRoundLobby always returns to general lobby.
-        showNextRoundJoinPrompt();
+        // Show the overlay in "waiting" state — no countdown yet.
+        // The countdown + routing only starts when roundReset arrives
+        // with the confirmed new mode from the host.
+        showWaitingForHostOverlay();
       }
       break;
     case 'closed':
@@ -2008,17 +2005,31 @@ async function confirmExitLobby(){
   navigateToLandingPage();
 }
 
-// ── Next Round Join Prompt (5-second countdown) ──
-function showNextRoundJoinPrompt(){
-  _nextRoundJoinTaken=false;
-  clearTimeout(_nextRoundCountdownTimer);
-  // Belt-and-suspenders: clear the blitz end-game guard early so the lobby
-  // transition is never blocked regardless of which code path calls this.
-  if(gameSettings&&gameSettings.gameMode==='blitz') blitzState.finished=false;
+// ── Waiting-for-host overlay (shown at waiting_next_round phase, before host confirms) ──
+// Just shows the overlay with static text. No countdown, no routing.
+// roundReset upgrades this to the real 5s countdown once the host confirms settings.
+function showWaitingForHostOverlay(){
   const overlay=document.getElementById('next-round-join-overlay');
   if(overlay)overlay.style.display='flex';
   const banner=document.getElementById('results-next-round-banner');
   if(banner)banner.style.display='block';
+  const countdownBox=document.getElementById('next-round-countdown-text');
+  if(countdownBox)countdownBox.innerHTML='⏳ Waiting for host to start next round...';
+  // Don't set _nextRoundJoinTaken — roundReset will call showNextRoundJoinPrompt() which resets it
+}
+
+// ── Next Round Join Prompt (5-second countdown) ──
+function showNextRoundJoinPrompt(){
+  _nextRoundJoinTaken=false;
+  clearTimeout(_nextRoundCountdownTimer);
+  blitzState.finished=false; // clear blitz end-game guard for all modes
+  const overlay=document.getElementById('next-round-join-overlay');
+  if(overlay)overlay.style.display='flex';
+  const banner=document.getElementById('results-next-round-banner');
+  if(banner)banner.style.display='block';
+  // Restore the countdown UI (showWaitingForHostOverlay may have replaced it with static text)
+  const countdownBox=document.getElementById('next-round-countdown-text');
+  if(countdownBox)countdownBox.innerHTML='Auto-joining in <span id="next-round-countdown">5</span>s...';
   let secs=5;
   const countEl=document.getElementById('next-round-countdown');
   if(countEl)countEl.textContent=secs;
@@ -2806,6 +2817,19 @@ async function startQuiz(gameData){
 
   quizState={current:0,score:0,correctCount:0,answers:{},selected:null,finished:false,eliminated:false,questionStartTime:Date.now()};
 
+  // Reset eliminated page back to skull defaults in case a previous round swapped it to flag/Finished
+  (()=>{
+    const iconEl=document.querySelector('#page-eliminated .fade-in > div:first-child');
+    if(iconEl){
+      const emojiEl=iconEl.querySelector('div:first-child');
+      if(emojiEl)emojiEl.textContent='💀';
+      const h1El=iconEl.querySelector('h1');
+      if(h1El){h1El.textContent='Eliminated!';h1El.style.color='#ff4444';}
+      const pEl=iconEl.querySelector('p');
+      if(pEl)pEl.textContent='One wrong answer was all it took...';
+    }
+  })();
+
   showPage('quiz');
 
   const isLightning=gameSettings.gameMode==='lightning';
@@ -3111,10 +3135,16 @@ async function eliminatePlayer(){
   quizState.finished=true;
   clearInterval(window.activeGameTimer);
   clearInterval(window.questionTimer);
-  // FIX 4: Do NOT send 'eliminatePlayer' to the server — that handler doesn't exist
-  // server-side (intentionally). Elimination is set by the server via player.eliminated
-  // schema patch in submitAnswer → survival wrong answer path.
-  // This function is now UI-only: it reacts to the schema patch, not drives it.
+  // Always enforce skull UI — finishQuiz() from a previous round may have swapped to flag
+  const iconEl=document.querySelector('#page-eliminated .fade-in > div:first-child');
+  if(iconEl){
+    const emojiEl=iconEl.querySelector('div:first-child');
+    if(emojiEl)emojiEl.textContent='💀';
+    const h1El=iconEl.querySelector('h1');
+    if(h1El){h1El.textContent='Eliminated!';h1El.style.color='#ff4444';}
+    const pEl=iconEl.querySelector('p');
+    if(pEl)pEl.textContent='One wrong answer was all it took...';
+  }
   showPage('eliminated');
   document.getElementById('eliminated-score').textContent=quizState.score;
   document.getElementById('eliminated-correct').textContent=quizState.correctCount+'/'+activeQuestions.length+' correct';
@@ -3975,7 +4005,7 @@ async function showBlitzResults(){
       // Only fire if we're still on the results page (game hasn't restarted yet)
       const activePage = document.querySelector('.page.active,.page-top.active');
       if (activePage && activePage.id === 'page-blitz-results') {
-        showNextRoundJoinPrompt();
+        showWaitingForHostOverlay();
       }
     }, 8000);
   }
