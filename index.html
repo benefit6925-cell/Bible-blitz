@@ -1688,16 +1688,10 @@ function setupRoomListeners(){
       document.getElementById('admin-timer').textContent='—';
       showPage('admin');
     }else{
-      // Blitz: skip the generic countdown overlay — navigate straight to blitz-lobby.
-      // The countdown prompt is for classic/lightning/survival only.
-      if(gameSettings.gameMode==='blitz'){
-        blitzState.teamAName=gameSettings.teamAName||'Team A';
-        blitzState.teamBName=gameSettings.teamBName||'Team B';
-        setupBlitzLobby();
-        showPage('blitz-lobby');
-      }else{
-        showNextRoundJoinPrompt();
-      }
+      // All modes (including blitz) show the "New Round! Auto-joining in 5s" prompt.
+      // showNextRoundJoinPrompt → _doJoinNextRoundLobby detects blitz and routes to
+      // blitz-lobby automatically, so no separate branch is needed here.
+      showNextRoundJoinPrompt();
     }
   });
 
@@ -2957,17 +2951,25 @@ function startQuestionTimer(){
 }
 
 // ── SURVIVAL: per-question countdown timer (UI animation only) ──
-// FIX 1: driven by phaseEndTime via requestAnimationFrame — no setInterval drift.
+// Each question gets its own fresh countdown regardless of server phaseEndTime.
+// The server sets phaseEndTime once per server-side question advance (for timeout
+// tracking), but survival players self-advance client-side, so phaseEndTime quickly
+// becomes stale after Q1. We always start a fresh local end time here.
+// Exception: if the server's phaseEndTime was set within the last `dur` seconds
+// (i.e. this IS the first question or a genuine server-driven advance), use it so
+// all players start the timer in sync. Otherwise, use Date.now() + dur.
 function startSurvivalQuestionTimer(){
   clearInterval(window.questionTimer);
   if(window._questionRAF){cancelAnimationFrame(window._questionRAF);window._questionRAF=null;}
   const dur=gameSettings.survivalTimerDuration||8;
   quizState.questionStartTime=Date.now();
 
-  // Use phaseEndTime from schema if available (authoritative server clock)
-  const endTime=(room&&room.state&&room.state.phaseEndTime&&room.state.phaseEndTime>Date.now())
-    ?room.state.phaseEndTime
-    :Date.now()+(dur*1000);
+  // Only trust phaseEndTime if it was set very recently (within dur seconds of now),
+  // meaning the server just transitioned to this question. If it's older, it belongs
+  // to a previous question and we must start fresh to avoid giving players no time.
+  const serverEndTime=room&&room.state&&room.state.phaseEndTime;
+  const serverEndIsFresh=serverEndTime&&serverEndTime>Date.now()&&(serverEndTime-Date.now())<=(dur*1000);
+  const endTime=serverEndIsFresh?serverEndTime:Date.now()+(dur*1000);
 
   const el=document.getElementById('quiz-q-timer-val');
   const barEl=document.getElementById('quiz-q-timer-bar');
