@@ -15,6 +15,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Quiz Mate">
+<link rel="apple-touch-icon" href="icon-192.png">
 <meta name="description" content="The ultimate multiplayer quiz game. Play with friends anywhere in the world!">
 <meta name="theme-color" content="#0040c0">
 <meta name="mobile-web-app-capable" content="yes">
@@ -1687,19 +1688,16 @@ function setupRoomListeners(){
       document.getElementById('admin-timer').textContent='—';
       showPage('admin');
     }else{
-      // Reset the eliminated page back to its default copy in case finishQuiz()
-      // patched it to show "You Finished!" during the previous round. Without this
-      // a player who finishes round 1 then gets eliminated in round 2 sees stale copy.
-      const _elimIconEl=document.querySelector('#page-eliminated .fade-in > div:first-child');
-      if(_elimIconEl){
-        const _ee=_elimIconEl.querySelector('div:first-child');
-        if(_ee)_ee.textContent='💀';
-        const _eh=_elimIconEl.querySelector('h1');
-        if(_eh){_eh.textContent='Eliminated!';_eh.style.color='';}
-        const _ep=_elimIconEl.querySelector('p');
-        if(_ep)_ep.textContent='';
+      // Blitz: skip the generic countdown overlay — navigate straight to blitz-lobby.
+      // The countdown prompt is for classic/lightning/survival only.
+      if(gameSettings.gameMode==='blitz'){
+        blitzState.teamAName=gameSettings.teamAName||'Team A';
+        blitzState.teamBName=gameSettings.teamBName||'Team B';
+        setupBlitzLobby();
+        showPage('blitz-lobby');
+      }else{
+        showNextRoundJoinPrompt();
       }
-      showNextRoundJoinPrompt();
     }
   });
 
@@ -2824,13 +2822,9 @@ async function startQuiz(gameData){
   const qTimerBar=document.getElementById('quiz-q-timer-bar');
   if(qTimerBar&&isSurvival)qTimerBar.style.background='#ff4444';
 
-  // Sync to schema questionIndex if already set.
-  // Survival: use playerQuestionIndex (player's own progress) — state.questionIndex
-  // is the server's timeout-chain cursor and diverges from per-player progress.
+  // Sync to schema questionIndex if already set
   if(room&&room.state&&room.state.questionIndex>=0){
-    quizState.current=(gameSettings.gameMode==='survival'&&gameData.playerQuestionIndex!=null)
-      ? gameData.playerQuestionIndex
-      : room.state.questionIndex;
+    quizState.current=room.state.questionIndex;
   }
   renderQuestion();
 
@@ -3109,7 +3103,6 @@ function _applyAnswerResult({questionIndex, correctAnswer, correct, score, corre
 
 async function eliminatePlayer(){
   if(quizState.eliminated)return; // idempotent
-  if(quizState.finished)return;   // already finished — don't overwrite finish UI with eliminated UI
   quizState.eliminated=true;
   quizState.finished=true;
   clearInterval(window.activeGameTimer);
@@ -4047,12 +4040,7 @@ if('serviceWorker' in navigator){
       // ── Player: fully restored mid-game state ──
       if(data.status==='reconnected'){
         quizState={
-          // Survival tracks per-player progress independently of state.questionIndex
-          // (which is now the server's timeout-chain cursor). Use playerQuestionIndex
-          // when present so the player resumes at their own next question.
-          current:(data.gameMode==='survival'&&data.playerQuestionIndex!=null)
-            ? data.playerQuestionIndex
-            : (data.questionIndex||0),
+          current:data.questionIndex||0,
           score:data.score||0,
           correctCount:data.correctCount||0,
           answers:{},selected:null,
@@ -4076,7 +4064,7 @@ if('serviceWorker' in navigator){
           startBlitzQuiz({settings:data.settings,activeQuestions:data.activeQuestions});
         }else{
           window._lightningGlobalEndTime=data.globalEndTime||null;
-          startQuiz({settings:data.settings,activeQuestions:data.activeQuestions,startTime:data.startTime,globalEndTime:data.globalEndTime,playerQuestionIndex:data.playerQuestionIndex});
+          startQuiz({settings:data.settings,activeQuestions:data.activeQuestions,startTime:data.startTime,globalEndTime:data.globalEndTime});
         }
       // ── Player: joined mid-game but no saved token matched (new seat) ──
       }else if(data.status==='active'||data.waiting){
@@ -4099,7 +4087,7 @@ if('serviceWorker' in navigator){
           setupBlitzLobby();
         }else{
           window._lightningGlobalEndTime=data.globalEndTime||null;
-          startQuiz({settings:data.settings,activeQuestions:data.activeQuestions,startTime:data.startTime,globalEndTime:data.globalEndTime,playerQuestionIndex:data.playerQuestionIndex});
+          startQuiz({settings:data.settings,activeQuestions:data.activeQuestions,startTime:data.startTime,globalEndTime:data.globalEndTime});
         }
       // ── Lobby / waiting_next_round ──
       }else{
