@@ -1275,20 +1275,12 @@ function applyPhase(phase, stateSnapshot) {
       break;
     case 'waiting_next_round':
       if (!isHost) {
-        // FIX — Issue 1: For blitz mode, players are already on blitz-results with a
-        // "Waiting for next round..." banner visible (blitz-results-waiting-lobby div).
-        // The auto-join overlay (showNextRoundJoinPrompt) would prematurely navigate
-        // them to blitz-lobby before the host has clicked "Next Round".
-        // Blitz players should stay on the results screen; the roundReset message
-        // (broadcast by the server when the host starts the next round) handles navigation.
-        if (gameSettings.gameMode === 'blitz') {
-          // Ensure the waiting banner is visible on the results page
-          const waitingBanner = document.getElementById('blitz-results-waiting-lobby');
-          if (waitingBanner) waitingBanner.style.display = 'block';
-        } else {
-          // Classic / lightning / survival: standard auto-join prompt
-          showNextRoundJoinPrompt();
-        }
+        // All modes show the "New Round! Auto-joining in 5s" popup here.
+        // This fires as soon as the server enters waiting_next_round (8s after game ends),
+        // which is the reliable trigger point — roundReset arrives later (only when the
+        // host actually clicks "Next Round") and resets blitzState too early to be useful.
+        // _doJoinNextRoundLobby already handles blitz routing to blitz-lobby correctly.
+        showNextRoundJoinPrompt();
       }
       break;
     case 'closed':
@@ -1667,7 +1659,7 @@ function setupRoomListeners(){
     _currentPhase=null; // reset phase machine so next phase change applies
     adminGameEnded=false;
     quizState={current:0,score:0,correctCount:0,answers:{},selected:null,finished:false,eliminated:false,questionStartTime:0};
-    blitzState={myTeam:null,teamScoreA:0,teamScoreB:0,teamAName:settings&&settings.teamAName||'Team A',teamBName:settings&&settings.teamBName||'Team B',currentQ:0,myAnswer:null,myCorrectCount:0,roundsWonA:0,roundsWonB:0,perfectA:0,perfectB:0,suddenDeath:false,finished:false,revealCountdown:null};
+    blitzState={myTeam:blitzState.myTeam||null,teamScoreA:0,teamScoreB:0,teamAName:settings&&settings.teamAName||'Team A',teamBName:settings&&settings.teamBName||'Team B',currentQ:0,myAnswer:null,myCorrectCount:0,roundsWonA:0,roundsWonB:0,perfectA:0,perfectB:0,suddenDeath:false,finished:false,revealCountdown:null};
     clearInterval(window.activeGameTimer);
     clearInterval(window.questionTimer);
     clearInterval(window.blitzTimer);
@@ -3138,20 +3130,24 @@ async function finishQuiz(){
   if(mode==='classic'||mode==='survival'){
     // Reuse the eliminated page structure — it already has a live leaderboard
     // powered by _refreshSpectatorLeaderboard / schema onChange patches.
-    // Patch the header copy so it reads "You finished!" not "Eliminated!".
+    // Only swap the skull → flag if the player actually finished all questions.
+    // Eliminated players already have their skull + "Eliminated!" set by
+    // eliminatePlayer() — do NOT overwrite it here.
     const titleEl=document.getElementById('eliminated-score');
     if(titleEl)titleEl.textContent=quizState.score;
     const correctEl=document.getElementById('eliminated-correct');
     if(correctEl)correctEl.textContent=quizState.correctCount+'/'+activeQuestions.length+' correct';
-    // Swap the skull icon + heading for a finish-specific message
-    const iconEl=document.querySelector('#page-eliminated .fade-in > div:first-child');
-    if(iconEl){
-      const emojiEl=iconEl.querySelector('div:first-child');
-      if(emojiEl)emojiEl.textContent='🏁';
-      const h1El=iconEl.querySelector('h1');
-      if(h1El){h1El.textContent='You Finished!';h1El.style.color='#00ccff';}
-      const pEl=iconEl.querySelector('p');
-      if(pEl)pEl.textContent='Waiting for others to finish...';
+    if(!quizState.eliminated){
+      // Player completed all questions — swap skull for finish flag
+      const iconEl=document.querySelector('#page-eliminated .fade-in > div:first-child');
+      if(iconEl){
+        const emojiEl=iconEl.querySelector('div:first-child');
+        if(emojiEl)emojiEl.textContent='🏁';
+        const h1El=iconEl.querySelector('h1');
+        if(h1El){h1El.textContent='You Finished!';h1El.style.color='#00ccff';}
+        const pEl=iconEl.querySelector('p');
+        if(pEl)pEl.textContent='Waiting for others to finish...';
+      }
     }
     showPage('eliminated');
     startSpectatorMode();
