@@ -2048,18 +2048,23 @@ function playerJoinNextRoundLobby(){
 
 function _doJoinNextRoundLobby(){
   if(!myPin)return;
-  const g={settings:gameSettings};
+  const g={settings:gameSettings}; // gameSettings already updated by roundReset to the NEW mode
   quizState={current:0,score:0,correctCount:0,answers:{},selected:null,finished:false,eliminated:false,questionStartTime:0};
   clearInterval(window.activeGameTimer);
   clearInterval(window.questionTimer);
   roomState='lobby';
-  // Always return to the general lobby after a game ends, regardless of
-  // which mode was just played. The host picks the next mode from there,
-  // and players will be routed to the blitz lobby only when a new blitz
-  // game actually starts (via applyPhase 'lobby' with mode==='blitz').
-  blitzState.finished=false; // reset blitz guard in case previous game was blitz
-  setupLobby(g);
-  showPage('lobby');
+  blitzState.finished=false; // reset blitz guard
+  // Route based on the NEXT round's mode (already updated by roundReset message).
+  // If host switched TO blitz → blitz lobby. Anything else → general lobby.
+  if(g.settings&&g.settings.gameMode==='blitz'){
+    blitzState.teamAName=g.settings.teamAName||'Team A';
+    blitzState.teamBName=g.settings.teamBName||'Team B';
+    setupBlitzLobby();
+    showPage('blitz-lobby');
+  }else{
+    setupLobby(g);
+    showPage('lobby');
+  }
 }
 
 function seededShuffle(arr,seed){
