@@ -2003,6 +2003,9 @@ async function confirmExitLobby(){
 function showNextRoundJoinPrompt(){
   _nextRoundJoinTaken=false;
   clearTimeout(_nextRoundCountdownTimer);
+  // Belt-and-suspenders: clear the blitz end-game guard early so the lobby
+  // transition is never blocked regardless of which code path calls this.
+  if(gameSettings&&gameSettings.gameMode==='blitz') blitzState.finished=false;
   const overlay=document.getElementById('next-round-join-overlay');
   if(overlay)overlay.style.display='flex';
   const banner=document.getElementById('results-next-round-banner');
@@ -2043,6 +2046,7 @@ function _doJoinNextRoundLobby(){
   roomState='lobby';
   {
     if(g.settings&&g.settings.gameMode==='blitz'){
+      blitzState.finished=false;   // clear end-game guard so setupBlitzLobby doesn't abort
       blitzState.teamAName=g.settings.teamAName||'Team A';
       blitzState.teamBName=g.settings.teamBName||'Team B';
       setupBlitzLobby();
