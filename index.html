@@ -1285,7 +1285,7 @@ function applyPhase(phase, stateSnapshot) {
     case 'waiting_next_round':
       if (!isHost) {
         // All modes including blitz show the join prompt here.
-        // Fires 8s after game ends. _doJoinNextRoundLobby routes blitz to blitz-lobby.
+        // Fires 8s after game ends. _doJoinNextRoundLobby always returns to general lobby.
         showNextRoundJoinPrompt();
       }
       break;
@@ -1687,8 +1687,8 @@ function setupRoomListeners(){
       showPage('admin');
     }else{
       // All modes (including blitz) show the "New Round! Auto-joining in 5s" prompt.
-      // showNextRoundJoinPrompt → _doJoinNextRoundLobby detects blitz and routes to
-      // blitz-lobby automatically, so no separate branch is needed here.
+      // showNextRoundJoinPrompt → _doJoinNextRoundLobby always returns to general lobby,
+      // letting the host pick the next mode freely from there.
       showNextRoundJoinPrompt();
     }
   });
@@ -2053,18 +2053,13 @@ function _doJoinNextRoundLobby(){
   clearInterval(window.activeGameTimer);
   clearInterval(window.questionTimer);
   roomState='lobby';
-  {
-    if(g.settings&&g.settings.gameMode==='blitz'){
-      blitzState.finished=false;   // clear end-game guard so setupBlitzLobby doesn't abort
-      blitzState.teamAName=g.settings.teamAName||'Team A';
-      blitzState.teamBName=g.settings.teamBName||'Team B';
-      setupBlitzLobby();
-      showPage('blitz-lobby');
-    }else{
-      setupLobby(g);
-      showPage('lobby');
-    }
-  }
+  // Always return to the general lobby after a game ends, regardless of
+  // which mode was just played. The host picks the next mode from there,
+  // and players will be routed to the blitz lobby only when a new blitz
+  // game actually starts (via applyPhase 'lobby' with mode==='blitz').
+  blitzState.finished=false; // reset blitz guard in case previous game was blitz
+  setupLobby(g);
+  showPage('lobby');
 }
 
 function seededShuffle(arr,seed){
