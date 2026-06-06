@@ -1229,13 +1229,15 @@ function applyPhase(phase, stateSnapshot) {
       if (!activeQuestions || !activeQuestions.length) break;
       const mode = gameSettings.gameMode;
       if (mode === 'blitz') {
-        // Blitz question advance is handled by blitzReveal → showBlitzReveal
-        if (!document.getElementById('page-blitz-quiz').classList.contains('active')) {
-          showPage('blitz-quiz');
-          blitzState.currentQ = qi;
-          renderBlitzQuestion();
-          startBlitzQuestionTimer();
-        }
+        // Server has transitioned to 'question' for a new blitz question.
+        // We always render and restart the timer here — this is the authoritative
+        // trigger for every question advance (Q1, Q2, Q3, ...) now that the server
+        // drives progression via _transitionTo instead of the client countdown.
+        blitzState.currentQ = qi;
+        blitzState.myAnswer = null;
+        showPage('blitz-quiz');
+        renderBlitzQuestion();
+        startBlitzQuestionTimer();
       } else {
         if (!document.getElementById('page-quiz').classList.contains('active')) {
           // First question — launch the quiz UI
@@ -1260,7 +1262,10 @@ function applyPhase(phase, stateSnapshot) {
       break;
     }
     case 'answer_reveal':
-      // Reveal visuals handled by existing blitzReveal / answer feedback logic — no-op here
+      // Cancel any running question-timer RAF so it doesn't bleed into the reveal phase.
+      // The actual reveal visuals are handled by answerResult (for the answering player)
+      // and questionReveal (for all players in lightning mode).
+      if(window._questionRAF){ cancelAnimationFrame(window._questionRAF); window._questionRAF=null; }
       break;
     case 'results':
       // Server declared game over — always fire results for non-eliminated non-finished players
@@ -1307,15 +1312,19 @@ function setupStateListeners() {
     const remaining = Math.max(0, (endTimeMs - now) / 1000);
     if (remaining <= 0) return; // already expired — ignore
 
-    // Restart the appropriate RAF timer with the server's authoritative end time
+    // Restart the appropriate RAF timer with the server's authoritative end time.
+    // IMPORTANT: guard against restarting a question timer during answer_reveal —
+    // the server sets phaseEndTime for every phase (including reveal), so we must
+    // check that the current phase actually warrants starting that timer type.
+    const currentPhase = room.state ? room.state.phase : '';
     if (!isHost) {
       if (mode === 'classic') {
         startGlobalTimerDisplay(null); // will read phaseEndTime from schema
-      } else if (mode === 'lightning' && document.getElementById('page-quiz').classList.contains('active')) {
+      } else if (mode === 'lightning' && currentPhase === 'question' && document.getElementById('page-quiz').classList.contains('active')) {
         startQuestionTimer();
-      } else if (mode === 'survival' && document.getElementById('page-quiz').classList.contains('active')) {
+      } else if (mode === 'survival' && currentPhase === 'question' && document.getElementById('page-quiz').classList.contains('active')) {
         startSurvivalQuestionTimer();
-      } else if (mode === 'blitz' && document.getElementById('page-blitz-quiz').classList.contains('active')) {
+      } else if (mode === 'blitz' && currentPhase === 'question' && document.getElementById('page-blitz-quiz').classList.contains('active')) {
         startBlitzQuestionTimer();
       }
     }
@@ -1379,9 +1388,9 @@ function setupStateListeners() {
     if (quizState.finished || quizState.eliminated) return;
     const mode = gameSettings.gameMode;
     if (mode === 'blitz') {
-      if (blitzState.currentQ === newIndex) return; // already on this question
-      blitzState.currentQ = newIndex;
-      // Render is triggered by blitzReveal → showBlitzReveal, not here
+      // applyPhase('question') is the authoritative renderer for blitz question advances.
+      // Do not update blitzState.currentQ here — applyPhase sets it from state.questionIndex
+      // at the same time it renders the question, keeping them in sync.
       return;
     }
     if (quizState.current === newIndex) return; // already on this question
@@ -1597,6 +1606,26 @@ function setupRoomListeners(){
   // are sent to players with the answer field stripped (anti-cheat).
   room.onMessage('answerResult',(data)=>{
     if(!isHost) _applyAnswerResult(data);
+  });
+
+  // ── questionReveal: server broadcasts correct answer to all players on question timeout ──
+  // Used by lightning mode so players who didn't submit (or submitted wrong) can see
+  // the correct answer during the answer_reveal phase.
+  room.onMessage('questionReveal',({questionIndex, correctAnswer})=>{
+    if(isHost) return;
+    if(gameSettings.gameMode !== 'lightning') return;
+    // Highlight the correct answer button if still visible
+    const correctBtn = document.getElementById('opt-'+correctAnswer);
+    if(correctBtn){
+      correctBtn.style.background='#00c853';
+      correctBtn.style.color='#fff';
+      correctBtn.style.fontWeight='bold';
+    }
+    // If player hadn't answered, show them what the correct answer was
+    if(quizState.selected === null || quizState.selected === -1){
+      const qBox = document.getElementById('quiz-question');
+      if(qBox) qBox.innerHTML = '<span style="color:#ff4444;font-size:18px;">⏱ Time\'s Up! — Next question coming...</span>';
+    }
   });
 
   // ── gameEnded: phase machine (state.phase='results') is the authoritative trigger ──
@@ -2886,7 +2915,8 @@ function startQuestionTimer(){
         const qBox=document.getElementById('quiz-question');
         if(qBox)qBox.innerHTML='<span style="color:#ff4444;font-size:18px;">&#9200; Time\'s Up! Waiting for server...</span>';
         quizState.selected=-1;
-        try{room.send('submitAnswer',{questionIndex:quizState.current,answer:-1,score:quizState.score,correct:false});}catch(e){}
+        // FIX 4: send only questionIndex+answer — server computes score and correct.
+        try{room.send('submitAnswer',{questionIndex:quizState.current,answer:-1});}catch(e){}
       }
       return;
     }
@@ -2935,7 +2965,8 @@ function startSurvivalQuestionTimer(){
       const qBox=document.getElementById('quiz-question');
       if(qBox)qBox.innerHTML='<span style="color:#ff4444;font-size:18px;">⏰ Too slow! Waiting for server...</span>';
       quizState.answers[quizState.current]={chosen:-1,correct:false,timedOut:true};
-      try{room.send('submitAnswer',{questionIndex:quizState.current,answer:-1,score:quizState.score,correct:false,eliminated:true});}catch(e){}
+      // FIX 4: send only questionIndex+answer — server computes score, correct, and elimination.
+      try{room.send('submitAnswer',{questionIndex:quizState.current,answer:-1});}catch(e){}
       return;
     }
     if(tl>0)window._questionRAF=requestAnimationFrame(tick);
