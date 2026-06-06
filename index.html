@@ -1275,11 +1275,8 @@ function applyPhase(phase, stateSnapshot) {
       break;
     case 'waiting_next_round':
       if (!isHost) {
-        // All modes show the "New Round! Auto-joining in 5s" popup here.
-        // This fires as soon as the server enters waiting_next_round (8s after game ends),
-        // which is the reliable trigger point — roundReset arrives later (only when the
-        // host actually clicks "Next Round") and resets blitzState too early to be useful.
-        // _doJoinNextRoundLobby already handles blitz routing to blitz-lobby correctly.
+        // All modes including blitz show the join prompt here.
+        // Fires 8s after game ends. _doJoinNextRoundLobby routes blitz to blitz-lobby.
         showNextRoundJoinPrompt();
       }
       break;
@@ -3128,17 +3125,13 @@ async function finishQuiz(){
   // server ends the game — we do NOT call it here.
   const mode=gameSettings.gameMode;
   if(mode==='classic'||mode==='survival'){
-    // Reuse the eliminated page structure — it already has a live leaderboard
-    // powered by _refreshSpectatorLeaderboard / schema onChange patches.
-    // Only swap the skull → flag if the player actually finished all questions.
-    // Eliminated players already have their skull + "Eliminated!" set by
-    // eliminatePlayer() — do NOT overwrite it here.
     const titleEl=document.getElementById('eliminated-score');
     if(titleEl)titleEl.textContent=quizState.score;
     const correctEl=document.getElementById('eliminated-correct');
     if(correctEl)correctEl.textContent=quizState.correctCount+'/'+activeQuestions.length+' correct';
+    // Only swap skull→flag for players who genuinely finished all questions.
+    // Eliminated players already have skull + "Eliminated!" from eliminatePlayer() — don't overwrite.
     if(!quizState.eliminated){
-      // Player completed all questions — swap skull for finish flag
       const iconEl=document.querySelector('#page-eliminated .fade-in > div:first-child');
       if(iconEl){
         const emojiEl=iconEl.querySelector('div:first-child');
@@ -3187,19 +3180,21 @@ async function goToResults(){
   if(me.correctCount===undefined||me.correctCount===null)me.correctCount=quizState.correctCount;
   const myRank=players.findIndex(p=>p.id===myPlayerId)+1||1;
   const isWinner=myRank===1&&!quizState.eliminated&&players.length>0;
+  const isSurvivalWinner=isWinner&&gameSettings.gameMode==='survival';
   const total=activeQuestions.length||gameSettings.questionCount||20;
   if(!myPlayerId)return; // safety: not fully joined yet
 
   if(isWinner)showConfetti();
 
   const _mrc=document.getElementById('my-result-card');if(_mrc)_mrc.innerHTML=`
-    ${isWinner?'<div style="font-size:32px;margin-bottom:8px;">👑</div>':quizState.eliminated?'<div style="font-size:32px;margin-bottom:8px;">💀</div>':''}
+    ${isWinner?'<div style="font-size:32px;margin-bottom:8px;">'+(isSurvivalWinner?'🏆':'👑')+'</div>':quizState.eliminated?'<div style="font-size:32px;margin-bottom:8px;">💀</div>':''}
     <div style="font-size:14px;color:#6a7a9a;margin-bottom:4px;">${escHtml(me.nickname)}</div>
+    ${isSurvivalWinner?'<div class="orbitron" style="font-size:20px;font-weight:900;color:#00ff66;margin-bottom:8px;">🏆 LAST MAN STANDING!</div>':''}
     <div class="orbitron" style="font-size:52px;font-weight:900;color:${isWinner?'#ffd700':'#00ccff'};line-height:1;">${me.score}</div>
     <div style="font-size:13px;color:#7a8ab0;margin-top:4px;">points</div>
     <div style="font-size:14px;color:#7a8ab0;margin-top:6px;">${me.correctCount||0} / ${total} correct</div>
     <div style="font-size:14px;color:#7a8ab0;margin-top:4px;">Rank #${myRank} of ${players.length}</div>
-    ${quizState.eliminated?'<div style="margin-top:8px;font-size:13px;color:#ff8888;">Eliminated in Survival Mode</div>':''}
+    ${quizState.eliminated?'<div style="margin-top:8px;font-size:13px;color:#ff8888;">💀 Eliminated in Survival Mode</div>':''}
   `;
 
   const _rl=document.getElementById('results-leaderboard');if(_rl)_rl.innerHTML=players.slice(0,10).map((p,i)=>`
