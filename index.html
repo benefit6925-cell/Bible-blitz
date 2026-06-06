@@ -1192,6 +1192,15 @@ function applyPhase(phase, stateSnapshot) {
   switch (phase) {
     case 'lobby':
       if (isHost) { setupAdminDashboard(); showPage('admin'); showAdminTab('dashboard'); }
+      else if (gameSettings && gameSettings.gameMode === 'blitz') {
+        // Blitz players must go to blitz-lobby, not the generic lobby.
+        // This fires when roundReset transitions phase back to 'lobby'.
+        blitzState.finished = false;
+        blitzState.teamAName = (gameSettings && gameSettings.teamAName) || blitzState.teamAName || 'Team A';
+        blitzState.teamBName = (gameSettings && gameSettings.teamBName) || blitzState.teamBName || 'Team B';
+        setupBlitzLobby();
+        showPage('blitz-lobby');
+      }
       else { setupLobby({ settings: stateSnapshot || gameSettings }); showPage('lobby'); }
       break;
     case 'countdown':
@@ -3579,6 +3588,8 @@ function cleanupGameSession(){
   clearInterval(window.questionTimer);
   clearInterval(window.blitzTimer);
   clearTimeout(_nextRoundCountdownTimer);
+  clearTimeout(window._blitzNextRoundTimer); // belt-and-suspenders blitz next-round timer
+  window._blitzNextRoundTimer = null;
   if(blitzState&&blitzState.revealCountdown)clearInterval(blitzState.revealCountdown);
   // FIX 1: cancel all RAF animation loops
   if(window._activeGameRAF){cancelAnimationFrame(window._activeGameRAF);window._activeGameRAF=null;}
@@ -3952,6 +3963,22 @@ async function showBlitzResults(){
   // Show waiting lobby section (replaces Play Again)
   const waitingLobby=document.getElementById('blitz-results-waiting-lobby');
   if(waitingLobby&&!isHost)waitingLobby.style.display='block';
+
+  // Belt-and-suspenders: directly schedule the New Round popup after 8s.
+  // The primary trigger is applyPhase('waiting_next_round'), but that relies on
+  // a Colyseus schema patch arriving at exactly the right time. This timeout
+  // guarantees the popup appears for blitz players even if the patch is delayed
+  // or missed. showNextRoundJoinPrompt() is idempotent — calling it twice is safe.
+  if (!isHost) {
+    clearTimeout(window._blitzNextRoundTimer);
+    window._blitzNextRoundTimer = setTimeout(() => {
+      // Only fire if we're still on the results page (game hasn't restarted yet)
+      const activePage = document.querySelector('.page.active,.page-top.active');
+      if (activePage && activePage.id === 'page-blitz-results') {
+        showNextRoundJoinPrompt();
+      }
+    }, 8000);
+  }
 
   // MVPs from last known players state (kept in sync via Colyseus messages)
   try{
