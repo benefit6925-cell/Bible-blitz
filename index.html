@@ -1010,18 +1010,7 @@ Answer: B</pre>
         <div id="blitz-answer-status" style="display:none;text-align:center;margin-top:12px;padding:10px;background:rgba(168,85,247,0.1);border-radius:12px;font-size:14px;color:#00ccff;">
           ✓ Answer locked in — waiting for others...
         </div>
-        <!-- Teammate answer hints (replaces emoji reactions) -->
-        <!-- Floating letter bubbles are spawned here by spawnReactionBubble() -->
-        <div id="blitz-hint-area" style="min-height:48px;margin-top:12px;text-align:center;">
-          <div style="font-size:11px;color:#5a6a8a;letter-spacing:1px;">TEAMMATE HINTS</div>
-          <div style="font-size:11px;color:#3a4a6a;margin-top:2px;">Watch for floating letters when teammates pick an answer</div>
-        </div>
-        <!-- Signal buttons (kept — useful tactical comms) -->
-        <div style="display:flex;justify-content:center;gap:6px;margin-top:8px;flex-wrap:wrap;">
-          <button onclick="sendSignal('I know this! 💪')" style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:8px;padding:5px 10px;font-size:11px;color:#4ade80;cursor:pointer;">I know this! 💪</button>
-          <button onclick="sendSignal('Not sure... 🤔')" style="background:rgba(234,179,8,0.08);border:1px solid rgba(234,179,8,0.2);border-radius:8px;padding:5px 10px;font-size:11px;color:#ffec8b;cursor:pointer;">Not sure... 🤔</button>
-          <button onclick="sendSignal('Careful! ⚠️')" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:5px 10px;font-size:11px;color:#ff8888;cursor:pointer;">Careful! ⚠️</button>
-        </div>
+
       </div>
     </div>
   </div>
@@ -1328,35 +1317,12 @@ function setupStateListeners() {
     }
     // Admin timer display — driven from phaseEndTime directly
     if (isHost) {
-      const mode = gameSettings.gameMode;
-      // Compute the correct total duration for the progress bar denominator:
-      // classic  → global timer (timerDuration seconds)
-      // lightning→ total game = questionCount × per-question duration (timerDuration is per-Q in lightning)
-      // survival / blitz → no bar (static label shown in updateAdminStatus)
-      let dur = gameSettings.timerDuration || 120;
-      let barEndTime = endTimeMs;
-      if (mode === 'lightning') {
-        // Lightning has a true global endTime sent in gameStarted.
-        // Use it as barEndTime; dur = total game length computed once.
-        const globalEnd = window._lightningGlobalEndTime;
-        if (globalEnd && globalEnd > Date.now()) {
-          barEndTime = globalEnd;
-          dur = Math.round((globalEnd - (window._gameStartTime || Date.now())) / 1000);
-        } else {
-          // Fallback: estimate from settings
-          dur = (gameSettings.questionCount || 20) * (gameSettings.timerDuration || 8);
-          // barEndTime stays as phaseEndTime (per-question) — bar will cycle per-Q
-        }
-      }
-      // Don't run a bar for survival/blitz — updateAdminStatus already shows a static label
-      if (mode === 'survival' || mode === 'blitz') return;
-
+      const dur = gameSettings.timerDuration || 120;
       const adminTEl = document.getElementById('admin-timer');
       const adminBar = document.getElementById('admin-timer-bar');
-      document.getElementById('admin-timer-bar-wrap').style.display = 'block';
       if(window._adminRAF){cancelAnimationFrame(window._adminRAF);window._adminRAF=null;}
       function adminTick(){
-        const tl=Math.max(0,(barEndTime-Date.now())/1000);
+        const tl=Math.max(0,(endTimeMs-Date.now())/1000);
         if(adminTEl){
           adminTEl.textContent=typeof formatTime==='function'?formatTime(Math.round(tl)):Math.round(tl)+'s';
           adminTEl.style.color=tl<20?'#ff4444':tl<40?'#ff8800':'';
@@ -1399,25 +1365,17 @@ function setupStateListeners() {
     }
   });
 
-  // ── Blitz team scores — live update host leaderboard and player score strips ──
-  // teamScoreA/B are root-level schema fields, not player fields, so they need
-  // their own listeners. Without this the host sees 0-0 forever because
-  // player.onChange() never fires for root-state field changes.
-  room.state.listen('teamScoreA', (newScore) => {
-    // Update host leaderboard display directly (fast path — no full player scan needed)
-    const el = document.getElementById('host-blitz-score-a');
-    if (el) { el.textContent = newScore; _animateScoreBump(el); }
-    // Also update player-side score strip if visible
-    const ps = document.getElementById('blitz-score-a');
-    if (ps) ps.textContent = newScore;
-    blitzState.teamScoreA = newScore;
+  // ── Blitz team scores — live update host leaderboard ──
+  // teamScoreA/B are root-level schema fields. The host never receives blitzReveal
+  // (that handler returns early for isHost), so without these listeners the host
+  // score display never updates from its initial 0-0.
+  // updateAdminPlayers() reads room.state.teamScoreA/B directly, so calling it here
+  // is all we need — no separate DOM patch required.
+  room.state.listen('teamScoreA', () => {
+    if (isHost) updateAdminPlayers(window._lastKnownPlayers || {});
   });
-  room.state.listen('teamScoreB', (newScore) => {
-    const el = document.getElementById('host-blitz-score-b');
-    if (el) { el.textContent = newScore; _animateScoreBump(el); }
-    const ps = document.getElementById('blitz-score-b');
-    if (ps) ps.textContent = newScore;
-    blitzState.teamScoreB = newScore;
+  room.state.listen('teamScoreB', () => {
+    if (isHost) updateAdminPlayers(window._lastKnownPlayers || {});
   });
 
   // ── Question index changes — server advances questions ──
@@ -1955,25 +1913,6 @@ function avatarColor(name){
   let h=0;for(let c of name)h=(h*31+c.charCodeAt(0))%COLORS.length;return COLORS[h];
 }
 
-// Brief scale-pop animation when a score number updates live
-function _animateScoreBump(el){
-  if(!el)return;
-  el.style.transition='transform 0.15s ease,color 0.15s ease';
-  el.style.transform='scale(1.35)';
-  el.style.color='#ffd700';
-  setTimeout(()=>{el.style.transform='scale(1)';el.style.color='';},300);
-}
-
-// Calculate team accuracy % from blitzCorrectCount vs questions answered
-function _blitzTeamAccuracy(playerList, team){
-  const teamPlayers = playerList.filter(p=>p.team===team);
-  if(!teamPlayers.length) return '—';
-  const totalAnswered = teamPlayers.reduce((s,p)=>s+(p.answeredIndex>=0?p.answeredIndex+1:0),0);
-  const totalCorrect  = teamPlayers.reduce((s,p)=>s+(p.blitzCorrectCount||0),0);
-  if(!totalAnswered) return '—';
-  return Math.round(totalCorrect/totalAnswered*100);
-}
-
 function escHtml(s){
   return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
@@ -2375,13 +2314,11 @@ function updateAdminPlayers(players){
         <div style="flex:1;text-align:center;padding:12px;background:rgba(239,68,68,0.1);border-radius:12px;border:1px solid rgba(239,68,68,0.3);">
           <div style="font-size:11px;color:#ff8888;font-weight:700;margin-bottom:4px;">🔴 ${escHtml(gameSettings.teamAName||'Team A')}</div>
           <div class="orbitron" style="font-size:28px;color:#ff8888;" id="host-blitz-score-a">${aScore}</div>
-          <div style="font-size:11px;color:#cc6666;margin-top:4px;">${_blitzTeamAccuracy(list,'A')}% accuracy</div>
         </div>
         <div style="display:flex;align-items:center;font-size:16px;color:#5a6a8a;font-weight:700;">vs</div>
         <div style="flex:1;text-align:center;padding:12px;background:rgba(59,130,246,0.1);border-radius:12px;border:1px solid rgba(59,130,246,0.3);">
           <div style="font-size:11px;color:#66b3ff;font-weight:700;margin-bottom:4px;">🔵 ${escHtml(gameSettings.teamBName||'Team B')}</div>
           <div class="orbitron" style="font-size:28px;color:#66b3ff;" id="host-blitz-score-b">${bScore}</div>
-          <div style="font-size:11px;color:#4488cc;margin-top:4px;">${_blitzTeamAccuracy(list,'B')}% accuracy</div>
         </div>
       </div>
       <div style="font-size:12px;color:#6a7a9a;margin-bottom:8px;">PLAYERS (${list.length})</div>
@@ -2989,24 +2926,17 @@ function startQuestionTimer(){
 }
 
 // ── SURVIVAL: per-question countdown timer (UI animation only) ──
-// FIX 1: driven by requestAnimationFrame — no setInterval drift.
-// FIX SURVIVAL: always uses a fresh local endTime (Date.now() + dur*1000).
-// The server only updates phaseEndTime on server-driven phase transitions.
-// In survival, players self-advance after correct answers, so phaseEndTime
-// is NOT updated between questions — reading it would give a stale/shorter timer.
-// Local clock is safe here because the server is the authority on elimination
-// (it eliminates players who haven't answered by the server-side timeout).
+// FIX 1: driven by phaseEndTime via requestAnimationFrame — no setInterval drift.
 function startSurvivalQuestionTimer(){
   clearInterval(window.questionTimer);
   if(window._questionRAF){cancelAnimationFrame(window._questionRAF);window._questionRAF=null;}
   const dur=gameSettings.survivalTimerDuration||8;
   quizState.questionStartTime=Date.now();
 
-  // Always use a fresh local end time — never read phaseEndTime from schema here.
-  // phaseEndTime is set once by the server at the START of the survival question phase,
-  // but players self-advance after correct answers without a new server phase transition,
-  // so phaseEndTime stays stale (still pointing to the first question's deadline).
-  const endTime=Date.now()+(dur*1000);
+  // Use phaseEndTime from schema if available (authoritative server clock)
+  const endTime=(room&&room.state&&room.state.phaseEndTime&&room.state.phaseEndTime>Date.now())
+    ?room.state.phaseEndTime
+    :Date.now()+(dur*1000);
 
   const el=document.getElementById('quiz-q-timer-val');
   const barEl=document.getElementById('quiz-q-timer-bar');
@@ -3146,26 +3076,13 @@ async function eliminatePlayer(){
   quizState.finished=true;
   clearInterval(window.activeGameTimer);
   clearInterval(window.questionTimer);
-  if(window._questionRAF){cancelAnimationFrame(window._questionRAF);window._questionRAF=null;}
   // FIX 4: Do NOT send 'eliminatePlayer' to the server — that handler doesn't exist
   // server-side (intentionally). Elimination is set by the server via player.eliminated
   // schema patch in submitAnswer → survival wrong answer path.
   // This function is now UI-only: it reacts to the schema patch, not drives it.
-  // Restore skull UI (may have been swapped by _showClassicFinishedWaiting)
-  const skull=document.querySelector('#page-eliminated .fade-in > div:first-child');
-  if(skull){
-    skull.innerHTML=`
-      <div style="font-size:64px;animation:elimPulse 1s ease infinite;margin-bottom:12px;">💀</div>
-      <h1 class="orbitron" style="font-size:26px;color:#ff4444;margin-bottom:6px;">Eliminated!</h1>
-      <p style="color:#7a8ab0;margin-bottom:16px;">One wrong answer was all it took...</p>
-      <div class="glass glow-border" style="border-radius:16px;padding:20px;margin-bottom:12px;">
-        <div style="font-size:13px;color:#6a7a9a;margin-bottom:4px;">Your score before elimination</div>
-        <div class="orbitron" style="font-size:48px;font-weight:900;color:#00ccff;" id="eliminated-score">${quizState.score}</div>
-        <div style="font-size:13px;color:#6a7a9a;margin-top:4px;" id="eliminated-correct">${quizState.correctCount}/${activeQuestions.length} correct</div>
-      </div>
-    `;
-  }
   showPage('eliminated');
+  document.getElementById('eliminated-score').textContent=quizState.score;
+  document.getElementById('eliminated-correct').textContent=quizState.correctCount+'/'+activeQuestions.length+' correct';
   startSpectatorMode();
 }
 
@@ -3174,32 +3091,10 @@ async function finishQuiz(){
   quizState.finished=true;
   clearInterval(window.activeGameTimer);
   clearInterval(window.questionTimer);
-  if(window._questionRAF){cancelAnimationFrame(window._questionRAF);window._questionRAF=null;}
   sessionStorage.removeItem('qm_session');
   try{room.send('playerFinished',{score:quizState.score,correctCount:quizState.correctCount});}catch(e){}
-  // Show a "finished — waiting for others" screen using the eliminated page structure.
-  // The server will fire phase=results when everyone is done; applyPhase handles final nav.
-  _showClassicFinishedWaiting();
-}
-
-function _showClassicFinishedWaiting(){
-  // Reuse page-eliminated layout: it already has a live spectator leaderboard.
-  // We swap the skull/eliminated copy for "finished" copy.
-  const skull=document.querySelector('#page-eliminated .fade-in > div:first-child');
-  if(skull){
-    skull.innerHTML=`
-      <div style="font-size:64px;animation:winnerPulse 2s ease infinite;margin-bottom:12px;">🏁</div>
-      <h1 class="orbitron" style="font-size:26px;color:#00ff66;margin-bottom:6px;">Finished!</h1>
-      <p style="color:#7a8ab0;margin-bottom:16px;">You answered all questions! Waiting for others...</p>
-      <div class="glass glow-border" style="border-radius:16px;padding:20px;margin-bottom:12px;">
-        <div style="font-size:13px;color:#6a7a9a;margin-bottom:4px;">Your final score</div>
-        <div class="orbitron" style="font-size:48px;font-weight:900;color:#00ccff;" id="eliminated-score">${quizState.score}</div>
-        <div style="font-size:13px;color:#6a7a9a;margin-top:4px;" id="eliminated-correct">${quizState.correctCount}/${activeQuestions.length} correct</div>
-      </div>
-    `;
-  }
-  showPage('eliminated');
-  startSpectatorMode();
+  // Do NOT call goToResults() here — server sets phase=results which applyPhase handles.
+  // For classic mode where player may finish before timer: wait for server phase patch.
 }
 
 function startSpectatorMode(){
@@ -3744,15 +3639,6 @@ async function handleBlitzAnswer(idx){
   document.getElementById('blitz-opt-'+idx).style.borderColor='#00ccff';
   document.getElementById('blitz-answer-status').style.display='block';
 
-  // Auto-broadcast chosen letter to teammates as a floating hint bubble
-  // Teammates see a "B" float across their screen — you don't see your own.
-  const letter=['A','B','C','D'][idx]||'?';
-  try{
-    room.send('blitzReaction',{emoji:letter,team:blitzState.myTeam,timestamp:Date.now()});
-  }catch(e){}
-  // Note: spawnReactionBubble is NOT called here — you don't see your own hint bubble.
-  // Teammates see it via the blitzReaction message handler in setupRoomListeners.
-
   await submitBlitzAnswer(idx);
   await tryTriggerBlitzReveal();
 }
@@ -3907,14 +3793,11 @@ async function sendReaction(emoji){
   }catch(e){}
 }
 
-function spawnReactionBubble(letter){
-  // letter is now always A/B/C/D — render as a bold styled bubble
+function spawnReactionBubble(emoji){
   const b=document.createElement('div');
   b.className='reaction-bubble';
-  const colors={A:'#ff8888',B:'#66b3ff',C:'#4ade80',D:'#ffd700'};
-  const color=colors[letter]||'#00ccff';
-  b.style.cssText=`left:${20+Math.random()*60}%;bottom:120px;font-size:24px;font-family:'Orbitron',monospace;font-weight:900;color:${color};text-shadow:0 0 12px ${color}88;background:rgba(0,0,0,0.45);border:1.5px solid ${color}66;border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;`;
-  b.textContent=letter;
+  b.textContent=emoji;
+  b.style.cssText=`left:${20+Math.random()*60}%;bottom:120px;`;
   document.body.appendChild(b);
   setTimeout(()=>b.remove(),3100);
 }
