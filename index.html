@@ -1261,6 +1261,9 @@ function applyPhase(phase, stateSnapshot) {
         if (!blitzState.finished) finishBlitzQuiz(true);
         break;
       }
+      // FIX — Issue 2: Players who finished early are sitting on the spectator screen
+      // (page-eliminated with patched copy). Clean up their timers if still running,
+      // then fall through to goToResults() which is always the terminal action here.
       if (!quizState.finished) {
         quizState.finished = true;
         clearInterval(window.activeGameTimer);
@@ -1270,7 +1273,22 @@ function applyPhase(phase, stateSnapshot) {
       goToResults();
       break;
     case 'waiting_next_round':
-      if (!isHost) showNextRoundJoinPrompt();
+      if (!isHost) {
+        // FIX — Issue 1: For blitz mode, players are already on blitz-results with a
+        // "Waiting for next round..." banner visible (blitz-results-waiting-lobby div).
+        // The auto-join overlay (showNextRoundJoinPrompt) would prematurely navigate
+        // them to blitz-lobby before the host has clicked "Next Round".
+        // Blitz players should stay on the results screen; the roundReset message
+        // (broadcast by the server when the host starts the next round) handles navigation.
+        if (gameSettings.gameMode === 'blitz') {
+          // Ensure the waiting banner is visible on the results page
+          const waitingBanner = document.getElementById('blitz-results-waiting-lobby');
+          if (waitingBanner) waitingBanner.style.display = 'block';
+        } else {
+          // Classic / lightning / survival: standard auto-join prompt
+          showNextRoundJoinPrompt();
+        }
+      }
       break;
     case 'closed':
       cleanupPlayerSession();
@@ -1393,6 +1411,9 @@ function setupStateListeners() {
       // at the same time it renders the question, keeping them in sync.
       return;
     }
+    // FIX — Survival: server now advances questionIndex per-question for timeout tracking.
+    // A fast player may already be ahead of the server's current index — never jump back.
+    if (mode === 'survival' && newIndex <= quizState.current) return;
     if (quizState.current === newIndex) return; // already on this question
     quizState.current = newIndex;
     quizState.selected = null;
@@ -1666,6 +1687,18 @@ function setupRoomListeners(){
       document.getElementById('admin-timer').textContent='—';
       showPage('admin');
     }else{
+      // Reset the eliminated page back to its default copy in case finishQuiz()
+      // patched it to show "You Finished!" during the previous round. Without this
+      // a player who finishes round 1 then gets eliminated in round 2 sees stale copy.
+      const _elimIconEl=document.querySelector('#page-eliminated .fade-in > div:first-child');
+      if(_elimIconEl){
+        const _ee=_elimIconEl.querySelector('div:first-child');
+        if(_ee)_ee.textContent='💀';
+        const _eh=_elimIconEl.querySelector('h1');
+        if(_eh){_eh.textContent='Eliminated!';_eh.style.color='';}
+        const _ep=_elimIconEl.querySelector('p');
+        if(_ep)_ep.textContent='';
+      }
       showNextRoundJoinPrompt();
     }
   });
@@ -2791,9 +2824,13 @@ async function startQuiz(gameData){
   const qTimerBar=document.getElementById('quiz-q-timer-bar');
   if(qTimerBar&&isSurvival)qTimerBar.style.background='#ff4444';
 
-  // Sync to schema questionIndex if already set
+  // Sync to schema questionIndex if already set.
+  // Survival: use playerQuestionIndex (player's own progress) — state.questionIndex
+  // is the server's timeout-chain cursor and diverges from per-player progress.
   if(room&&room.state&&room.state.questionIndex>=0){
-    quizState.current=room.state.questionIndex;
+    quizState.current=(gameSettings.gameMode==='survival'&&gameData.playerQuestionIndex!=null)
+      ? gameData.playerQuestionIndex
+      : room.state.questionIndex;
   }
   renderQuestion();
 
@@ -3072,6 +3109,7 @@ function _applyAnswerResult({questionIndex, correctAnswer, correct, score, corre
 
 async function eliminatePlayer(){
   if(quizState.eliminated)return; // idempotent
+  if(quizState.finished)return;   // already finished — don't overwrite finish UI with eliminated UI
   quizState.eliminated=true;
   quizState.finished=true;
   clearInterval(window.activeGameTimer);
@@ -3091,10 +3129,38 @@ async function finishQuiz(){
   quizState.finished=true;
   clearInterval(window.activeGameTimer);
   clearInterval(window.questionTimer);
+  // Cancel the global timer RAF — quiz page is about to be hidden, no point animating it.
+  // _questionRAF self-terminates on next tick via the quizState.finished guard.
+  if(window._activeGameRAF){cancelAnimationFrame(window._activeGameRAF);window._activeGameRAF=null;}
   sessionStorage.removeItem('qm_session');
   try{room.send('playerFinished',{score:quizState.score,correctCount:quizState.correctCount});}catch(e){}
-  // Do NOT call goToResults() here — server sets phase=results which applyPhase handles.
-  // For classic mode where player may finish before timer: wait for server phase patch.
+
+  // FIX — Issue 2: Player finished early (before the global timer or other players).
+  // Show a "finished — watching live scores" screen so they aren't left frozen
+  // on a dead quiz page.  goToResults() fires from applyPhase('results') when the
+  // server ends the game — we do NOT call it here.
+  const mode=gameSettings.gameMode;
+  if(mode==='classic'||mode==='survival'){
+    // Reuse the eliminated page structure — it already has a live leaderboard
+    // powered by _refreshSpectatorLeaderboard / schema onChange patches.
+    // Patch the header copy so it reads "You finished!" not "Eliminated!".
+    const titleEl=document.getElementById('eliminated-score');
+    if(titleEl)titleEl.textContent=quizState.score;
+    const correctEl=document.getElementById('eliminated-correct');
+    if(correctEl)correctEl.textContent=quizState.correctCount+'/'+activeQuestions.length+' correct';
+    // Swap the skull icon + heading for a finish-specific message
+    const iconEl=document.querySelector('#page-eliminated .fade-in > div:first-child');
+    if(iconEl){
+      const emojiEl=iconEl.querySelector('div:first-child');
+      if(emojiEl)emojiEl.textContent='🏁';
+      const h1El=iconEl.querySelector('h1');
+      if(h1El){h1El.textContent='You Finished!';h1El.style.color='#00ccff';}
+      const pEl=iconEl.querySelector('p');
+      if(pEl)pEl.textContent='Waiting for others to finish...';
+    }
+    showPage('eliminated');
+    startSpectatorMode();
+  }
 }
 
 function startSpectatorMode(){
@@ -3981,7 +4047,12 @@ if('serviceWorker' in navigator){
       // ── Player: fully restored mid-game state ──
       if(data.status==='reconnected'){
         quizState={
-          current:data.questionIndex||0,
+          // Survival tracks per-player progress independently of state.questionIndex
+          // (which is now the server's timeout-chain cursor). Use playerQuestionIndex
+          // when present so the player resumes at their own next question.
+          current:(data.gameMode==='survival'&&data.playerQuestionIndex!=null)
+            ? data.playerQuestionIndex
+            : (data.questionIndex||0),
           score:data.score||0,
           correctCount:data.correctCount||0,
           answers:{},selected:null,
@@ -4005,7 +4076,7 @@ if('serviceWorker' in navigator){
           startBlitzQuiz({settings:data.settings,activeQuestions:data.activeQuestions});
         }else{
           window._lightningGlobalEndTime=data.globalEndTime||null;
-          startQuiz({settings:data.settings,activeQuestions:data.activeQuestions,startTime:data.startTime,globalEndTime:data.globalEndTime});
+          startQuiz({settings:data.settings,activeQuestions:data.activeQuestions,startTime:data.startTime,globalEndTime:data.globalEndTime,playerQuestionIndex:data.playerQuestionIndex});
         }
       // ── Player: joined mid-game but no saved token matched (new seat) ──
       }else if(data.status==='active'||data.waiting){
@@ -4028,7 +4099,7 @@ if('serviceWorker' in navigator){
           setupBlitzLobby();
         }else{
           window._lightningGlobalEndTime=data.globalEndTime||null;
-          startQuiz({settings:data.settings,activeQuestions:data.activeQuestions,startTime:data.startTime,globalEndTime:data.globalEndTime});
+          startQuiz({settings:data.settings,activeQuestions:data.activeQuestions,startTime:data.startTime,globalEndTime:data.globalEndTime,playerQuestionIndex:data.playerQuestionIndex});
         }
       // ── Lobby / waiting_next_round ──
       }else{
