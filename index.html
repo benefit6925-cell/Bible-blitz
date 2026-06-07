@@ -2065,17 +2065,12 @@ function _doJoinNextRoundLobby(){
   clearInterval(window.questionTimer);
   roomState='lobby';
   blitzState.finished=false; // reset blitz guard
-  // Route based on the NEXT round's mode (already updated by roundReset message).
-  // If host switched TO blitz → blitz lobby. Anything else → general lobby.
-  if(g.settings&&g.settings.gameMode==='blitz'){
-    blitzState.teamAName=g.settings.teamAName||'Team A';
-    blitzState.teamBName=g.settings.teamBName||'Team B';
-    setupBlitzLobby();
-    showPage('blitz-lobby');
-  }else{
-    setupLobby(g);
-    showPage('lobby');
-  }
+  // Always return to the general lobby after any game ends — including blitz.
+  // The host picks the next mode from there, and the second roundReset routes
+  // players correctly (blitz-lobby if blitz, lobby otherwise), matching the
+  // behaviour of classic / lightning / survival exactly.
+  setupLobby(g);
+  showPage('lobby');
 }
 
 function seededShuffle(arr,seed){
