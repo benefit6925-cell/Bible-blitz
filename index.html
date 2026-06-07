@@ -2065,10 +2065,11 @@ function _doJoinNextRoundLobby(){
   clearInterval(window.questionTimer);
   roomState='lobby';
   blitzState.finished=false; // reset blitz guard
-  // Always return to the general lobby after any game ends — including blitz.
-  // The host picks the next mode from there, and the second roundReset routes
-  // players correctly (blitz-lobby if blitz, lobby otherwise), matching the
-  // behaviour of classic / lightning / survival exactly.
+  // Always return to the general lobby — same behaviour as classic/lightning/survival.
+  // The host picks the next mode from there. If they pick blitz, the second roundReset
+  // will route players to blitz-lobby via showNextRoundJoinPrompt → _doJoinNextRoundLobby
+  // exactly as it does for any other mode switch. This is the one change that aligns
+  // blitz with the other three modes.
   setupLobby(g);
   showPage('lobby');
 }
