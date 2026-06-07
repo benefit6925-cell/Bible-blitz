@@ -1287,6 +1287,7 @@ function applyPhase(phase, stateSnapshot) {
       goToResults();
       break;
     case 'waiting_next_round':
+      console.log('[DEBUG] applyPhase: waiting_next_round fired, isHost='+isHost+', blitzState.finished='+blitzState.finished+', _currentPhase='+_currentPhase);
       if (!isHost) {
         // Show the overlay in "waiting" state — no countdown yet.
         // The countdown + routing only starts when roundReset arrives
@@ -1756,6 +1757,7 @@ function setupRoomListeners(){
       // All modes (including blitz) show the "New Round! Auto-joining in 5s" prompt.
       // showNextRoundJoinPrompt → _doJoinNextRoundLobby always returns to general lobby,
       // letting the host pick the next mode freely from there.
+      console.log('[DEBUG] roundReset: about to call showNextRoundJoinPrompt, _nextRoundJoinTaken='+_nextRoundJoinTaken);
       showNextRoundJoinPrompt();
     }
   });
@@ -2116,6 +2118,7 @@ async function confirmExitLobby(){
 // Just shows the overlay with static text. No countdown, no routing.
 // roundReset upgrades this to the real 5s countdown once the host confirms settings.
 function showWaitingForHostOverlay(){
+  console.log('[DEBUG] showWaitingForHostOverlay called');
   _nextRoundJoinTaken=false;
   clearTimeout(_nextRoundCountdownTimer);
   const overlay=document.getElementById('next-round-join-overlay');
@@ -2128,6 +2131,7 @@ function showWaitingForHostOverlay(){
 
 // ── Next Round Join Prompt (5-second countdown) ──
 function showNextRoundJoinPrompt(){
+  console.log('[DEBUG] showNextRoundJoinPrompt called, _nextRoundJoinTaken='+_nextRoundJoinTaken);
   _nextRoundJoinTaken=false;
   clearTimeout(_nextRoundCountdownTimer);
   blitzState.finished=false; // clear blitz end-game guard for all modes
