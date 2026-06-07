@@ -1264,7 +1264,15 @@ function applyPhase(phase, stateSnapshot) {
       // Server declared game over — always fire results for non-eliminated non-finished players
       if (isHost) { adminEndGame(); break; }
       if (gameSettings.gameMode === 'blitz') {
-        if (!blitzState.finished) finishBlitzQuiz(true);
+        // finishBlitzQuiz has an idempotency guard (blitzState.finished).
+        // On reconnect the guard may already be true, so call showBlitzResults() directly
+        // to ensure the results page is visible and the waiting-lobby panel is shown.
+        if (!blitzState.finished) {
+          finishBlitzQuiz(true);
+        } else {
+          // Already finished — just make sure the correct page is shown
+          showBlitzResults();
+        }
         break;
       }
       // FIX — Issue 2: Players who finished early are sitting on the spectator screen
@@ -1284,6 +1292,11 @@ function applyPhase(phase, stateSnapshot) {
         // The countdown + routing only starts when roundReset arrives
         // with the confirmed new mode from the host.
         showWaitingForHostOverlay();
+        // If the player is on the blitz results page, also show the blitz-specific waiting panel.
+        if (gameSettings.gameMode === 'blitz' || blitzState.finished) {
+          const bwl = document.getElementById('blitz-results-waiting-lobby');
+          if (bwl) bwl.style.display = 'block';
+        }
       }
       break;
     case 'closed':
@@ -1428,8 +1441,12 @@ function setupStateListeners() {
       player.onChange(() => {
         window._lastKnownPlayers[playerId] = _playerToPlain(player, playerId);
         _refreshAllPlayerViews();
-        // Schema-driven elimination for THIS player (survival mode)
-        if (playerId === myPlayerId && player.eliminated && !quizState.eliminated) {
+        // Schema-driven elimination for THIS player (survival mode).
+        // Check both playerId === myPlayerId AND nickname === myNickname as a
+        // fallback for the race where myPlayerId hasn't been updated yet on restore.
+        const isMe = playerId === myPlayerId ||
+                     (!myPlayerId && player.nickname === myNickname);
+        if (isMe && player.eliminated && !quizState.eliminated && !player.exited) {
           eliminatePlayer();
         }
       });
@@ -1554,12 +1571,33 @@ function _refreshTeamSelectCounters(players) {
 // ══════════════════════════════════════════
 // COLYSEUS ROOM LISTENERS
 // ══════════════════════════════════════════
+// _joinAckHandler: one-shot pending handler registered by joinGame()/restoreSession()
+// before setupRoomListeners() runs. setupRoomListeners() picks it up and wires it once,
+// then clears it so repeated calls never double-register it.
+let _pendingJoinAckHandler = null;
+let _pendingJoinErrorHandler = null;
+
 function setupRoomListeners(){
   if(!room)return;
   // Guard: prevent duplicate listener registration on the same room object
   if(room._listenersAttached)return;
   room._listenersAttached=true;
   window._lastKnownPlayers={};
+
+  // ── Wire pending one-shot joinAck / joinError handlers ──
+  // These are set by joinGame() / restoreSession() before calling setupRoomListeners().
+  // Registering them HERE (inside the _listenersAttached guard) ensures they are
+  // never duplicated across reconnect cycles.
+  if(_pendingJoinAckHandler){
+    const _h = _pendingJoinAckHandler;
+    _pendingJoinAckHandler = null;
+    room.onMessage('joinAck', _h);
+  }
+  if(_pendingJoinErrorHandler){
+    const _he = _pendingJoinErrorHandler;
+    _pendingJoinErrorHandler = null;
+    room.onMessage('joinError', _he);
+  }
 
   // Attach schema-level state listeners (primary sync layer)
   // These fire on delta patches — much more efficient than full message payloads
@@ -1667,7 +1705,11 @@ function setupRoomListeners(){
     _currentPhase=null; // reset phase machine so next phase change applies
     adminGameEnded=false;
     quizState={current:0,score:0,correctCount:0,answers:{},selected:null,finished:false,eliminated:false,questionStartTime:0};
-    blitzState={myTeam:blitzState.myTeam||null,teamScoreA:0,teamScoreB:0,teamAName:settings&&settings.teamAName||'Team A',teamBName:settings&&settings.teamBName||'Team B',currentQ:0,myAnswer:null,myCorrectCount:0,roundsWonA:0,roundsWonB:0,perfectA:0,perfectB:0,suddenDeath:false,finished:false,revealCountdown:null};
+    // Preserve myTeam across resets — the server keeps team assignments between rounds.
+    // blitzState.finished MUST be cleared before showNextRoundJoinPrompt() runs so
+    // applyPhase('results') on the new round isn't blocked by the old finished guard.
+    const preservedTeam=blitzState.myTeam;
+    blitzState={myTeam:preservedTeam||null,teamScoreA:0,teamScoreB:0,teamAName:settings&&settings.teamAName||'Team A',teamBName:settings&&settings.teamBName||'Team B',currentQ:0,myAnswer:null,myCorrectCount:0,roundsWonA:0,roundsWonB:0,perfectA:0,perfectB:0,suddenDeath:false,finished:false,revealCountdown:null};
     clearInterval(window.activeGameTimer);
     clearInterval(window.questionTimer);
     clearInterval(window.blitzTimer);
@@ -1765,6 +1807,11 @@ function setupRoomListeners(){
     const pageId=activePage?activePage.id:'';
     if(!pageId||pageId==='page-landing'||pageId==='page-host-setup'||pageId==='page-join') return;
 
+    // Kill all timers from the current session before attempting rejoin.
+    // Without this, a blitz RAF or survival timer from the old session continues
+    // running after the new room object is created, causing ghost updates.
+    cleanupGameSession();
+
     // Silent exponential-backoff rejoin — player never has to touch anything.
     const MAX_ATTEMPTS=5;
     const BASE_DELAY_MS=800;
@@ -1777,6 +1824,9 @@ function setupRoomListeners(){
         const s=JSON.parse(saved);
         const reconnectToken=sessionStorage.getItem('qm_reconnect_token')||s.reconnectToken||'';
         const hostToken=sessionStorage.getItem('qm_host_token')||'';
+        // Preserve blitzState.myTeam across reconnect — it is NOT in the session token
+        // and is needed for blitz rendering immediately after rejoin.
+        const savedTeam=blitzState.myTeam;
         room=await client.joinById(s.pin,{
           pin:s.pin,
           nickname:s.nick,
@@ -1784,6 +1834,13 @@ function setupRoomListeners(){
           reconnectToken,
           hostToken,
         });
+        // Restore team before wiring listeners so blitz UI renders correctly
+        if(savedTeam&&!blitzState.myTeam)blitzState.myTeam=savedTeam;
+        // _currentPhase must be reset so applyPhase() re-applies whatever phase the
+        // server is now in after the rejoin. Without this, if the server is in
+        // 'waiting_next_round' after a blitz game end, applyPhase() would see the
+        // same phase string as before and skip it entirely (due to the !==_currentPhase guard).
+        _currentPhase=null;
         // Hooked up — re-register all listeners and we're back in the game.
         setupRoomListeners();
         return; // success — stop retrying
@@ -1823,9 +1880,14 @@ async function _silentRejoin(){
       const s=JSON.parse(saved);
       const reconnectToken=sessionStorage.getItem('qm_reconnect_token')||s.reconnectToken||'';
       const hostToken=sessionStorage.getItem('qm_host_token')||'';
+      // Preserve blitz team and reset phase machine before the new room is wired.
+      const savedTeam=blitzState.myTeam;
+      cleanupGameSession();
       room=await client.joinById(s.pin,{
         pin:s.pin,nickname:s.nick,isHost:!!s.isHost,reconnectToken,hostToken,
       });
+      if(savedTeam&&!blitzState.myTeam)blitzState.myTeam=savedTeam;
+      _currentPhase=null; // force applyPhase() to re-apply server's current phase
       setupRoomListeners();
       _rejoinInProgress=false;
       return;
@@ -2229,17 +2291,17 @@ async function createGame(){
       roomId: pin, pin, hostName:name, isHost:true, settings
     });
     myPin=pin;isHost=true;gameSettings=settings;customQuestions=[];
-    setupRoomListeners();
 
-    // Capture hostToken from the server's joinAck so the host can re-claim
-    // ownership after a page refresh without losing the room.
-    room.onMessage('joinAck',(data)=>{
+    // Capture hostToken from the server's joinAck. Registered via _pending so it
+    // goes through the _listenersAttached guard and is never duplicated.
+    _pendingJoinAckHandler=(data)=>{
       if(data.hostToken){
         sessionStorage.setItem('qm_host_token',data.hostToken);
         sessionStorage.setItem('qm_session',JSON.stringify({pin,nick:name,playerId:room.sessionId,isHost:true}));
       }
-    });
+    };
 
+    setupRoomListeners();
     setupAdminDashboard();
     showPage('admin');
     showAdminTab('dashboard');
@@ -2724,10 +2786,11 @@ async function joinGame(){
     room=await client.joinById(pin,{pin,nickname:nick,isHost:false});
     myPin=pin;myNickname=nick;
     myPlayerId=room.sessionId;
-    setupRoomListeners();
 
-    // Server sends back initial state — listen for one-time response
-    room.onMessage('joinAck',(data)=>{
+    // Register joinAck/joinError as pending one-shot handlers — setupRoomListeners()
+    // picks these up and wires them inside the _listenersAttached guard, ensuring
+    // they are never duplicated across reconnect cycles.
+    _pendingJoinAckHandler=(data)=>{
       btn.disabled=false;btn.textContent='Join Game →';
       // Persist reconnect token — this is the key that survives a page refresh
       if(data.reconnectToken) sessionStorage.setItem('qm_reconnect_token',data.reconnectToken);
@@ -2747,14 +2810,15 @@ async function joinGame(){
         setupLobby({settings:data});
         showPage('lobby');
       }
-    });
-
-    room.onMessage('joinError',(data)=>{
+    };
+    _pendingJoinErrorHandler=(data)=>{
       btn.disabled=false;btn.textContent='Join Game →';
       errEl.textContent=data.message||'❌ Could not join. Check your PIN.';
       errEl.classList.add('show');
       try{room.leave();room=null;}catch(e){}
-    });
+    };
+
+    setupRoomListeners();
 
   }catch(e){
     btn.disabled=false;btn.textContent='Join Game →';
@@ -4067,9 +4131,10 @@ if('serviceWorker' in navigator){
     });
     myPin=s.pin;myNickname=s.nick;myPlayerId=room.sessionId;
     if(wasHost){isHost=true;}
-    setupRoomListeners();
+    // Reset phase machine so applyPhase() re-applies the server's current phase.
+    _currentPhase=null;
 
-    room.onMessage('joinAck',(data)=>{
+    _pendingJoinAckHandler=(data)=>{
       // Always refresh tokens from the server's response
       if(data.reconnectToken) sessionStorage.setItem('qm_reconnect_token',data.reconnectToken);
       if(data.hostToken)      sessionStorage.setItem('qm_host_token',data.hostToken);
@@ -4140,7 +4205,9 @@ if('serviceWorker' in navigator){
         setupLobby({settings:data.settings});
         showPage('lobby');
       }
-    });
+    };
+
+    setupRoomListeners();
   }catch(e){
     // Room no longer exists or session expired — clear and start fresh
     sessionStorage.removeItem('qm_session');
