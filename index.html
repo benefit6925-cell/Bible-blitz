@@ -1437,6 +1437,22 @@ function setupStateListeners() {
   // ── Player schema patches (replaces playersUpdated broadcasts) ──
   if (room.state.players) {
     room.state.players.onAdd((player, playerId) => {
+      // DIAGNOSTIC: warn if a player with this nickname already exists under a different key.
+      // This would indicate a stale entry (old sessionId still in _lastKnownPlayers) that
+      // the onRemove handler failed to clean up — the primary cause of host duplicate players.
+      if(isHost){
+        const existingEntry=Object.entries(window._lastKnownPlayers).find(
+          ([id,p])=>id!==playerId&&!p.isHost&&p.nickname===player.nickname
+        );
+        if(existingEntry){
+          console.warn('[HOST-DIAG] DUPLICATE DETECTED on onAdd — nickname "'+player.nickname+
+            '" already exists under id "'+existingEntry[0]+'" (new id: "'+playerId+'"). '+
+            'Removing stale entry.');
+          delete window._lastKnownPlayers[existingEntry[0]]; // proactively clean up stale key
+        }
+        console.log('[HOST-DIAG] onAdd playerId:',playerId,'nickname:',player.nickname,
+          '| total _lastKnownPlayers:', Object.keys(window._lastKnownPlayers).length+1);
+      }
       window._lastKnownPlayers[playerId] = _playerToPlain(player, playerId);
       player.onChange(() => {
         window._lastKnownPlayers[playerId] = _playerToPlain(player, playerId);
@@ -1453,6 +1469,10 @@ function setupStateListeners() {
       _refreshAllPlayerViews();
     });
     room.state.players.onRemove((player, playerId) => {
+      if(isHost){
+        console.log('[HOST-DIAG] onRemove playerId:',playerId,'nickname:',player.nickname,
+          '| remaining after delete:', Object.keys(window._lastKnownPlayers).length-1);
+      }
       delete window._lastKnownPlayers[playerId];
       _refreshAllPlayerViews();
     });
@@ -1480,7 +1500,22 @@ function _playerToPlain(player, playerId) {
 // Central refresh for all live player views — called on any player state patch
 function _refreshAllPlayerViews() {
   const players = window._lastKnownPlayers || {};
-  if (isHost) updateAdminPlayers(players);
+  if (isHost) {
+    // DIAGNOSTIC: compare schema player count vs host-rendered count on every update.
+    // If these ever diverge, we have a stale-key or double-listener bug.
+    if(room&&room.state&&room.state.players){
+      const serverCount=[...room.state.players.values()].filter(p=>!p.isHost).length;
+      const hostCount=Object.values(players).filter(p=>!p.isHost).length;
+      if(serverCount!==hostCount){
+        console.warn('[HOST-DIAG] COUNT MISMATCH — SERVER:',serverCount,'HOST:',hostCount,
+          '\nSERVER IDs:',[...room.state.players.keys()].filter(id=>{
+            const p=room.state.players.get(id);return p&&!p.isHost;
+          }),
+          '\nHOST IDs:',Object.keys(players).filter(id=>!players[id].isHost));
+      }
+    }
+    updateAdminPlayers(players);
+  }
   _refreshSpectatorLeaderboard(players);
   _refreshLobbyPlayers(players);
   _refreshWaitingLeaderboard(players);
@@ -1605,7 +1640,13 @@ function setupRoomListeners(){
 
   room.onMessage('gameState',(state)=>{
     gameSettings=state.settings||gameSettings;
-    window._lastKnownPlayers=state.players||{};
+    // Prefer live schema state over message payload to avoid stale sessionId keys.
+    if(room&&room.state&&room.state.players){
+      window._lastKnownPlayers={};
+      room.state.players.forEach((p,id)=>{window._lastKnownPlayers[id]=_playerToPlain(p,id);});
+    }else{
+      window._lastKnownPlayers=state.players||{};
+    }
     if(state.status==='active'&&state.activeQuestions&&state.activeQuestions.length>0){
       if(isHost){updateAdminPlayers(state.players||{});}
       else{
@@ -1701,7 +1742,30 @@ function setupRoomListeners(){
 
   room.onMessage('roundReset',({settings,players})=>{
     gameSettings=settings||gameSettings;
-    window._lastKnownPlayers=players||{};
+    // FIX — Host duplicate players: always rebuild _lastKnownPlayers from live schema state.
+    // The 'players' snapshot in this message is keyed by current sessionIds, but any
+    // onChange closures registered during onAdd still hold their original playerId in
+    // scope. If a player token-rejoined (new sessionId) between rounds, the old closure
+    // can write to a stale key that roundReset's snapshot had already cleaned up — creating
+    // two entries for the same human player. Reading from room.state is always correct
+    // because schema keys are exactly what onAdd/onChange will use going forward.
+    if(room&&room.state&&room.state.players){
+      window._lastKnownPlayers={};
+      room.state.players.forEach((p,id)=>{
+        window._lastKnownPlayers[id]=_playerToPlain(p,id);
+      });
+      // Diagnostic: log server vs host-rendered count so divergence is visible in console.
+      const serverCount=[...room.state.players.values()].filter(p=>!p.isHost).length;
+      const hostCount=Object.values(window._lastKnownPlayers).filter(p=>!p.isHost).length;
+      console.log('[HOST-DIAG] roundReset — SERVER PLAYERS:',serverCount,'HOST RENDERED:',hostCount,
+        '\nSERVER IDs:',[...room.state.players.keys()],
+        '\nHOST IDs:',Object.keys(window._lastKnownPlayers));
+      if(serverCount!==hostCount){
+        console.warn('[HOST-DIAG] COUNT MISMATCH after roundReset — host has stale entries');
+      }
+    }else{
+      window._lastKnownPlayers=players||{};
+    }
     _currentPhase=null; // reset phase machine so next phase change applies
     adminGameEnded=false;
     quizState={current:0,score:0,correctCount:0,answers:{},selected:null,finished:false,eliminated:false,questionStartTime:0};
@@ -3087,6 +3151,8 @@ function startSurvivalQuestionTimer(){
     if(tl<=0&&!timedOutFired){
       timedOutFired=true;
       window._questionRAF=null;
+      // Guard: if already eliminated (e.g. wrong answer just submitted), do not re-send.
+      if(quizState.eliminated){return;}
       quizState.selected=-1;
       document.querySelectorAll('.answer-btn').forEach(b=>{b.disabled=true;b.style.opacity='0.5';});
       const q=activeQuestions[quizState.current];
@@ -3177,8 +3243,16 @@ function _applyAnswerResult({questionIndex, correctAnswer, correct, score, corre
   const mode=gameSettings.gameMode;
   const isLastQuestion=questionIndex>=activeQuestions.length-1;
 
-  // Survival wrong answer: wait for player.eliminated schema patch
-  if(mode==='survival'&&!correct)return;
+  // Survival wrong answer: eliminate immediately — do NOT wait for the schema patch.
+  // The patch may arrive after the 1.5s self-advance timeout fires, creating a race
+  // where the eliminated player briefly sees the next question. Calling eliminatePlayer()
+  // here is safe because it is idempotent (quizState.eliminated guard at top of function).
+  // When player.onChange later fires, it will call eliminatePlayer() again and exit early.
+  if(mode==='survival'&&!correct){
+    console.log('[ELIM] Wrong answer — eliminating immediately (no schema race)');
+    eliminatePlayer();
+    return;
+  }
 
   // Classic: self-advance after 1.5s feedback window
   // Lightning: server patches questionIndex via answer_reveal — listener handles it
