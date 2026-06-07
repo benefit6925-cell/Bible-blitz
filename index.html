@@ -1298,6 +1298,9 @@ function applyPhase(phase, stateSnapshot) {
           if (bwl) bwl.style.display = 'block';
         }
       }
+      // Reset so the next round's waiting_next_round phase is never skipped by
+      // the deduplication guard — this phase must always fire fresh each round.
+      _currentPhase = null;
       break;
     case 'closed':
       cleanupPlayerSession();
@@ -1437,24 +1440,12 @@ function setupStateListeners() {
   // ── Player schema patches (replaces playersUpdated broadcasts) ──
   if (room.state.players) {
     room.state.players.onAdd((player, playerId) => {
-      // DIAGNOSTIC: warn if a player with this nickname already exists under a different key.
-      // This would indicate a stale entry (old sessionId still in _lastKnownPlayers) that
-      // the onRemove handler failed to clean up — the primary cause of host duplicate players.
-      if(isHost){
-        const existingEntry=Object.entries(window._lastKnownPlayers).find(
-          ([id,p])=>id!==playerId&&!p.isHost&&p.nickname===player.nickname
-        );
-        if(existingEntry){
-          console.warn('[HOST-DIAG] DUPLICATE DETECTED on onAdd — nickname "'+player.nickname+
-            '" already exists under id "'+existingEntry[0]+'" (new id: "'+playerId+'"). '+
-            'Removing stale entry.');
-          delete window._lastKnownPlayers[existingEntry[0]]; // proactively clean up stale key
-        }
-        console.log('[HOST-DIAG] onAdd playerId:',playerId,'nickname:',player.nickname,
-          '| total _lastKnownPlayers:', Object.keys(window._lastKnownPlayers).length+1);
-      }
       window._lastKnownPlayers[playerId] = _playerToPlain(player, playerId);
       player.onChange(() => {
+        // Guard: if this playerId was removed from the map (token-rejoin gave the player
+        // a new sessionId), this closure is now stale. Silently ignore it rather than
+        // resurrecting a deleted key and creating a ghost duplicate entry on the host.
+        if (!(playerId in window._lastKnownPlayers)) return;
         window._lastKnownPlayers[playerId] = _playerToPlain(player, playerId);
         _refreshAllPlayerViews();
         // Schema-driven elimination for THIS player (survival mode).
@@ -1469,10 +1460,6 @@ function setupStateListeners() {
       _refreshAllPlayerViews();
     });
     room.state.players.onRemove((player, playerId) => {
-      if(isHost){
-        console.log('[HOST-DIAG] onRemove playerId:',playerId,'nickname:',player.nickname,
-          '| remaining after delete:', Object.keys(window._lastKnownPlayers).length-1);
-      }
       delete window._lastKnownPlayers[playerId];
       _refreshAllPlayerViews();
     });
@@ -1500,22 +1487,7 @@ function _playerToPlain(player, playerId) {
 // Central refresh for all live player views — called on any player state patch
 function _refreshAllPlayerViews() {
   const players = window._lastKnownPlayers || {};
-  if (isHost) {
-    // DIAGNOSTIC: compare schema player count vs host-rendered count on every update.
-    // If these ever diverge, we have a stale-key or double-listener bug.
-    if(room&&room.state&&room.state.players){
-      const serverCount=[...room.state.players.values()].filter(p=>!p.isHost).length;
-      const hostCount=Object.values(players).filter(p=>!p.isHost).length;
-      if(serverCount!==hostCount){
-        console.warn('[HOST-DIAG] COUNT MISMATCH — SERVER:',serverCount,'HOST:',hostCount,
-          '\nSERVER IDs:',[...room.state.players.keys()].filter(id=>{
-            const p=room.state.players.get(id);return p&&!p.isHost;
-          }),
-          '\nHOST IDs:',Object.keys(players).filter(id=>!players[id].isHost));
-      }
-    }
-    updateAdminPlayers(players);
-  }
+  if (isHost) updateAdminPlayers(players);
   _refreshSpectatorLeaderboard(players);
   _refreshLobbyPlayers(players);
   _refreshWaitingLeaderboard(players);
@@ -1617,6 +1589,9 @@ function setupRoomListeners(){
   // Guard: prevent duplicate listener registration on the same room object
   if(room._listenersAttached)return;
   room._listenersAttached=true;
+  // Reset phase machine every time we wire a new room so applyPhase() never
+  // skips a phase because _currentPhase still holds a value from the last session.
+  _currentPhase=null;
   window._lastKnownPlayers={};
 
   // ── Wire pending one-shot joinAck / joinError handlers ──
@@ -1742,27 +1717,11 @@ function setupRoomListeners(){
 
   room.onMessage('roundReset',({settings,players})=>{
     gameSettings=settings||gameSettings;
-    // FIX — Host duplicate players: always rebuild _lastKnownPlayers from live schema state.
-    // The 'players' snapshot in this message is keyed by current sessionIds, but any
-    // onChange closures registered during onAdd still hold their original playerId in
-    // scope. If a player token-rejoined (new sessionId) between rounds, the old closure
-    // can write to a stale key that roundReset's snapshot had already cleaned up — creating
-    // two entries for the same human player. Reading from room.state is always correct
-    // because schema keys are exactly what onAdd/onChange will use going forward.
+    // Rebuild _lastKnownPlayers from live schema state so keys always match what
+    // the onAdd/onChange closures are using — prevents stale sessionId entries.
     if(room&&room.state&&room.state.players){
       window._lastKnownPlayers={};
-      room.state.players.forEach((p,id)=>{
-        window._lastKnownPlayers[id]=_playerToPlain(p,id);
-      });
-      // Diagnostic: log server vs host-rendered count so divergence is visible in console.
-      const serverCount=[...room.state.players.values()].filter(p=>!p.isHost).length;
-      const hostCount=Object.values(window._lastKnownPlayers).filter(p=>!p.isHost).length;
-      console.log('[HOST-DIAG] roundReset — SERVER PLAYERS:',serverCount,'HOST RENDERED:',hostCount,
-        '\nSERVER IDs:',[...room.state.players.keys()],
-        '\nHOST IDs:',Object.keys(window._lastKnownPlayers));
-      if(serverCount!==hostCount){
-        console.warn('[HOST-DIAG] COUNT MISMATCH after roundReset — host has stale entries');
-      }
+      room.state.players.forEach((p,id)=>{window._lastKnownPlayers[id]=_playerToPlain(p,id);});
     }else{
       window._lastKnownPlayers=players||{};
     }
@@ -1877,6 +1836,13 @@ function setupRoomListeners(){
     cleanupGameSession();
 
     // Silent exponential-backoff rejoin — player never has to touch anything.
+    // _rejoinInProgress locks out _silentRejoin for the duration so only one
+    // reconnect attempt is ever in-flight at a time. Without this, visibilitychange
+    // or 'online' events can fire a second attempt while the first is still pending,
+    // causing the server to receive two concurrent onJoin calls for the same token —
+    // which migrates the PlayerState entry twice and produces duplicate schema events.
+    if(_rejoinInProgress) return;
+    _rejoinInProgress=true;
     const MAX_ATTEMPTS=5;
     const BASE_DELAY_MS=800;
     for(let attempt=1;attempt<=MAX_ATTEMPTS;attempt++){
@@ -1888,33 +1854,36 @@ function setupRoomListeners(){
         const s=JSON.parse(saved);
         const reconnectToken=sessionStorage.getItem('qm_reconnect_token')||s.reconnectToken||'';
         const hostToken=sessionStorage.getItem('qm_host_token')||'';
-        // Preserve blitzState.myTeam across reconnect — it is NOT in the session token
-        // and is needed for blitz rendering immediately after rejoin.
         const savedTeam=blitzState.myTeam;
+        // For the host: register a joinAck handler BEFORE connecting so the server's
+        // response (which carries the refreshed hostToken and settings) is processed.
+        // The onLeave path never set this, so joinAck was silently dropped every time
+        // the host reconnected — causing stale gameSettings and session state.
+        if(!!s.isHost||!!hostToken){
+          _pendingJoinAckHandler=(data)=>{
+            if(data.hostToken) sessionStorage.setItem('qm_host_token',data.hostToken);
+            if(data.settings)  gameSettings=data.settings;
+            sessionStorage.setItem('qm_session',JSON.stringify({pin:s.pin,nick:s.nick,playerId:room.sessionId,isHost:true}));
+          };
+        }
         room=await client.joinById(s.pin,{
           pin:s.pin,
           nickname:s.nick,
-          isHost:!!s.isHost,
+          isHost:!!s.isHost||!!hostToken,
           reconnectToken,
           hostToken,
         });
-        // Restore team before wiring listeners so blitz UI renders correctly
         if(savedTeam&&!blitzState.myTeam)blitzState.myTeam=savedTeam;
-        // _currentPhase must be reset so applyPhase() re-applies whatever phase the
-        // server is now in after the rejoin. Without this, if the server is in
-        // 'waiting_next_round' after a blitz game end, applyPhase() would see the
-        // same phase string as before and skip it entirely (due to the !==_currentPhase guard).
-        _currentPhase=null;
-        // Hooked up — re-register all listeners and we're back in the game.
         setupRoomListeners();
+        _rejoinInProgress=false;
         return; // success — stop retrying
       }catch(e){
         if(attempt===MAX_ATTEMPTS){
           showToast('⚠️ Connection lost. Please refresh to rejoin.','#ff4444',10000);
         }
-        // else: silently retry after next delay
       }
     }
+    _rejoinInProgress=false;
   });
 
   room.onError((code,message)=>{
@@ -1944,14 +1913,21 @@ async function _silentRejoin(){
       const s=JSON.parse(saved);
       const reconnectToken=sessionStorage.getItem('qm_reconnect_token')||s.reconnectToken||'';
       const hostToken=sessionStorage.getItem('qm_host_token')||'';
-      // Preserve blitz team and reset phase machine before the new room is wired.
       const savedTeam=blitzState.myTeam;
       cleanupGameSession();
+      // Register host joinAck handler before connecting so the server's response
+      // is never dropped — same fix as the onLeave rejoin path.
+      if(!!s.isHost||!!hostToken){
+        _pendingJoinAckHandler=(data)=>{
+          if(data.hostToken) sessionStorage.setItem('qm_host_token',data.hostToken);
+          if(data.settings)  gameSettings=data.settings;
+          sessionStorage.setItem('qm_session',JSON.stringify({pin:s.pin,nick:s.nick,playerId:room.sessionId,isHost:true}));
+        };
+      }
       room=await client.joinById(s.pin,{
-        pin:s.pin,nickname:s.nick,isHost:!!s.isHost,reconnectToken,hostToken,
+        pin:s.pin,nickname:s.nick,isHost:!!s.isHost||!!hostToken,reconnectToken,hostToken,
       });
       if(savedTeam&&!blitzState.myTeam)blitzState.myTeam=savedTeam;
-      _currentPhase=null; // force applyPhase() to re-apply server's current phase
       setupRoomListeners();
       _rejoinInProgress=false;
       return;
