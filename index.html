@@ -2065,11 +2065,7 @@ function _doJoinNextRoundLobby(){
   clearInterval(window.questionTimer);
   roomState='lobby';
   blitzState.finished=false; // reset blitz guard
-  // Always return to the general lobby — same behaviour as classic/lightning/survival.
-  // The host picks the next mode from there. If they pick blitz, the second roundReset
-  // will route players to blitz-lobby via showNextRoundJoinPrompt → _doJoinNextRoundLobby
-  // exactly as it does for any other mode switch. This is the one change that aligns
-  // blitz with the other three modes.
+  // Always return to general lobby — identical to classic/lightning/survival.
   setupLobby(g);
   showPage('lobby');
 }
@@ -3921,7 +3917,8 @@ async function finishBlitzQuiz(forced){
   if(blitzState.finished)return;
   blitzState.finished=true;
   cleanupGameSession();
-  sessionStorage.removeItem('qm_session');
+  // Do NOT clear qm_session here — roundReset needs myPin intact to route players
+  // to the next lobby. Classic/lightning/survival never clear session at finish time.
 
   // Save final personal and team stats via Colyseus
   try{
@@ -4001,7 +3998,9 @@ async function showBlitzResults(){
       // Only fire if we're still on the results page (game hasn't restarted yet)
       const activePage = document.querySelector('.page.active,.page-top.active');
       if (activePage && activePage.id === 'page-blitz-results') {
-        showWaitingForHostOverlay();
+        // Use showNextRoundJoinPrompt (5s countdown + auto-join) — same as
+        // applyPhase('waiting_next_round') fires for classic/lightning/survival.
+        showNextRoundJoinPrompt();
       }
     }, 8000);
   }
