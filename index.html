@@ -1475,13 +1475,18 @@ function _refreshSpectatorLeaderboard(players) {
   const lb = document.getElementById('spectator-leaderboard');
   if (!lb || !document.getElementById('page-eliminated').classList.contains('active')) return;
   const sorted = Object.values(players).filter(p=>!p.isHost).sort((a, b) => b.score - a.score);
-  lb.innerHTML = sorted.map((p, i) => `
+  const aliveCount = sorted.filter(p=>!p.eliminated).length;
+  lb.innerHTML = sorted.map((p, i) => {
+    const isLastStanding = !p.eliminated && aliveCount === 1;
+    return `
     <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(255,255,255,0.03);border-radius:10px;margin-bottom:6px;">
       <span style="font-size:13px;color:#6a7a9a;min-width:20px;">${i + 1}</span>
       <div class="avatar" style="width:28px;height:28px;background:${avatarColor(p.nickname)}30;color:${avatarColor(p.nickname)};font-size:11px;">${(p.nickname[0]||'?').toUpperCase()}</div>
-      <span style="flex:1;font-size:13px;">${escHtml(p.nickname)}${p.eliminated ? ' 💀' : ''}</span>
+      <span style="flex:1;font-size:13px;font-weight:${isLastStanding?700:400};color:${isLastStanding?'#ffd700':'inherit'};${p.eliminated?'opacity:0.5;':''}">
+        ${escHtml(p.nickname)}${p.eliminated?' 💀':''}${isLastStanding?' 👑 Last Standing!':''}
+      </span>
       <span style="font-size:14px;font-weight:700;color:#4ade80;">${p.score}</span>
-    </div>`).join('');
+    </div>`}).join('');
 }
 
 function _refreshWaitingLeaderboard(players) {
@@ -2009,13 +2014,14 @@ async function confirmExitLobby(){
 // Just shows the overlay with static text. No countdown, no routing.
 // roundReset upgrades this to the real 5s countdown once the host confirms settings.
 function showWaitingForHostOverlay(){
+  _nextRoundJoinTaken=false;
+  clearTimeout(_nextRoundCountdownTimer);
   const overlay=document.getElementById('next-round-join-overlay');
   if(overlay)overlay.style.display='flex';
   const banner=document.getElementById('results-next-round-banner');
   if(banner)banner.style.display='block';
   const countdownBox=document.getElementById('next-round-countdown-text');
   if(countdownBox)countdownBox.innerHTML='⏳ Waiting for host to start next round...';
-  // Don't set _nextRoundJoinTaken — roundReset will call showNextRoundJoinPrompt() which resets it
 }
 
 // ── Next Round Join Prompt (5-second countdown) ──
@@ -3004,7 +3010,7 @@ function startSurvivalQuestionTimer(){
 
   let timedOutFired=false;
   function tick(){
-    if(quizState.selected!==null||quizState.finished){window._questionRAF=null;return;}
+    if(quizState.selected!==null||quizState.finished||quizState.eliminated){window._questionRAF=null;return;}
     const tl=Math.max(0,(endTime-Date.now())/1000);
     if(el){
       el.textContent=Math.ceil(tl);
