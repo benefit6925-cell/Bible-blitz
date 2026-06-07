@@ -2065,9 +2065,17 @@ function _doJoinNextRoundLobby(){
   clearInterval(window.questionTimer);
   roomState='lobby';
   blitzState.finished=false; // reset blitz guard
-  // Always return to general lobby — identical to classic/lightning/survival.
-  setupLobby(g);
-  showPage('lobby');
+  // Route based on the NEXT round's mode (already updated by roundReset message).
+  // If host switched TO blitz → blitz lobby. Anything else → general lobby.
+  if(g.settings&&g.settings.gameMode==='blitz'){
+    blitzState.teamAName=g.settings.teamAName||'Team A';
+    blitzState.teamBName=g.settings.teamBName||'Team B';
+    setupBlitzLobby();
+    showPage('blitz-lobby');
+  }else{
+    setupLobby(g);
+    showPage('lobby');
+  }
 }
 
 function seededShuffle(arr,seed){
@@ -3917,8 +3925,6 @@ async function finishBlitzQuiz(forced){
   if(blitzState.finished)return;
   blitzState.finished=true;
   cleanupGameSession();
-  // Do NOT clear qm_session here — roundReset needs myPin intact to route players
-  // to the next lobby. Classic/lightning/survival never clear session at finish time.
 
   // Save final personal and team stats via Colyseus
   try{
@@ -3987,23 +3993,8 @@ async function showBlitzResults(){
   const waitingLobby=document.getElementById('blitz-results-waiting-lobby');
   if(waitingLobby&&!isHost)waitingLobby.style.display='block';
 
-  // Belt-and-suspenders: directly schedule the New Round popup after 8s.
-  // The primary trigger is applyPhase('waiting_next_round'), but that relies on
-  // a Colyseus schema patch arriving at exactly the right time. This timeout
-  // guarantees the popup appears for blitz players even if the patch is delayed
-  // or missed. showNextRoundJoinPrompt() is idempotent — calling it twice is safe.
-  if (!isHost) {
-    clearTimeout(window._blitzNextRoundTimer);
-    window._blitzNextRoundTimer = setTimeout(() => {
-      // Only fire if we're still on the results page (game hasn't restarted yet)
-      const activePage = document.querySelector('.page.active,.page-top.active');
-      if (activePage && activePage.id === 'page-blitz-results') {
-        // Use showNextRoundJoinPrompt (5s countdown + auto-join) — same as
-        // applyPhase('waiting_next_round') fires for classic/lightning/survival.
-        showNextRoundJoinPrompt();
-      }
-    }, 8000);
-  }
+  // Next-round handling is via applyPhase('waiting_next_round') → showWaitingForHostOverlay,
+  // then roundReset → showNextRoundJoinPrompt — same shared system as all other modes.
 
   // MVPs from last known players state (kept in sync via Colyseus messages)
   try{
