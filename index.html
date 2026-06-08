@@ -1341,7 +1341,10 @@ function setupStateListeners() {
       } else if (mode === 'lightning' && currentPhase === 'question' && document.getElementById('page-quiz').classList.contains('active')) {
         startQuestionTimer();
       } else if (mode === 'survival' && currentPhase === 'question' && document.getElementById('page-quiz').classList.contains('active')) {
-        startSurvivalQuestionTimer();
+        // Survival timer is always local — do NOT restart from phaseEndTime.
+        // phaseEndTime clock skew on iOS was causing instant elimination on question start.
+        // startSurvivalQuestionTimer() is called directly from applyPhase('question').
+        // No action needed here.
       } else if (mode === 'blitz' && currentPhase === 'question' && document.getElementById('page-blitz-quiz').classList.contains('active')) {
         startBlitzQuestionTimer();
       }
@@ -1754,15 +1757,18 @@ function setupRoomListeners(){
       document.getElementById('admin-timer').textContent='—';
       showPage('admin');
     }else{
-      // Show the standard overlay countdown for all non-blitz pages
-      showNextRoundJoinPrompt();
-
-      // For players still on page-blitz-results, ALSO activate the dedicated
-      // in-page join button — this is the reliable path regardless of overlay behaviour.
-      const blitzPage=document.getElementById('page-blitz-results');
-      if(blitzPage&&blitzPage.classList.contains('active')){
-        _activateBlitzJoinButton();
-      }
+      // ── Permanent fix: immediate unconditional lobby navigation ──
+      // No countdown, no overlay timer, no parallel mechanisms.
+      // roundReset carries the already-updated settings so routing is correct.
+      // Cancel any stale timers from previous cycles before navigating.
+      clearTimeout(_nextRoundCountdownTimer);
+      clearTimeout(_blitzJoinBtnTimer);
+      _blitzJoinBtnGen++;
+      window._nrGeneration = (window._nrGeneration||0) + 1;
+      _nextRoundJoinTaken = true; // block any stale tick that fires after this
+      const overlay = document.getElementById('next-round-join-overlay');
+      if (overlay) overlay.style.display = 'none';
+      _doJoinNextRoundLobby();
     }
   });
 
@@ -2128,58 +2134,29 @@ async function confirmExitLobby(){
 // Just shows the overlay with static text. No countdown, no routing.
 // roundReset upgrades this to the real 5s countdown once the host confirms settings.
 function showWaitingForHostOverlay(){
-  _nextRoundJoinTaken=false;
+  // Shows while waiting for host to click next round (waiting_next_round phase).
+  // No countdown here — navigation happens instantly when roundReset arrives.
+  _nextRoundJoinTaken = false;
   clearTimeout(_nextRoundCountdownTimer);
-  // Cancel any active blitz join button countdown
   clearTimeout(_blitzJoinBtnTimer);
   _blitzJoinBtnGen++;
-  const overlay=document.getElementById('next-round-join-overlay');
-  if(overlay)overlay.style.display='flex';
-  const banner=document.getElementById('results-next-round-banner');
-  if(banner)banner.style.display='block';
-  const countdownBox=document.getElementById('next-round-countdown-text');
-  if(countdownBox)countdownBox.innerHTML='⏳ Waiting for host to start next round...';
-  // Reset blitz join button to passive waiting state
-  const btn=document.getElementById('blitz-join-lobby-btn');
-  if(btn)btn.style.display='none';
-  const msg=document.getElementById('blitz-waiting-lobby-msg');
-  if(msg)msg.textContent='Waiting for host to set up the next round.';
+  const overlay = document.getElementById('next-round-join-overlay');
+  if (overlay) overlay.style.display = 'flex';
+  const banner = document.getElementById('results-next-round-banner');
+  if (banner) banner.style.display = 'block';
+  const countdownBox = document.getElementById('next-round-countdown-text');
+  if (countdownBox) countdownBox.innerHTML = '⏳ Waiting for host to start next round...';
+  // Update blitz results panel text
+  const btn = document.getElementById('blitz-join-lobby-btn');
+  if (btn) btn.style.display = 'none';
+  const msg = document.getElementById('blitz-waiting-lobby-msg');
+  if (msg) msg.textContent = 'Waiting for host to set up the next round.';
 }
 
-// ── Next Round Join Prompt (5-second countdown) ──
+// showNextRoundJoinPrompt — replaced by immediate navigation in roundReset handler.
+// Kept as a safe stub to avoid reference errors from any legacy call sites.
 function showNextRoundJoinPrompt(){
-  _nextRoundJoinTaken=false;
-  clearTimeout(_nextRoundCountdownTimer);
-  // Generation counter: any tick() closure from a previous call sees a stale
-  // generation and self-terminates immediately, preventing stale closures from
-  // double-joining or corrupting _nextRoundJoinTaken across rounds.
-  if(typeof window._nrGeneration==='undefined') window._nrGeneration=0;
-  const myGen=++window._nrGeneration;
-  blitzState.finished=false; // clear blitz end-game guard for all modes
-  const overlay=document.getElementById('next-round-join-overlay');
-  if(overlay)overlay.style.display='flex';
-  const banner=document.getElementById('results-next-round-banner');
-  if(banner)banner.style.display='block';
-  // Restore the countdown UI (showWaitingForHostOverlay may have replaced it with static text)
-  const countdownBox=document.getElementById('next-round-countdown-text');
-  if(countdownBox)countdownBox.innerHTML='Auto-joining in <span id="next-round-countdown">5</span>s...';
-  let secs=5;
-  const countEl=document.getElementById('next-round-countdown');
-  if(countEl)countEl.textContent=secs;
-  function tick(){
-    if(window._nrGeneration!==myGen)return; // stale closure — newer prompt took over
-    if(_nextRoundJoinTaken)return;
-    secs--;
-    if(countEl)countEl.textContent=Math.max(0,secs);
-    if(secs<=0){
-      _nextRoundJoinTaken=true;
-      if(overlay)overlay.style.display='none';
-      _doJoinNextRoundLobby();
-    }else{
-      _nextRoundCountdownTimer=setTimeout(tick,1000);
-    }
-  }
-  _nextRoundCountdownTimer=setTimeout(tick,1000);
+  _doJoinNextRoundLobby();
 }
 
 function playerJoinNextRoundLobby(){
@@ -2191,42 +2168,11 @@ function playerJoinNextRoundLobby(){
   _doJoinNextRoundLobby();
 }
 
-// ── Dedicated blitz-results join button activation ──
-// Called by roundReset when the player is still on page-blitz-results.
-// Independently shows and counts down the in-page join button so players
-// always have a reliable way to rejoin regardless of overlay behaviour.
+// _activateBlitzJoinButton — replaced by immediate navigation in roundReset handler.
 let _blitzJoinBtnTimer=null;
 let _blitzJoinBtnGen=0;
 function _activateBlitzJoinButton(){
-  const btn=document.getElementById('blitz-join-lobby-btn');
-  const msg=document.getElementById('blitz-waiting-lobby-msg');
-  const countEl=document.getElementById('blitz-join-countdown');
-  if(!btn)return;
-
-  const myGen=++_blitzJoinBtnGen;
-  clearTimeout(_blitzJoinBtnTimer);
-
-  // Show and activate the button
-  btn.style.display='block';
-  if(msg)msg.textContent='Host is ready — joining in 5 seconds...';
-  let secs=5;
-  if(countEl)countEl.textContent=secs;
-
-  function tick(){
-    if(_blitzJoinBtnGen!==myGen)return; // stale
-    secs--;
-    if(countEl)countEl.textContent=Math.max(0,secs);
-    if(secs<=0){
-      if(_nextRoundJoinTaken)return; // overlay already joined — don't double-join
-      _nextRoundJoinTaken=true;
-      clearTimeout(_nextRoundCountdownTimer); // cancel overlay tick too
-      btn.style.display='none';
-      _doJoinNextRoundLobby();
-    }else{
-      _blitzJoinBtnTimer=setTimeout(tick,1000);
-    }
-  }
-  _blitzJoinBtnTimer=setTimeout(tick,1000);
+  _doJoinNextRoundLobby();
 }
 
 function _doJoinNextRoundLobby(){
@@ -3164,12 +3110,11 @@ function startSurvivalQuestionTimer(){
   const dur=gameSettings.survivalTimerDuration||8;
   quizState.questionStartTime=Date.now();
 
-  // Only trust phaseEndTime if it was set very recently (within dur seconds of now),
-  // meaning the server just transitioned to this question. If it's older, it belongs
-  // to a previous question and we must start fresh to avoid giving players no time.
-  const serverEndTime=room&&room.state&&room.state.phaseEndTime;
-  const serverEndIsFresh=serverEndTime&&serverEndTime>Date.now()&&(serverEndTime-Date.now())<=(dur*1000);
-  const endTime=serverEndIsFresh?serverEndTime:Date.now()+(dur*1000);
+  // Always use a local end time for survival — the client timer is visual only.
+  // The server is the sole authority on timeouts and elimination.
+  // Trusting phaseEndTime caused iPhone clock-skew issues where the timer
+  // hit zero immediately on the first tick, instantly eliminating the player.
+  const endTime=Date.now()+(dur*1000);
 
   const el=document.getElementById('quiz-q-timer-val');
   const barEl=document.getElementById('quiz-q-timer-bar');
@@ -4090,24 +4035,24 @@ function showTeammatePickToast(letter){
   const toast=document.createElement('div');
   toast.id='teammate-pick-toast';
   toast.style.cssText=`
-    position:fixed;bottom:140px;left:50%;transform:translateX(-50%) translateY(20px);
-    z-index:99000;background:rgba(10,15,40,0.95);border:2px solid ${teamColor};
-    border-radius:14px;padding:10px 22px;font-family:'Orbitron',sans-serif;
-    color:${teamColor};font-size:22px;font-weight:700;text-align:center;
-    box-shadow:0 4px 20px rgba(0,0,0,0.5);pointer-events:none;
-    transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1),opacity 0.3s;
-    opacity:0;`;
+    position:fixed;bottom:120px;right:18px;
+    z-index:99000;background:rgba(10,15,40,0.72);border:2px solid ${teamColor};
+    border-radius:12px;padding:8px 16px;font-family:'Orbitron',sans-serif;
+    color:${teamColor};font-size:20px;font-weight:700;text-align:center;
+    box-shadow:0 4px 16px rgba(0,0,0,0.4);pointer-events:none;
+    transition:transform 0.25s cubic-bezier(0.34,1.56,0.64,1),opacity 0.25s;
+    opacity:0;transform:translateY(10px);`;
   toast.textContent=letter;
   document.body.appendChild(toast);
   requestAnimationFrame(()=>{
-    toast.style.opacity='1';
-    toast.style.transform='translateX(-50%) translateY(0)';
+    toast.style.opacity='0.75';
+    toast.style.transform='translateY(0)';
   });
   setTimeout(()=>{
     toast.style.opacity='0';
-    toast.style.transform='translateX(-50%) translateY(10px)';
-    setTimeout(()=>toast.remove(),300);
-  },2000);
+    toast.style.transform='translateY(8px)';
+    setTimeout(()=>toast.remove(),250);
+  },1000);
 }
 
 async function sendSignal(text){
