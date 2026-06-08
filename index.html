@@ -1015,6 +1015,13 @@ Answer: B</pre>
       </div>
     </div>
   </div>
+  <!-- Teammate hint notice — fixed to bottom so it's always visible -->
+  <div style="position:fixed;bottom:0;left:0;right:0;z-index:100;padding:8px 20px 12px;background:linear-gradient(0deg,rgba(0,8,48,0.97) 70%,transparent);text-align:center;pointer-events:none;">
+    <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:99px;padding:6px 14px;">
+      <span style="font-size:13px;">👀</span>
+      <span style="font-size:12px;color:#7a8ab0;font-weight:500;">When a teammate picks an option, a letter pops up on your screen — that's their hint!</span>
+    </div>
+  </div>
 </div>
 
 <!-- ═══ TEAM BLITZ — REVEAL SCREEN ═══ -->
@@ -1677,6 +1684,14 @@ function setupRoomListeners(){
     if(isHost){
       updateAdminStatus({status:'active',startTime,settings});
     }
+    // For blitz: sync blitzState.myTeam from the live schema state (server-authoritative).
+    // The server may have auto-assigned the player to a different team since the last blitz
+    // round (e.g. if teams were cleared during a non-blitz round in between). Reading the
+    // schema here guarantees the client's team matches the server's before any answers fly.
+    if(!isHost&&gameSettings.gameMode==='blitz'&&room&&room.state&&room.state.players){
+      const me=room.state.players.get(myPlayerId);
+      if(me&&me.team){blitzState.myTeam=me.team;}
+    }
     // Non-host: phase patch 'countdown' → applyPhase fires showGameCountdown
     // then 'question' → applyPhase renders first question from state.questionIndex
   });
@@ -1719,7 +1734,7 @@ function setupRoomListeners(){
     if(isHost) adminEndGame();
   });
 
-  room.onMessage('roundReset',({settings,players})=>{
+  room.onMessage('roundReset',({settings,players,assignedTeam})=>{
     gameSettings=settings||gameSettings;
     // Rebuild _lastKnownPlayers from live schema state so keys always match what
     // the onAdd/onChange closures are using — prevents stale sessionId entries.
@@ -1732,10 +1747,10 @@ function setupRoomListeners(){
     _currentPhase=null; // reset phase machine so next phase change applies
     adminGameEnded=false;
     quizState={current:0,score:0,correctCount:0,answers:{},selected:null,finished:false,eliminated:false,questionStartTime:0};
-    // Preserve myTeam across resets — the server keeps team assignments between rounds.
-    // blitzState.finished MUST be cleared before showNextRoundJoinPrompt() runs so
-    // applyPhase('results') on the new round isn't blocked by the old finished guard.
-    const preservedTeam=blitzState.myTeam;
+    // If the server sent an assignedTeam (blitz mode), use it as the authoritative team.
+    // This keeps client blitzState.myTeam in sync when team assignments were cleared
+    // during a non-blitz round and re-assigned on the server for the next blitz round.
+    const preservedTeam = assignedTeam || blitzState.myTeam;
     blitzState={myTeam:preservedTeam||null,teamScoreA:0,teamScoreB:0,teamAName:settings&&settings.teamAName||'Team A',teamBName:settings&&settings.teamBName||'Team B',currentQ:0,myAnswer:null,myCorrectCount:0,roundsWonA:0,roundsWonB:0,perfectA:0,perfectB:0,suddenDeath:false,finished:false,revealCountdown:null};
     clearInterval(window.activeGameTimer);
     clearInterval(window.questionTimer);
@@ -1784,13 +1799,14 @@ function setupRoomListeners(){
   });
 
   // Waiting room players get this when the next round becomes active
-  room.onMessage('waitingRoundStart',({settings,players})=>{
+  room.onMessage('waitingRoundStart',({settings,players,assignedTeam})=>{
     gameSettings=settings||gameSettings;
     window._lastKnownPlayers=players||{};
     quizState={current:0,score:0,correctCount:0,answers:{},selected:null,finished:false,eliminated:false,questionStartTime:0};
     const nro=document.getElementById('next-round-join-overlay');
     if(nro)nro.style.display='none';
     if(settings&&settings.gameMode==='blitz'){
+      if(assignedTeam)blitzState.myTeam=assignedTeam;
       blitzState.teamAName=settings.teamAName||'Team A';
       blitzState.teamBName=settings.teamBName||'Team B';
       setupBlitzLobby();
@@ -2188,6 +2204,15 @@ function _doJoinNextRoundLobby(){
   if(g.settings&&g.settings.gameMode==='blitz'){
     blitzState.teamAName=g.settings.teamAName||'Team A';
     blitzState.teamBName=g.settings.teamBName||'Team B';
+    // Re-register our team with the server. This is critical when returning to blitz
+    // after a non-blitz round — the server cleared player.team during the non-blitz
+    // reset (keepTeams=false), so we must re-send selectTeam to keep server in sync.
+    // If blitzState.myTeam is null (first time in blitz), the server will assign a
+    // team on gameStart via auto-balance; we'll learn it from the next joinAck or
+    // gameStarted message. selectTeam with null is a no-op on the server.
+    if(blitzState.myTeam){
+      try{ room.send('selectTeam',{team:blitzState.myTeam}); }catch(e){}
+    }
     setupBlitzLobby();
     showPage('blitz-lobby');
   }else{
@@ -3000,7 +3025,7 @@ function startGlobalTimerDisplay(startTime){
 
   function tick(){
     const tl=Math.max(0,(endTime-Date.now())/1000);
-    const tlr=Math.round(tl);
+    const tlr=Math.min(dur,Math.round(tl));
     const el=document.getElementById('quiz-timer');
     if(el){
       el.textContent=tlr;
@@ -3009,7 +3034,7 @@ function startGlobalTimerDisplay(startTime){
     }
     const bar=document.getElementById('quiz-timer-bar');
     if(bar){
-      bar.style.width=(tl/dur*100)+'%';
+      bar.style.width=Math.min(100,(tl/dur*100))+'%';
       bar.style.background=tl<20?'#ff4444':tl<40?'#ff8800':'#00ccff';
     }
     if(tl>0){window._activeGameRAF=requestAnimationFrame(tick);}
@@ -3028,7 +3053,7 @@ function startLightningGlobalTimer(globalEndTime){
 
   function tick(){
     const tl=Math.max(0,(globalEndTime-Date.now())/1000);
-    const tlr=Math.round(tl);
+    const tlr=Math.min(dur,Math.round(tl));
     const el=document.getElementById('quiz-global-timer');
     if(el) el.style.display='flex';
     const valEl=document.getElementById('quiz-timer');
@@ -3069,13 +3094,13 @@ function startQuestionTimer(){
     const tl=Math.max(0,(endTime-Date.now())/1000);
     const el=document.getElementById('quiz-q-timer-val');
     if(el){
-      el.textContent=Math.ceil(tl);
+      el.textContent=Math.min(dur,Math.ceil(tl));
       el.style.color=tl<2?'#ff4444':tl<Math.ceil(dur/2)?'#ff8800':'#ffd700';
     }
     const bar=document.getElementById('quiz-q-timer-bar');
     if(bar){
       bar.style.transition='none';
-      bar.style.width=(tl/dur*100)+'%';
+      bar.style.width=Math.min(100,(tl/dur*100))+'%';
       bar.style.background=tl<2?'#ff4444':tl<Math.ceil(dur/2)?'#ff8800':'#ffd700';
     }
     if(tl<=0&&!timedOutFired){
@@ -3126,11 +3151,11 @@ function startSurvivalQuestionTimer(){
     if(quizState.selected!==null||quizState.finished||quizState.eliminated){window._questionRAF=null;return;}
     const tl=Math.max(0,(endTime-Date.now())/1000);
     if(el){
-      el.textContent=Math.ceil(tl);
+      el.textContent=Math.min(dur,Math.ceil(tl));
       el.style.color=tl<=2?'#ff4444':tl<=Math.floor(dur/2)?'#ff8800':'#ff8888';
     }
     if(barEl){
-      barEl.style.width=(tl/dur*100)+'%';
+      barEl.style.width=Math.min(100,(tl/dur*100))+'%';
       barEl.style.background=tl<=2?'#ff4444':tl<=Math.floor(dur/2)?'#ff8800':'#ff6666';
     }
     if(tl<=0&&!timedOutFired){
@@ -3835,10 +3860,10 @@ function startBlitzQuestionTimer(){
   function tick(){
     if(blitzState.finished){window._blitzRAF=null;return;}
     const tl=Math.max(0,(endTime-Date.now())/1000);
-    document.getElementById('blitz-q-timer-val').textContent=Math.ceil(tl);
+    document.getElementById('blitz-q-timer-val').textContent=Math.min(dur,Math.ceil(tl));
     const bar=document.getElementById('blitz-q-timer-bar');
     if(bar){
-      bar.style.width=(tl/dur*100)+'%';
+      bar.style.width=Math.min(100,(tl/dur*100))+'%';
       bar.style.background=tl<3?'#ff4444':tl<6?'#ff8800':'#ffd700';
     }
     if(tl<=0&&!timedOutFired){
