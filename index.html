@@ -1120,7 +1120,8 @@ Answer: B</pre>
     <div id="blitz-results-waiting-lobby" style="display:none;background:rgba(34,197,94,0.06);border:1.5px solid rgba(34,197,94,0.2);border-radius:16px;padding:16px;text-align:center;margin-bottom:12px;">
       <div style="font-size:24px;margin-bottom:6px;animation:pulse 1.5s ease infinite;">🔄</div>
       <div style="font-weight:700;color:#4ade80;font-size:15px;margin-bottom:4px;">Waiting for next round...</div>
-      <div style="font-size:12px;color:#7a8ab0;">You will automatically join when the host starts the next round.</div>
+      <div id="blitz-waiting-lobby-msg" style="font-size:12px;color:#7a8ab0;">Waiting for host to set up the next round.</div>
+      <button id="blitz-join-lobby-btn" onclick="playerJoinNextRoundLobby()" style="display:none;width:100%;margin-top:12px;background:linear-gradient(135deg,#15803d,#22c55e);border:none;color:white;padding:13px;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">✅ Join Next Round — <span id="blitz-join-countdown">5</span>s</button>
     </div>
     <button onclick="showExitConfirm()" style="width:100%;background:rgba(220,38,38,0.08);border:1.5px solid rgba(220,38,38,0.3);color:#ff8888;padding:13px;border-radius:13px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">🚪 Exit Lobby</button>
   </div>
@@ -1753,38 +1754,14 @@ function setupRoomListeners(){
       document.getElementById('admin-timer').textContent='—';
       showPage('admin');
     }else{
-      // Show the next-round overlay with a 5s countdown.
-      // If the player is on page-blitz-results, also update the in-page
-      // waiting panel so they see the countdown there too (belt-and-suspenders).
+      // Show the standard overlay countdown for all non-blitz pages
       showNextRoundJoinPrompt();
 
-      // Belt-and-suspenders: if the fixed overlay is somehow not visible
-      // (e.g. CSS stacking issue on older mobile browsers), update the
-      // blitz-results in-page waiting panel to show the same countdown
-      // and hook the same join action, so the player always has a way in.
-      const blitzWaitingPanel = document.getElementById('blitz-results-waiting-lobby');
-      if (blitzWaitingPanel && document.getElementById('page-blitz-results').classList.contains('active')) {
-        blitzWaitingPanel.innerHTML = `
-          <div style="font-size:24px;margin-bottom:6px;animation:pulse 1.5s ease infinite;">🔄</div>
-          <div style="font-weight:700;color:#4ade80;font-size:15px;margin-bottom:6px;">New Round! Auto-joining in <span id="blitz-panel-countdown">5</span>s...</div>
-          <button onclick="playerJoinNextRoundLobby()" style="width:100%;background:linear-gradient(135deg,#15803d,#22c55e);border:none;color:white;padding:12px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:4px;">✅ Join Now</button>`;
-        // Mirror the overlay countdown into the panel
-        const panelGen = window._nrGeneration;
-        let panelSecs = 5;
-        function blitzPanelTick() {
-          if (window._nrGeneration !== panelGen) return; // stale
-          const el = document.getElementById('blitz-panel-countdown');
-          if (el) el.textContent = panelSecs;
-          if (panelSecs > 0) {
-            panelSecs--;
-            setTimeout(blitzPanelTick, 1000);
-          }
-        }
-        setTimeout(blitzPanelTick, 1000);
-
-        // Also force the main overlay visible in case display flex didn't apply
-        const overlay = document.getElementById('next-round-join-overlay');
-        if (overlay) overlay.style.display = 'flex';
+      // For players still on page-blitz-results, ALSO activate the dedicated
+      // in-page join button — this is the reliable path regardless of overlay behaviour.
+      const blitzPage=document.getElementById('page-blitz-results');
+      if(blitzPage&&blitzPage.classList.contains('active')){
+        _activateBlitzJoinButton();
       }
     }
   });
@@ -1824,6 +1801,12 @@ function setupRoomListeners(){
   });
   room.onMessage('blitzReaction',(r)=>{
     if(r.team===blitzState.myTeam)spawnReactionBubble(r.emoji);
+  });
+  // ── Teammate pick notification (restored) ──
+  room.onMessage('blitzTeammatePicked',({answer,questionIndex})=>{
+    if(blitzState.finished)return;
+    if(questionIndex!==blitzState.currentQ)return;
+    showTeammatePickToast('ABCD'[answer]||'?');
   });
   room.onMessage('blitzSignal',(r)=>{
     if(r.team===blitzState.myTeam&&r.nickname!==myNickname){
@@ -2147,21 +2130,20 @@ async function confirmExitLobby(){
 function showWaitingForHostOverlay(){
   _nextRoundJoinTaken=false;
   clearTimeout(_nextRoundCountdownTimer);
+  // Cancel any active blitz join button countdown
+  clearTimeout(_blitzJoinBtnTimer);
+  _blitzJoinBtnGen++;
   const overlay=document.getElementById('next-round-join-overlay');
   if(overlay)overlay.style.display='flex';
   const banner=document.getElementById('results-next-round-banner');
   if(banner)banner.style.display='block';
   const countdownBox=document.getElementById('next-round-countdown-text');
   if(countdownBox)countdownBox.innerHTML='⏳ Waiting for host to start next round...';
-  // Also update the blitz-results in-page waiting panel (belt-and-suspenders)
-  const blitzWaitingPanel=document.getElementById('blitz-results-waiting-lobby');
-  if(blitzWaitingPanel && document.getElementById('page-blitz-results').classList.contains('active')){
-    blitzWaitingPanel.style.display='block';
-    blitzWaitingPanel.innerHTML=`
-      <div style="font-size:24px;margin-bottom:6px;animation:pulse 1.5s ease infinite;">🔄</div>
-      <div style="font-weight:700;color:#4ade80;font-size:15px;margin-bottom:4px;">⏳ Waiting for host to start next round...</div>
-      <div style="font-size:12px;color:#7a8ab0;">You will automatically join when the host confirms settings.</div>`;
-  }
+  // Reset blitz join button to passive waiting state
+  const btn=document.getElementById('blitz-join-lobby-btn');
+  if(btn)btn.style.display='none';
+  const msg=document.getElementById('blitz-waiting-lobby-msg');
+  if(msg)msg.textContent='Waiting for host to set up the next round.';
 }
 
 // ── Next Round Join Prompt (5-second countdown) ──
@@ -2207,6 +2189,44 @@ function playerJoinNextRoundLobby(){
   const overlay=document.getElementById('next-round-join-overlay');
   if(overlay)overlay.style.display='none';
   _doJoinNextRoundLobby();
+}
+
+// ── Dedicated blitz-results join button activation ──
+// Called by roundReset when the player is still on page-blitz-results.
+// Independently shows and counts down the in-page join button so players
+// always have a reliable way to rejoin regardless of overlay behaviour.
+let _blitzJoinBtnTimer=null;
+let _blitzJoinBtnGen=0;
+function _activateBlitzJoinButton(){
+  const btn=document.getElementById('blitz-join-lobby-btn');
+  const msg=document.getElementById('blitz-waiting-lobby-msg');
+  const countEl=document.getElementById('blitz-join-countdown');
+  if(!btn)return;
+
+  const myGen=++_blitzJoinBtnGen;
+  clearTimeout(_blitzJoinBtnTimer);
+
+  // Show and activate the button
+  btn.style.display='block';
+  if(msg)msg.textContent='Host is ready — joining in 5 seconds...';
+  let secs=5;
+  if(countEl)countEl.textContent=secs;
+
+  function tick(){
+    if(_blitzJoinBtnGen!==myGen)return; // stale
+    secs--;
+    if(countEl)countEl.textContent=Math.max(0,secs);
+    if(secs<=0){
+      if(_nextRoundJoinTaken)return; // overlay already joined — don't double-join
+      _nextRoundJoinTaken=true;
+      clearTimeout(_nextRoundCountdownTimer); // cancel overlay tick too
+      btn.style.display='none';
+      _doJoinNextRoundLobby();
+    }else{
+      _blitzJoinBtnTimer=setTimeout(tick,1000);
+    }
+  }
+  _blitzJoinBtnTimer=setTimeout(tick,1000);
 }
 
 function _doJoinNextRoundLobby(){
@@ -4061,6 +4081,33 @@ function spawnReactionBubble(emoji){
   b.style.cssText=`left:${20+Math.random()*60}%;bottom:120px;`;
   document.body.appendChild(b);
   setTimeout(()=>b.remove(),3100);
+}
+
+function showTeammatePickToast(letter){
+  const existing=document.getElementById('teammate-pick-toast');
+  if(existing)existing.remove();
+  const teamColor=blitzState.myTeam==='A'?'#ff8888':'#66b3ff';
+  const toast=document.createElement('div');
+  toast.id='teammate-pick-toast';
+  toast.style.cssText=`
+    position:fixed;bottom:140px;left:50%;transform:translateX(-50%) translateY(20px);
+    z-index:99000;background:rgba(10,15,40,0.95);border:2px solid ${teamColor};
+    border-radius:14px;padding:10px 22px;font-family:'Orbitron',sans-serif;
+    color:${teamColor};font-size:22px;font-weight:700;text-align:center;
+    box-shadow:0 4px 20px rgba(0,0,0,0.5);pointer-events:none;
+    transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1),opacity 0.3s;
+    opacity:0;`;
+  toast.textContent=letter;
+  document.body.appendChild(toast);
+  requestAnimationFrame(()=>{
+    toast.style.opacity='1';
+    toast.style.transform='translateX(-50%) translateY(0)';
+  });
+  setTimeout(()=>{
+    toast.style.opacity='0';
+    toast.style.transform='translateX(-50%) translateY(10px)';
+    setTimeout(()=>toast.remove(),300);
+  },2000);
 }
 
 async function sendSignal(text){
