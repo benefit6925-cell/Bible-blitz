@@ -1753,10 +1753,39 @@ function setupRoomListeners(){
       document.getElementById('admin-timer').textContent='—';
       showPage('admin');
     }else{
-      // All modes (including blitz) show the "New Round! Auto-joining in 5s" prompt.
-      // showNextRoundJoinPrompt → _doJoinNextRoundLobby always returns to general lobby,
-      // letting the host pick the next mode freely from there.
+      // Show the next-round overlay with a 5s countdown.
+      // If the player is on page-blitz-results, also update the in-page
+      // waiting panel so they see the countdown there too (belt-and-suspenders).
       showNextRoundJoinPrompt();
+
+      // Belt-and-suspenders: if the fixed overlay is somehow not visible
+      // (e.g. CSS stacking issue on older mobile browsers), update the
+      // blitz-results in-page waiting panel to show the same countdown
+      // and hook the same join action, so the player always has a way in.
+      const blitzWaitingPanel = document.getElementById('blitz-results-waiting-lobby');
+      if (blitzWaitingPanel && document.getElementById('page-blitz-results').classList.contains('active')) {
+        blitzWaitingPanel.innerHTML = `
+          <div style="font-size:24px;margin-bottom:6px;animation:pulse 1.5s ease infinite;">🔄</div>
+          <div style="font-weight:700;color:#4ade80;font-size:15px;margin-bottom:6px;">New Round! Auto-joining in <span id="blitz-panel-countdown">5</span>s...</div>
+          <button onclick="playerJoinNextRoundLobby()" style="width:100%;background:linear-gradient(135deg,#15803d,#22c55e);border:none;color:white;padding:12px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:4px;">✅ Join Now</button>`;
+        // Mirror the overlay countdown into the panel
+        const panelGen = window._nrGeneration;
+        let panelSecs = 5;
+        function blitzPanelTick() {
+          if (window._nrGeneration !== panelGen) return; // stale
+          const el = document.getElementById('blitz-panel-countdown');
+          if (el) el.textContent = panelSecs;
+          if (panelSecs > 0) {
+            panelSecs--;
+            setTimeout(blitzPanelTick, 1000);
+          }
+        }
+        setTimeout(blitzPanelTick, 1000);
+
+        // Also force the main overlay visible in case display flex didn't apply
+        const overlay = document.getElementById('next-round-join-overlay');
+        if (overlay) overlay.style.display = 'flex';
+      }
     }
   });
 
@@ -2124,6 +2153,15 @@ function showWaitingForHostOverlay(){
   if(banner)banner.style.display='block';
   const countdownBox=document.getElementById('next-round-countdown-text');
   if(countdownBox)countdownBox.innerHTML='⏳ Waiting for host to start next round...';
+  // Also update the blitz-results in-page waiting panel (belt-and-suspenders)
+  const blitzWaitingPanel=document.getElementById('blitz-results-waiting-lobby');
+  if(blitzWaitingPanel && document.getElementById('page-blitz-results').classList.contains('active')){
+    blitzWaitingPanel.style.display='block';
+    blitzWaitingPanel.innerHTML=`
+      <div style="font-size:24px;margin-bottom:6px;animation:pulse 1.5s ease infinite;">🔄</div>
+      <div style="font-weight:700;color:#4ade80;font-size:15px;margin-bottom:4px;">⏳ Waiting for host to start next round...</div>
+      <div style="font-size:12px;color:#7a8ab0;">You will automatically join when the host confirms settings.</div>`;
+  }
 }
 
 // ── Next Round Join Prompt (5-second countdown) ──
