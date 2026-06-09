@@ -179,6 +179,7 @@ html,body{min-height:100vh;background:#000830;color:#f0f4ff;font-family:'DM Sans
 .vote-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;font-size:13px;font-weight:600;margin:3px;}
 .reveal-answer-row{padding:12px 16px;border-radius:12px;margin-bottom:8px;display:flex;align-items:center;gap:12px;font-size:15px;font-weight:600;}
 @keyframes blitzReveal{0%{transform:scale(0.8);opacity:0;}60%{transform:scale(1.05);}100%{transform:scale(1);opacity:1;}}
+@keyframes answerGlow{0%,100%{box-shadow:0 0 0 0 rgba(0,204,255,0);}40%{box-shadow:0 0 18px 4px rgba(0,204,255,0.18),0 4px 24px rgba(0,204,255,0.10);}70%{box-shadow:0 0 8px 2px rgba(0,204,255,0.10);}}.answer-btn:not(:disabled):hover{animation:answerGlow 1.4s ease infinite;}
 .blitz-reveal-anim{animation:blitzReveal 0.5s ease forwards;}
 @keyframes perfectPulse{0%,100%{box-shadow:0 0 30px rgba(255,215,0,0.5),0 0 60px rgba(255,215,0,0.2);}50%{box-shadow:0 0 60px rgba(255,215,0,0.8),0 0 120px rgba(255,215,0,0.5);}}
 .perfect-round{animation:perfectPulse 1s ease infinite;}
@@ -1269,6 +1270,7 @@ function applyPhase(phase, stateSnapshot) {
       if(window._questionRAF){ cancelAnimationFrame(window._questionRAF); window._questionRAF=null; }
       break;
     case 'results':
+      console.log(`[CLIENT applyPhase] results | mode=${gameSettings&&gameSettings.gameMode} | blitzFinished=${blitzState&&blitzState.finished} | isHost=${isHost}`);
       // Server declared game over — always fire results for non-eliminated non-finished players
       if (isHost) { adminEndGame(); break; }
       if (gameSettings.gameMode === 'blitz') {
@@ -1295,6 +1297,7 @@ function applyPhase(phase, stateSnapshot) {
       goToResults();
       break;
     case 'waiting_next_round':
+      console.log(`[CLIENT applyPhase] waiting_next_round | isHost=${isHost} | mode=${gameSettings&&gameSettings.gameMode} | blitzFinished=${blitzState&&blitzState.finished}`);
       if (!isHost) {
         // Show the overlay in "waiting" state — no countdown yet.
         // The countdown + routing only starts when roundReset arrives
@@ -1735,6 +1738,7 @@ function setupRoomListeners(){
   });
 
   room.onMessage('roundReset',({settings,players,assignedTeam})=>{
+    console.log(`[CLIENT roundReset] received | newMode=${settings&&settings.gameMode} | isHost=${isHost} | assignedTeam=${assignedTeam||'none'} | currentPage=${document.querySelector('.page.active')?document.querySelector('.page.active').id:'none'}`);
     gameSettings=settings||gameSettings;
     // Rebuild _lastKnownPlayers from live schema state so keys always match what
     // the onAdd/onChange closures are using — prevents stale sessionId entries.
@@ -1785,6 +1789,17 @@ function setupRoomListeners(){
       if (overlay) overlay.style.display = 'none';
       _doJoinNextRoundLobby();
     }
+  });
+
+  // blitzTeamAssign: server sends each blitz player their authoritative team after roundReset.
+  // Arrives after roundReset so blitzState is already freshly initialised before we patch it.
+  room.onMessage('blitzTeamAssign',({team})=>{
+    console.log(`[CLIENT blitzTeamAssign] received | team=${team} | isHost=${isHost}`);
+    if(isHost||!team)return;
+    blitzState.myTeam=team;
+    // If already on the blitz lobby, refresh the display immediately
+    const blitzLobby=document.getElementById('page-blitz-lobby');
+    if(blitzLobby&&blitzLobby.classList.contains('active'))setupBlitzLobby();
   });
 
   room.onMessage('settingsUpdated',({settings})=>{
@@ -2193,6 +2208,7 @@ function _activateBlitzJoinButton(){
 
 function _doJoinNextRoundLobby(){
   if(!myPin)return;
+  console.log(`[CLIENT _doJoinNextRoundLobby] mode=${gameSettings&&gameSettings.gameMode} | blitzMyTeam=${blitzState&&blitzState.myTeam} | myPin=${myPin}`);
   const g={settings:gameSettings}; // gameSettings already updated by roundReset to the NEW mode
   quizState={current:0,score:0,correctCount:0,answers:{},selected:null,finished:false,eliminated:false,questionStartTime:0};
   clearInterval(window.activeGameTimer);
@@ -3013,15 +3029,13 @@ function startGlobalTimerDisplay(startTime){
   clearInterval(window.activeGameTimer);
   if(window._activeGameRAF){cancelAnimationFrame(window._activeGameRAF);window._activeGameRAF=null;}
 
-  // Prefer phaseEndTime from schema if available (most accurate); fall back to startTime+dur
-  function getEndTime(){
-    if(room&&room.state&&room.state.phaseEndTime&&room.state.phaseEndTime>Date.now()-dur*1000){
-      return room.state.phaseEndTime;
-    }
-    const syncStart=(startTime&&startTime>Date.now()-dur*1000)?startTime:Date.now();
-    return syncStart+(dur*1000);
-  }
-  const endTime=getEndTime();
+  // Use a purely local endTime derived from Date.now() so server/client clock offset
+  // never makes the display run slow or fast on any device or OS.
+  // startTime is the server's epoch for the game start — we offset it by the same
+  // amount as the server's phaseEndTime would be, giving an accurate remaining duration
+  // without trusting the server clock directly.
+  const syncStart=(startTime&&startTime>Date.now()-dur*1000)?startTime:Date.now();
+  const endTime=syncStart+(dur*1000);
 
   function tick(){
     const tl=Math.max(0,(endTime-Date.now())/1000);
@@ -3050,9 +3064,15 @@ function startLightningGlobalTimer(globalEndTime){
   clearInterval(window.activeGameTimer);
   if(window._activeGameRAF){cancelAnimationFrame(window._activeGameRAF);window._activeGameRAF=null;}
   const dur=gameSettings.timerDuration||120;
+  // Anchor to local clock — server globalEndTime may differ from client Date.now()
+  // by a few seconds on Windows/PC causing the display to run slow or fast.
+  // We calculate how much time is left from the server's perspective, then add
+  // that to our local Date.now() so the countdown is driven purely by the client clock.
+  const serverRemaining=Math.max(0,(globalEndTime-Date.now())/1000);
+  const localEndTime=Date.now()+(Math.min(dur,serverRemaining)*1000);
 
   function tick(){
-    const tl=Math.max(0,(globalEndTime-Date.now())/1000);
+    const tl=Math.max(0,(localEndTime-Date.now())/1000);
     const tlr=Math.min(dur,Math.round(tl));
     const el=document.getElementById('quiz-global-timer');
     if(el) el.style.display='flex';
@@ -3079,10 +3099,12 @@ function startQuestionTimer(){
   const dur=LIGHTNING_Q_DURATION;
   quizState.questionStartTime=Date.now();
 
-  // FIX 1: use phaseEndTime from schema if available, else fall back to local startTime
-  const endTime=(room&&room.state&&room.state.phaseEndTime&&room.state.phaseEndTime>Date.now())
-    ?room.state.phaseEndTime
-    :Date.now()+(dur*1000);
+  // Anchor to local clock — convert server phaseEndTime to a local equivalent so
+  // Windows/PC clock skew never makes the bar freeze or the number jump.
+  const serverEnd=(room&&room.state&&room.state.phaseEndTime&&room.state.phaseEndTime>Date.now())
+    ?room.state.phaseEndTime:null;
+  const serverRemaining=serverEnd?Math.min(dur,(serverEnd-Date.now())/1000):dur;
+  const endTime=Date.now()+(serverRemaining*1000);
 
   const initVal=document.getElementById('quiz-q-timer-val');
   if(initVal){initVal.textContent=dur;initVal.style.color='#ffd700';}
@@ -3848,10 +3870,11 @@ function startBlitzQuestionTimer(){
   if(window._blitzRAF){cancelAnimationFrame(window._blitzRAF);window._blitzRAF=null;}
   const dur=gameSettings.blitzTimerDuration||12;
 
-  // FIX 1: use phaseEndTime from schema if available
-  const endTime=(room&&room.state&&room.state.phaseEndTime&&room.state.phaseEndTime>Date.now())
-    ?room.state.phaseEndTime
-    :Date.now()+(dur*1000);
+  // Anchor to local clock — convert server phaseEndTime to local equivalent.
+  const serverEndB=(room&&room.state&&room.state.phaseEndTime&&room.state.phaseEndTime>Date.now())
+    ?room.state.phaseEndTime:null;
+  const serverRemainingB=serverEndB?Math.min(dur,(serverEndB-Date.now())/1000):dur;
+  const endTime=Date.now()+(serverRemainingB*1000);
 
   document.getElementById('blitz-q-timer-val').textContent=dur;
   document.getElementById('blitz-q-timer-bar').style.width='100%';
@@ -4061,10 +4084,11 @@ function showTeammatePickToast(letter){
   toast.id='teammate-pick-toast';
   toast.style.cssText=`
     position:fixed;bottom:120px;right:18px;
-    z-index:99000;background:rgba(10,15,40,0.72);border:2px solid ${teamColor};
-    border-radius:12px;padding:8px 16px;font-family:'Orbitron',sans-serif;
-    color:${teamColor};font-size:20px;font-weight:700;text-align:center;
-    box-shadow:0 4px 16px rgba(0,0,0,0.4);pointer-events:none;
+    z-index:99000;background:rgba(10,15,40,0.82);border:2px solid ${teamColor};
+    border-radius:12px;padding:10px 18px;font-family:'Orbitron',sans-serif;
+    color:${teamColor};font-size:22px;font-weight:700;text-align:center;
+    box-shadow:0 0 20px ${teamColor}55,0 4px 16px rgba(0,0,0,0.4);pointer-events:none;
+    animation:answerGlow 1.2s ease infinite;
     transition:transform 0.25s cubic-bezier(0.34,1.56,0.64,1),opacity 0.25s;
     opacity:0;transform:translateY(10px);`;
   toast.textContent=letter;
