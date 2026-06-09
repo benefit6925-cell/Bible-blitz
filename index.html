@@ -1200,13 +1200,36 @@ function applyPhase(phase, stateSnapshot) {
   _currentPhase = phase;
   switch (phase) {
     case 'lobby':
-      if (isHost) { setupAdminDashboard(); showPage('admin'); showAdminTab('dashboard'); }
-      // Non-host lobby routing is handled entirely by the roundReset message,
-      // which arrives AFTER gameSettings is updated to the new mode.
-      // Doing it here is wrong — gameSettings still holds the OLD mode when
-      // the phase patch arrives, causing players to land on the wrong lobby.
-      // The roundReset handler calls showNextRoundJoinPrompt() → _doJoinNextRoundLobby()
-      // which routes correctly based on the already-updated gameSettings.
+      if (isHost) { setupAdminDashboard(); showPage('admin'); showAdminTab('dashboard'); break; }
+      // Non-host: route to the correct lobby using the SCHEMA's live settings,
+      // not gameSettings (which may lag behind on reconnect).
+      // This path fires both from roundReset navigation AND from schema re-sync
+      // on reconnect — so players with dropped sockets are recovered automatically.
+      // Guard: only navigate if we're not already on the correct lobby page.
+      {
+        const _schemaMode = (room && room.state && room.state.settings && room.state.settings.gameMode)
+          || (gameSettings && gameSettings.gameMode);
+        const _alreadyOnBlitzLobby = document.getElementById('page-blitz-lobby') &&
+          document.getElementById('page-blitz-lobby').classList.contains('active');
+        const _alreadyOnLobby = document.getElementById('page-lobby') &&
+          document.getElementById('page-lobby').classList.contains('active');
+        if (_schemaMode === 'blitz' && !_alreadyOnBlitzLobby) {
+          // Update gameSettings from schema so _doJoinNextRoundLobby routes correctly
+          if (room && room.state && room.state.settings) {
+            gameSettings = gameSettings || {};
+            gameSettings.gameMode = room.state.settings.gameMode;
+            gameSettings.teamAName = room.state.settings.teamAName || gameSettings.teamAName;
+            gameSettings.teamBName = room.state.settings.teamBName || gameSettings.teamBName;
+          }
+          _doJoinNextRoundLobby();
+        } else if (_schemaMode !== 'blitz' && !_alreadyOnLobby) {
+          if (room && room.state && room.state.settings) {
+            gameSettings = gameSettings || {};
+            gameSettings.gameMode = room.state.settings.gameMode;
+          }
+          _doJoinNextRoundLobby();
+        }
+      }
       break;
     case 'countdown':
       // Server-driven pre-game countdown overlay
@@ -1270,7 +1293,19 @@ function applyPhase(phase, stateSnapshot) {
       if(window._questionRAF){ cancelAnimationFrame(window._questionRAF); window._questionRAF=null; }
       break;
     case 'results':
-      console.log(`[CLIENT applyPhase] results | mode=${gameSettings&&gameSettings.gameMode} | blitzFinished=${blitzState&&blitzState.finished} | isHost=${isHost}`);
+      // Guard: if the player is already on the lobby or blitz-lobby page, a stale
+      // results patch has arrived out of order — ignore it entirely.
+      // This happens when roundReset navigates the player to lobby but a delayed
+      // schema patch for 'results' arrives afterwards over a slow/reconnecting socket.
+      if (!isHost) {
+        const _onLobby = document.getElementById('page-lobby') &&
+          document.getElementById('page-lobby').classList.contains('active');
+        const _onBlitzLobby = document.getElementById('page-blitz-lobby') &&
+          document.getElementById('page-blitz-lobby').classList.contains('active');
+        if (_onLobby || _onBlitzLobby) {
+          break;
+        }
+      }
       // Server declared game over — always fire results for non-eliminated non-finished players
       if (isHost) { adminEndGame(); break; }
       if (gameSettings.gameMode === 'blitz') {
@@ -1297,7 +1332,6 @@ function applyPhase(phase, stateSnapshot) {
       goToResults();
       break;
     case 'waiting_next_round':
-      console.log(`[CLIENT applyPhase] waiting_next_round | isHost=${isHost} | mode=${gameSettings&&gameSettings.gameMode} | blitzFinished=${blitzState&&blitzState.finished}`);
       if (!isHost) {
         // Show the overlay in "waiting" state — no countdown yet.
         // The countdown + routing only starts when roundReset arrives
@@ -1608,6 +1642,18 @@ function setupRoomListeners(){
   _currentPhase=null;
   window._lastKnownPlayers={};
 
+  // ── WebSocket keepalive ──
+  // Sends a tiny ping every 25 seconds to prevent Render (and any reverse proxy)
+  // from classifying the connection as idle and silently dropping it.
+  // This is what caused clients=1 at reset time — player sockets were dying
+  // during quiet phases (answer_reveal, waiting_next_round) between blitz rounds.
+  if(window._keepaliveInterval) clearInterval(window._keepaliveInterval);
+  window._keepaliveInterval = setInterval(() => {
+    if(room && room.connection && room.connection.isOpen){
+      try{ room.send('keepalive', {}); }catch(e){}
+    }
+  }, 25000);
+
   // ── Wire pending one-shot joinAck / joinError handlers ──
   // These are set by joinGame() / restoreSession() before calling setupRoomListeners().
   // Registering them HERE (inside the _listenersAttached guard) ensures they are
@@ -1738,7 +1784,8 @@ function setupRoomListeners(){
   });
 
   room.onMessage('roundReset',({settings,players,assignedTeam})=>{
-    console.log(`[CLIENT roundReset] received | newMode=${settings&&settings.gameMode} | isHost=${isHost} | assignedTeam=${assignedTeam||'none'} | currentPage=${document.querySelector('.page.active')?document.querySelector('.page.active').id:'none'}`);
+    // Update gameSettings FIRST so applyPhase('lobby') and _doJoinNextRoundLobby
+    // both see the correct new mode when they fire.
     gameSettings=settings||gameSettings;
     // Rebuild _lastKnownPlayers from live schema state so keys always match what
     // the onAdd/onChange closures are using — prevents stale sessionId entries.
@@ -1794,7 +1841,6 @@ function setupRoomListeners(){
   // blitzTeamAssign: server sends each blitz player their authoritative team after roundReset.
   // Arrives after roundReset so blitzState is already freshly initialised before we patch it.
   room.onMessage('blitzTeamAssign',({team})=>{
-    console.log(`[CLIENT blitzTeamAssign] received | team=${team} | isHost=${isHost}`);
     if(isHost||!team)return;
     blitzState.myTeam=team;
     // If already on the blitz lobby, refresh the display immediately
@@ -2109,6 +2155,7 @@ function formatTime(secs){
 // PLAYER SESSION CLEANUP & NAVIGATION
 // ══════════════════════════════════════════
 function cleanupPlayerSession(){
+  if(window._keepaliveInterval){ clearInterval(window._keepaliveInterval); window._keepaliveInterval=null; }
   clearInterval(window.activeGameTimer);
   clearInterval(window.questionTimer);
   clearInterval(window.blitzTimer);
@@ -2208,7 +2255,6 @@ function _activateBlitzJoinButton(){
 
 function _doJoinNextRoundLobby(){
   if(!myPin)return;
-  console.log(`[CLIENT _doJoinNextRoundLobby] mode=${gameSettings&&gameSettings.gameMode} | blitzMyTeam=${blitzState&&blitzState.myTeam} | myPin=${myPin}`);
   const g={settings:gameSettings}; // gameSettings already updated by roundReset to the NEW mode
   quizState={current:0,score:0,correctCount:0,answers:{},selected:null,finished:false,eliminated:false,questionStartTime:0};
   clearInterval(window.activeGameTimer);
@@ -3029,13 +3075,19 @@ function startGlobalTimerDisplay(startTime){
   clearInterval(window.activeGameTimer);
   if(window._activeGameRAF){cancelAnimationFrame(window._activeGameRAF);window._activeGameRAF=null;}
 
-  // Use a purely local endTime derived from Date.now() so server/client clock offset
-  // never makes the display run slow or fast on any device or OS.
-  // startTime is the server's epoch for the game start — we offset it by the same
-  // amount as the server's phaseEndTime would be, giving an accurate remaining duration
-  // without trusting the server clock directly.
-  const syncStart=(startTime&&startTime>Date.now()-dur*1000)?startTime:Date.now();
-  const endTime=syncStart+(dur*1000);
+  // Use phaseEndTime from the schema as the authoritative end time, but convert it
+  // to a LOCAL anchor so server/client clock offset (up to 10-11s on Render) never
+  // makes the timer run slow or fast on any device.
+  // Strategy: compute how many seconds the server says are remaining, then add that
+  // to OUR local Date.now(). From that point the countdown runs on the client clock only.
+  let endTime;
+  if(room&&room.state&&room.state.phaseEndTime&&room.state.phaseEndTime>0){
+    const serverRemaining=Math.min(dur,(room.state.phaseEndTime-Date.now())/1000);
+    endTime=Date.now()+(Math.max(0,serverRemaining)*1000);
+  }else{
+    // Fallback: no phaseEndTime available — start a fresh local countdown
+    endTime=Date.now()+(dur*1000);
+  }
 
   function tick(){
     const tl=Math.max(0,(endTime-Date.now())/1000);
