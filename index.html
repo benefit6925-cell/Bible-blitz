@@ -1694,7 +1694,12 @@ function setupRoomListeners(){
       }
     }else if(state.status==='lobby'){
       if(isHost){setupAdminDashboard();showPage('admin');showAdminTab('dashboard');}
-      else{setupLobby({settings:state.settings});showPage('lobby');}
+      else{
+        // Route to correct lobby based on current mode — could be blitz or regular
+        if(state.settings) gameSettings=state.settings;
+        if(state.assignedTeam) blitzState.myTeam=state.assignedTeam;
+        _doJoinNextRoundLobby();
+      }
     }
   });
 
@@ -4336,6 +4341,13 @@ if('serviceWorker' in navigator){
       }
 
       // ── Player: fully restored mid-game state ──
+      // Always set gameSettings first — applyPhase('lobby') may fire immediately
+      // after setupRoomListeners() and needs the correct mode to route properly.
+      if(data.settings) gameSettings=data.settings;
+      if(data.assignedTeam){blitzState.myTeam=data.assignedTeam;}
+      if(data.teamAName){blitzState.teamAName=data.teamAName;}
+      if(data.teamBName){blitzState.teamBName=data.teamBName;}
+
       if(data.status==='reconnected'){
         quizState={
           current:data.questionIndex||0,
