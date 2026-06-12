@@ -2,21 +2,21 @@
   "name": "Quiz Mate",
   "short_name": "Quiz Mate",
   "description": "The ultimate multiplayer quiz game. Play with friends anywhere in the world!",
-  "start_url": "/Bible-blitz/",
-  "scope": "/Bible-blitz/",
+  "start_url": "/Quiz-mate/",
+  "scope": "/Quiz-mate/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0040c0",
   "theme_color": "#0040c0",
   "icons": [
     {
-      "src": "/Bible-blitz/quiz-mate-logo.png",
+      "src": "/Quiz-mate/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/Bible-blitz/quiz-mate-logo.png",
+      "src": "/Quiz-mate/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
