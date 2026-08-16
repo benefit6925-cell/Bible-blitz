@@ -266,8 +266,35 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
 <div id="qm-toast" class="qm-toast"></div>
 
 <!-- ═══ LANDING PAGE ═══ -->
-<div id="page-landing" class="page active" style="z-index:1;">
+<!-- ═══ MODE SELECT (new first screen) ═══ -->
+<div id="page-mode-select" class="page active" style="z-index:1;">
   <div class="fade-in center" style="max-width:520px;width:100%;padding:20px;">
+    <div style="text-align:center;padding-top:8px;margin-bottom:32px;pointer-events:none;width:100%;display:flex;justify-content:center;align-items:center;">
+      <img src="quiz-mate-logo.png" alt="Quiz Mate"
+           style="width:280px;height:auto;max-height:200px;display:block;object-fit:contain;
+                  animation:logoFloat 3s ease-in-out infinite;
+                  -webkit-backface-visibility:hidden;backface-visibility:hidden;
+                  filter:drop-shadow(0 8px 30px rgba(0,128,255,0.4));
+                  margin:0 auto;pointer-events:none;"
+           onerror="this.style.display='none'">
+    </div>
+    <p style="color:#8a9aba;font-size:18px;line-height:1.7;margin-bottom:36px;text-align:center;max-width:400px;font-weight:500;margin-left:auto;margin-right:auto;">Play solo against AI questions, or challenge friends together!</p>
+    <div style="display:flex;flex-direction:column;gap:14px;max-width:320px;margin:0 auto;width:100%;">
+      <button class="btn-primary" style="font-size:18px;padding:18px;" onclick="showPage('solo-setup')">🧍 Single Player</button>
+      <button class="btn-secondary" style="font-size:18px;padding:18px;" onclick="showPage('landing')">👥 Multiplayer</button>
+    </div>
+    <div style="margin-top:28px;display:flex;justify-content:center;gap:8px;flex-wrap:wrap;">
+      <span class="mode-tag mode-classic">🧍 Solo vs AI</span>
+      <span class="mode-tag mode-blitz">👥 Play with Friends</span>
+    </div>
+  </div>
+</div>
+
+<div id="page-landing" class="page" style="z-index:1;">
+  <div class="fade-in center" style="max-width:520px;width:100%;padding:20px;">
+    <div style="width:100%;max-width:320px;margin:0 auto 8px;">
+      <button onclick="showPage('mode-select')" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.13);color:#c0cce8;cursor:pointer;font-size:13px;font-family:'DM Sans',sans-serif;padding:8px 16px;border-radius:20px;display:inline-flex;align-items:center;gap:6px;transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.13)'" onmouseout="this.style.background='rgba(255,255,255,0.07)'">← Back</button>
+    </div>
     <!-- Logo -->
     <div style="text-align:center;padding-top:8px;margin-bottom:32px;pointer-events:none;width:100%;display:flex;justify-content:center;align-items:center;">
       <img src="quiz-mate-logo.png" alt="Quiz Mate"
@@ -418,6 +445,70 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
   </div>
 </div>
 
+<!-- ═══ SOLO SETUP PAGE (Single Player) ═══ -->
+<div id="page-solo-setup" class="page" style="z-index:1;padding:24px 20px 60px;justify-content:flex-start;align-items:center;">
+  <div class="fade-in" style="width:100%;max-width:500px;margin-top:20px;">
+    <button onclick="showPage('mode-select')" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.13);color:#c0cce8;cursor:pointer;margin-bottom:24px;font-size:13px;font-family:'DM Sans',sans-serif;padding:8px 16px;border-radius:20px;display:inline-flex;align-items:center;gap:6px;transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.13)'" onmouseout="this.style.background='rgba(255,255,255,0.07)'">← Back</button>
+    <div class="flex-center gap12 mb32">
+      <div style="width:36px;height:36px;background:linear-gradient(135deg,#0040c0,#0080ff);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">🧍</div>
+      <span class="orbitron neon-text" style="font-size:20px;letter-spacing:2px;">SINGLE PLAYER</span>
+    </div>
+
+    <!-- AI Topic -->
+    <div class="card mb16">
+      <h2 style="font-size:22px;font-weight:700;margin-bottom:6px;">Set Your Quiz</h2>
+      <p class="muted mb24" style="font-size:14px;">AI generates fresh questions on any topic you pick</p>
+      <span class="label">TOPIC / CATEGORY</span>
+      <input class="input-field mb16" id="solo-topic" placeholder="e.g. Football, World History, Science, Politics, Music...">
+      <div class="error-box" id="solo-setup-error"></div>
+    </div>
+
+    <!-- Game Settings -->
+    <div class="card mb16" style="max-width:500px;">
+      <h3 style="font-size:16px;font-weight:700;margin-bottom:20px;">⚙️ Game Settings</h3>
+
+      <span class="label">NUMBER OF QUESTIONS</span>
+      <div class="pill-group" id="solo-setting-count">
+        <button class="pill" data-value="10" onclick="selectPill('solo-setting-count','10')">10</button>
+        <button class="pill active" data-value="20" onclick="selectPill('solo-setting-count','20')">20</button>
+        <button class="pill" data-value="30" onclick="selectPill('solo-setting-count','30')">30</button>
+        <button class="pill" data-value="40" onclick="selectPill('solo-setting-count','40')">40</button>
+        <button class="pill" data-value="50" onclick="selectPill('solo-setting-count','50')">50</button>
+      </div>
+
+      <span class="label">GAME TIMER</span>
+      <div class="pill-group" id="solo-setting-timer">
+        <button class="pill" data-value="60" onclick="selectPill('solo-setting-timer','60')">1 min</button>
+        <button class="pill active" data-value="120" onclick="selectPill('solo-setting-timer','120')">2 min</button>
+        <button class="pill" data-value="180" onclick="selectPill('solo-setting-timer','180')">3 min</button>
+        <button class="pill" data-value="300" onclick="selectPill('solo-setting-timer','300')">5 min</button>
+        <button class="pill" data-value="600" onclick="selectPill('solo-setting-timer','600')">10 min</button>
+      </div>
+
+      <span class="label">DIFFICULTY</span>
+      <div class="pill-group" id="solo-setting-difficulty">
+        <button class="pill" data-value="easy" onclick="selectPill('solo-setting-difficulty','easy')">Easy</button>
+        <button class="pill active" data-value="medium" onclick="selectPill('solo-setting-difficulty','medium')">Medium</button>
+        <button class="pill" data-value="hard" onclick="selectPill('solo-setting-difficulty','hard')">Hard</button>
+        <button class="pill" data-value="mixed" onclick="selectPill('solo-setting-difficulty','mixed')">Mixed</button>
+      </div>
+      <p style="font-size:12px;color:#5a6a8a;margin-top:-10px;">🎮 Classic scoring — answer all questions before the timer runs out.</p>
+    </div>
+
+    <button class="btn-primary" id="solo-start-btn" onclick="startSoloQuizFlow()" style="max-width:500px;">✨ Generate & Play →</button>
+    <p class="center muted mt16" style="font-size:13px;">Questions and score reset each time you play</p>
+  </div>
+</div>
+
+<!-- ═══ SOLO LOADING SCREEN ═══ -->
+<div id="page-solo-loading" class="page" style="z-index:1;">
+  <div class="fade-in center" style="max-width:400px;width:100%;padding:20px;">
+    <div style="font-size:40px;margin-bottom:16px;animation:spin 1s linear infinite;display:inline-block;">✨</div>
+    <h2 class="orbitron neon-text" style="font-size:20px;margin-bottom:8px;">Generating Your Quiz</h2>
+    <p id="solo-loading-text" style="color:#8a9aba;font-size:14px;">Groq (GPT-OSS) is crafting your questions...</p>
+  </div>
+</div>
+
 <!-- ═══ JOIN PAGE ═══ -->
 <div id="page-join" class="page" style="z-index:1;">
   <div class="fade-in" style="width:100%;max-width:460px;">
@@ -505,6 +596,62 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
         </div>
         <div id="quiz-options"></div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SOLO QUIZ PAGE (Single Player) ═══ -->
+<div id="page-solo-quiz" class="page" style="z-index:1;padding:0;justify-content:flex-start;align-items:stretch;">
+  <div style="width:100%;z-index:1;">
+    <!-- Header -->
+    <div style="padding:16px 24px;display:flex;align-items:center;gap:16px;border-bottom:1px solid rgba(255,255,255,0.06);">
+      <div style="flex:1;">
+        <div style="font-size:12px;color:#6a7a9a;margin-bottom:4px;" id="solo-progress-label">Question 1 of 20</div>
+        <div class="progress-bar"><div class="progress-fill" id="solo-progress-bar" style="width:0%;background:linear-gradient(90deg,#0040c0,#00ccff);"></div></div>
+      </div>
+      <div class="center" style="min-width:80px;">
+        <div class="orbitron neon-text" style="font-size:30px;font-weight:900;line-height:1;" id="solo-timer">120</div>
+        <div style="font-size:11px;color:#5a6a8a;">seconds</div>
+      </div>
+      <div style="min-width:60px;text-align:right;">
+        <div class="neon-green" style="font-weight:700;font-size:18px;" id="solo-score">0</div>
+        <div style="font-size:11px;color:#5a6a8a;">points</div>
+      </div>
+    </div>
+    <!-- Timer bar -->
+    <div class="timer-bar"><div class="timer-fill" id="solo-timer-bar" style="width:100%;"></div></div>
+    <!-- Question -->
+    <div style="display:flex;align-items:center;justify-content:center;padding:24px 20px;min-height:calc(100vh - 80px);">
+      <div style="width:100%;max-width:600px;">
+        <div class="glass glow-border" style="border-radius:20px;padding:32px;margin-bottom:20px;text-align:center;">
+          <div style="font-size:12px;color:#6a7a9a;margin-bottom:12px;letter-spacing:2px;" id="solo-q-num">QUESTION 1</div>
+          <h2 style="font-size:22px;font-weight:700;line-height:1.4;color:#f0f4ff;" id="solo-question"></h2>
+        </div>
+        <div id="solo-options"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SOLO RESULTS PAGE (Single Player) ═══ -->
+<div id="page-solo-results" class="page" style="z-index:1;padding:24px 20px 60px;justify-content:flex-start;align-items:center;">
+  <div class="fade-in" style="width:100%;max-width:520px;">
+    <div class="flex-center gap12 mb32" style="justify-content:center;">
+      <div style="width:36px;height:36px;background:linear-gradient(135deg,#0040c0,#0080ff);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">🎮</div>
+      <span class="orbitron neon-text" style="font-size:20px;letter-spacing:2px;">QUIZ MATE</span>
+    </div>
+    <div class="center mb24">
+      <div style="font-size:40px;">🏁</div>
+      <h1 class="orbitron neon-text" style="font-size:28px;margin-top:8px;">Quiz Complete!</h1>
+    </div>
+    <div class="glass glow-border" style="border-radius:20px;padding:28px;margin-bottom:24px;text-align:center;">
+      <div style="font-size:13px;color:#6a7a9a;margin-bottom:4px;">Your score</div>
+      <div class="orbitron" style="font-size:48px;font-weight:900;color:#00ccff;" id="solo-final-score">0</div>
+      <div style="font-size:13px;color:#6a7a9a;margin-top:4px;" id="solo-final-correct">0/0 correct</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <button class="btn-primary" onclick="replaySoloQuiz()">🔄 Play Again</button>
+      <button class="btn-secondary" onclick="exitSoloToHome()">🚪 Exit to Home</button>
     </div>
   </div>
 </div>
@@ -835,7 +982,7 @@ Answer: B</pre>
         <!-- AI GENERATE PANEL -->
         <div id="import-panel-ai" style="display:none;background:rgba(168,85,247,0.05);border:1px solid rgba(168,85,247,0.3);border-radius:14px;padding:20px;margin-bottom:16px;">
           <h4 style="font-size:14px;font-weight:700;margin-bottom:4px;color:#00ccff;">✨ AI Question Generator</h4>
-          <p style="font-size:12px;color:#6a7a9a;margin-bottom:14px;">Powered by Groq (Llama 3.3) — generates fresh questions on any topic instantly</p>
+          <p style="font-size:12px;color:#6a7a9a;margin-bottom:14px;">Powered by Groq (GPT-OSS) — generates fresh questions on any topic instantly</p>
           <span class="label">TOPIC / CATEGORY</span>
           <input class="input-field mb12" id="ai-topic" placeholder="e.g. Football, World History, Science, Politics, Music...">
           <div style="display:flex;gap:12px;margin-bottom:12px;align-items:flex-end;">
@@ -1964,6 +2111,12 @@ function setupRoomListeners(){
             if(data.hostToken) sessionStorage.setItem('qm_host_token',data.hostToken);
             if(data.settings)  gameSettings=data.settings;
             sessionStorage.setItem('qm_session',JSON.stringify({pin:s.pin,nick:s.nick,playerId:room.sessionId,isHost:true}));
+            // Refresh the entire admin dashboard UI after reconnect so all buttons
+            // are wired to the new live room object. Without this, Start Game and
+            // Reset buttons silently fail because they still reference the old dead socket.
+            setupAdminDashboard();
+            showPage('admin');
+            showToast('✅ Reconnected successfully!','#00cc66',2500);
           };
         }
         room=await client.joinById(s.pin,{
@@ -3626,7 +3779,7 @@ async function aiGenerateQuestions(){
   const addBtn=document.getElementById('ai-add-btn');
   genBtn.disabled=true;genBtn.textContent='Generating...';
   statusEl.style.display='block';
-  document.getElementById('ai-status-text').textContent='Groq (Llama 3.3) is crafting your questions...';
+  document.getElementById('ai-status-text').textContent='Groq (GPT-OSS) is crafting your questions...';
 
   // Helper: robustly extract and parse JSON array from AI text
   function extractJsonArray(raw){
@@ -3700,7 +3853,7 @@ async function aiGenerateQuestions(){
       const needed=count-collected.length;
       const batchNeeded=Math.min(needed,BATCH_SIZE);
       document.getElementById('ai-status-text').textContent=
-        attempts===1?'Groq (Llama 3.3) is crafting your questions...':
+        attempts===1?'Groq (GPT-OSS) is crafting your questions...':
         'Getting more questions ('+collected.length+'/'+count+' so far)...';
       try{
         const batch=await fetchBatch(batchNeeded,attempts);
@@ -4289,6 +4442,234 @@ async function showBlitzResults(){
 
   // Next-round handling is via room.onMessage('roundReset') in setupRoomListeners()
 }
+// ══════════════════════════════════════════════════════════════
+// SINGLE PLAYER MODE (Solo vs AI)
+// Fully self-contained — does not touch room, quizState, activeQuestions,
+// gameSettings, or any multiplayer function. Runs 100% client-side,
+// no Colyseus room is ever created for this mode.
+// ══════════════════════════════════════════════════════════════
+
+let soloQuestions=[];
+let soloState={current:0,score:0,correctCount:0,selected:null,finished:false};
+let soloSettings={questionCount:20,timerDuration:120,difficulty:'medium',topic:''};
+
+// Reuses the exact same JSON-extraction approach as the multiplayer AI generator,
+// duplicated here (not shared) so nothing about the existing admin AI panel
+// can ever be affected by changes made for solo mode, or vice versa.
+function _soloExtractJsonArray(raw){
+  let text=raw.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
+  const start=text.indexOf('[');
+  if(start===-1)throw new Error('No JSON array found in response');
+  let depth=0,end=-1;
+  for(let i=start;i<text.length;i++){
+    if(text[i]==='[')depth++;
+    else if(text[i]===']'){depth--;if(depth===0){end=i;break;}}
+  }
+  let jsonStr;
+  if(end===-1){
+    jsonStr=text.slice(start);
+    let d=0;let inStr=false;let esc=false;
+    for(const ch of jsonStr){
+      if(esc){esc=false;continue;}
+      if(ch==='\\'){esc=true;continue;}
+      if(ch==='"'){inStr=!inStr;continue;}
+      if(inStr)continue;
+      if(ch==='{'||ch==='[')d++;
+      else if(ch==='}'||ch===']')d--;
+    }
+    if(inStr)jsonStr+='"';
+    while(d>0){jsonStr+='}';d--;}
+    if(!jsonStr.trimEnd().endsWith(']'))jsonStr+=']';
+    jsonStr=jsonStr.replace(/,(\s*[}\]])/g,'$1');
+  }else{
+    jsonStr=text.slice(start,end+1);
+    jsonStr=jsonStr.replace(/,(\s*[}\]])/g,'$1');
+  }
+  return JSON.parse(jsonStr);
+}
+
+async function _soloFetchBatch(topic,difficulty,needed){
+  const prompt='You are a quiz expert. Generate exactly '+needed+' multiple-choice quiz questions about: "'+topic+'". Difficulty: '+difficulty+'. STRICT RULES: (1) Return ONLY a valid JSON array with NO other text, NO markdown, NO backticks, NO explanation. (2) Each item must have keys: "q" (string), "options" (array of exactly 4 strings), "answer" (integer 0-3, zero-based index of correct option). (3) Ensure factual accuracy. (4) All '+needed+' questions must fit entirely in the response. Example format: [{"q":"Question?","options":["A","B","C","D"],"answer":0}]';
+  const res=await fetch('https://aged-bird-2087.benefit6925.workers.dev/',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({prompt,max_tokens:4000})
+  });
+  if(!res.ok)throw new Error('AI service error: '+res.status);
+  const data=await res.json();
+  let raw=null;
+  try{raw=data.choices[0].message.content;}catch(ex){raw=null;}
+  if(!raw)throw new Error('No response from AI');
+  const parsed=_soloExtractJsonArray(raw);
+  if(!Array.isArray(parsed))throw new Error('Invalid response format');
+  return parsed.filter(q=>q&&q.q&&typeof q.q==='string'&&Array.isArray(q.options)&&q.options.length===4&&q.options.every(o=>typeof o==='string'&&o.trim())&&typeof q.answer==='number'&&q.answer>=0&&q.answer<=3);
+}
+
+async function startSoloQuizFlow(){
+  const topic=document.getElementById('solo-topic').value.trim();
+  const errEl=document.getElementById('solo-setup-error');
+  errEl.style.display='none';
+  if(!topic){errEl.textContent='Please enter a topic or category.';errEl.style.display='block';return;}
+
+  soloSettings.topic=topic;
+  soloSettings.questionCount=parseInt(getSelectedPill('solo-setting-count'))||20;
+  soloSettings.timerDuration=parseInt(getSelectedPill('solo-setting-timer'))||120;
+  soloSettings.difficulty=getSelectedPill('solo-setting-difficulty')||'medium';
+
+  showPage('solo-loading');
+  const loadingText=document.getElementById('solo-loading-text');
+
+  try{
+    let collected=[];
+    const seenQs=new Set();
+    let attempts=0;
+    const MAX_ATTEMPTS=5;
+    const BATCH_SIZE=Math.min(10,soloSettings.questionCount);
+
+    while(collected.length<soloSettings.questionCount&&attempts<MAX_ATTEMPTS){
+      attempts++;
+      const needed=soloSettings.questionCount-collected.length;
+      const batchNeeded=Math.min(needed,BATCH_SIZE);
+      if(loadingText)loadingText.textContent=attempts===1?'Groq (GPT-OSS) is crafting your questions...':'Getting more questions ('+collected.length+'/'+soloSettings.questionCount+' so far)...';
+      try{
+        const batch=await _soloFetchBatch(soloSettings.topic,soloSettings.difficulty,batchNeeded);
+        for(const q of batch){
+          const key=q.q.trim().toLowerCase();
+          if(!seenQs.has(key)&&collected.length<soloSettings.questionCount){
+            seenQs.add(key);
+            collected.push(q);
+          }
+        }
+      }catch(batchErr){
+        if(attempts>=MAX_ATTEMPTS)throw batchErr;
+        console.warn('Solo batch attempt '+attempts+' failed:',batchErr.message);
+      }
+    }
+
+    if(collected.length===0)throw new Error('No valid questions in response');
+    soloQuestions=collected.slice(0,soloSettings.questionCount);
+    _soloBeginGame();
+  }catch(e){
+    showPage('solo-setup');
+    const errEl2=document.getElementById('solo-setup-error');
+    errEl2.textContent='AI Error: '+(e.message||'Unknown error. Try again.');
+    errEl2.style.display='block';
+  }
+}
+
+function _soloBeginGame(){
+  soloState={current:0,score:0,correctCount:0,selected:null,finished:false,questionStartTime:Date.now()};
+  showPage('solo-quiz');
+  _soloRenderQuestion();
+  _soloStartTimer();
+}
+
+function _soloRenderQuestion(){
+  const i=soloState.current;
+  const q=soloQuestions[i];
+  if(!q)return;
+  const total=soloQuestions.length;
+  document.getElementById('solo-progress-label').textContent='Question '+(i+1)+' of '+total;
+  document.getElementById('solo-progress-bar').style.width=((i+1)/total*100)+'%';
+  document.getElementById('solo-q-num').textContent='QUESTION '+(i+1);
+  document.getElementById('solo-question').textContent=q.q;
+  document.getElementById('solo-score').textContent=soloState.score;
+  const optsEl=document.getElementById('solo-options');
+  if(optsEl)optsEl.innerHTML=q.options.map((opt,idx)=>
+    `<button class="answer-btn" id="solo-opt-${idx}" onclick="handleSoloAnswer(${idx})">
+      <span style="font-size:12px;color:#6a7a9a;margin-right:8px;">${['A','B','C','D'][idx]}</span>${escHtml(opt)}
+    </button>`
+  ).join('');
+  soloState.questionStartTime=Date.now();
+}
+
+function handleSoloAnswer(idx){
+  if(soloState.selected!==null||soloState.finished)return;
+  soloState.selected=idx;
+  document.querySelectorAll('#solo-options .answer-btn').forEach(b=>b.disabled=true);
+
+  const q=soloQuestions[soloState.current];
+  const correct=idx===q.answer;
+  if(correct){
+    soloState.score+=10;
+    soloState.correctCount++;
+  }
+  document.getElementById('solo-score').textContent=soloState.score;
+
+  const chosenBtn=document.getElementById('solo-opt-'+idx);
+  const correctBtn=document.getElementById('solo-opt-'+q.answer);
+  if(chosenBtn)chosenBtn.classList.add(correct?'correct':'wrong');
+  if(!correct&&correctBtn)correctBtn.classList.add('correct');
+
+  const isLastQuestion=soloState.current>=soloQuestions.length-1;
+  setTimeout(()=>{
+    if(soloState.finished)return;
+    if(isLastQuestion){
+      finishSoloQuiz();
+    }else{
+      soloState.current++;
+      soloState.selected=null;
+      _soloRenderQuestion();
+    }
+  },1500);
+}
+
+function _soloStartTimer(){
+  clearInterval(window._soloTimerInterval);
+  if(window._soloTimerRAF){cancelAnimationFrame(window._soloTimerRAF);window._soloTimerRAF=null;}
+  const dur=soloSettings.timerDuration||120;
+  const endTime=Date.now()+(dur*1000);
+
+  function tick(){
+    if(soloState.finished){window._soloTimerRAF=null;return;}
+    const tl=Math.max(0,(endTime-Date.now())/1000);
+    const tlr=Math.min(dur,Math.round(tl));
+    const el=document.getElementById('solo-timer');
+    if(el){
+      el.textContent=tlr;
+      el.className='orbitron '+(tl<20?'timer-critical':'neon-text');
+    }
+    const bar=document.getElementById('solo-timer-bar');
+    if(bar){
+      bar.style.width=Math.min(100,(tl/dur*100))+'%';
+      bar.style.background=tl<20?'#ff4444':tl<40?'#ff8800':'#00ccff';
+    }
+    if(tl<=0){
+      window._soloTimerRAF=null;
+      finishSoloQuiz();
+      return;
+    }
+    window._soloTimerRAF=requestAnimationFrame(tick);
+  }
+  window._soloTimerRAF=requestAnimationFrame(tick);
+}
+
+function finishSoloQuiz(){
+  if(soloState.finished)return;
+  soloState.finished=true;
+  clearInterval(window._soloTimerInterval);
+  if(window._soloTimerRAF){cancelAnimationFrame(window._soloTimerRAF);window._soloTimerRAF=null;}
+
+  document.getElementById('solo-final-score').textContent=soloState.score;
+  document.getElementById('solo-final-correct').textContent=soloState.correctCount+'/'+soloQuestions.length+' correct';
+  showPage('solo-results');
+}
+
+function replaySoloQuiz(){
+  // Erase this run's record entirely and go back to setup to generate a fresh quiz.
+  soloQuestions=[];
+  soloState={current:0,score:0,correctCount:0,selected:null,finished:false};
+  document.getElementById('solo-topic').value='';
+  const errEl=document.getElementById('solo-setup-error');
+  if(errEl)errEl.style.display='none';
+  showPage('solo-setup');
+}
+
+function exitSoloToHome(){
+  soloQuestions=[];
+  soloState={current:0,score:0,correctCount:0,selected:null,finished:false};
+  showPage('mode-select');
+}
+
 if('serviceWorker' in navigator){
   window.addEventListener('load',()=>{
     // Resolve SW path relative to the script's origin so it works on GitHub Pages
