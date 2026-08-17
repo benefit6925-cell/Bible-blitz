@@ -165,6 +165,8 @@ html,body{min-height:100vh;background:#000830;color:#f0f4ff;font-family:'DM Sans
 
 /* ── MODE TAGS ── */
 .mode-tag{display:inline-block;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;}
+.topic-chip{background:rgba(0,128,255,0.1);border:1px solid rgba(0,128,255,0.3);color:#8ab4ff;font-size:12px;font-weight:600;padding:6px 12px;border-radius:16px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background 0.15s,border-color 0.15s;}
+.topic-chip:hover{background:rgba(0,128,255,0.2);border-color:rgba(0,128,255,0.5);}
 .mode-classic{background:rgba(0,128,255,0.12);border:1px solid rgba(0,128,255,0.25);color:#66b3ff;}
 .mode-lightning{background:rgba(255,215,0,0.12);border:1px solid rgba(255,215,0,0.25);color:#ffd700;}
 .mode-survival{background:rgba(255,68,68,0.12);border:1px solid rgba(255,68,68,0.25);color:#ff8888;}
@@ -460,6 +462,16 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
       <p class="muted mb24" style="font-size:14px;">AI generates fresh questions on any topic you pick</p>
       <span class="label">TOPIC / CATEGORY</span>
       <input class="input-field mb16" id="solo-topic" placeholder="e.g. Football, World History, Science, Politics, Music...">
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin:-6px 0 16px;" id="solo-topic-chips">
+        <button type="button" class="topic-chip" onclick="document.getElementById('solo-topic').value='General Knowledge'">General Knowledge</button>
+        <button type="button" class="topic-chip" onclick="document.getElementById('solo-topic').value='Sports'">Sports</button>
+        <button type="button" class="topic-chip" onclick="document.getElementById('solo-topic').value='Movies & TV'">Movies & TV</button>
+        <button type="button" class="topic-chip" onclick="document.getElementById('solo-topic').value='Science & Nature'">Science & Nature</button>
+        <button type="button" class="topic-chip" onclick="document.getElementById('solo-topic').value='History'">History</button>
+        <button type="button" class="topic-chip" onclick="document.getElementById('solo-topic').value='Music'">Music</button>
+        <button type="button" class="topic-chip" onclick="document.getElementById('solo-topic').value='Geography'">Geography</button>
+        <button type="button" class="topic-chip" onclick="document.getElementById('solo-topic').value='Technology'">Technology</button>
+      </div>
       <div class="error-box" id="solo-setup-error"></div>
     </div>
 
@@ -4504,6 +4516,8 @@ async function _soloFetchBatch(topic,difficulty,needed){
   return parsed.filter(q=>q&&q.q&&typeof q.q==='string'&&Array.isArray(q.options)&&q.options.length===4&&q.options.every(o=>typeof o==='string'&&o.trim())&&typeof q.answer==='number'&&q.answer>=0&&q.answer<=3);
 }
 
+const SOLO_POOL_ENDPOINT='https://quizmate-server.onrender.com/solo-questions';
+
 async function startSoloQuizFlow(){
   const topic=document.getElementById('solo-topic').value.trim();
   const errEl=document.getElementById('solo-setup-error');
@@ -4517,7 +4531,30 @@ async function startSoloQuizFlow(){
 
   showPage('solo-loading');
   const loadingText=document.getElementById('solo-loading-text');
+  if(loadingText)loadingText.textContent='Preparing your questions...';
 
+  // ── Try the Render question pool first (instant for popular topics,
+  //    saves our AI quota). Falls back to calling the AI Worker directly
+  //    if Render is unreachable or returns an error, so single-player
+  //    never fully breaks even if the pool server has a bad moment. ──
+  try{
+    const url=SOLO_POOL_ENDPOINT+'?topic='+encodeURIComponent(soloSettings.topic)+
+      '&count='+soloSettings.questionCount+'&difficulty='+encodeURIComponent(soloSettings.difficulty);
+    const res=await fetch(url,{method:'GET'});
+    if(res.ok){
+      const data=await res.json();
+      if(Array.isArray(data.questions)&&data.questions.length>0){
+        soloQuestions=data.questions.slice(0,soloSettings.questionCount);
+        _soloBeginGame();
+        return;
+      }
+    }
+    throw new Error('Pool endpoint returned no questions');
+  }catch(poolErr){
+    console.warn('Solo pool unavailable, falling back to direct AI call:',poolErr.message);
+  }
+
+  // ── Fallback: original direct-to-Worker generation ──
   try{
     let collected=[];
     const seenQs=new Set();
