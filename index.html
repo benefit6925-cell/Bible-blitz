@@ -4633,6 +4633,22 @@ async function startSoloQuizFlow(){
     if(res.ok){
       const data=await res.json();
       if(Array.isArray(data.questions)&&data.questions.length>0){
+        if(data.source==='bank_fallback'){
+          // Custom topic couldn't be generated (AI down/quota spent) and
+          // the server silently substituted General Knowledge — don't
+          // spring that on the player unannounced. Offer the same
+          // preset-swap choice multiplayer hosts get instead.
+          showPage('solo-setup');
+          const errEl3=document.getElementById('solo-setup-error');
+          errEl3.innerHTML='<div>Couldn\'t generate questions about "'+escHtml(data.requestedTopic||soloSettings.topic)+'".</div>'+
+            '<div style="margin-top:8px;">Switch to a preset topic instead?</div>'+
+            '<select id="solo-fallback-topic" style="margin-top:6px;padding:6px 8px;border-radius:6px;">'+
+            QUESTION_BANK_TOPICS.map(t=>'<option value="'+escHtml(t)+'">'+escHtml(t)+'</option>').join('')+
+            '</select> '+
+            '<button class="btn" style="padding:6px 12px;" onclick="soloUseFallbackTopic()">Use this topic</button>';
+          errEl3.style.display='block';
+          return;
+        }
         soloQuestions=data.questions.slice(0,soloSettings.questionCount);
         _soloBeginGame();
         return;
@@ -4680,6 +4696,17 @@ async function startSoloQuizFlow(){
     errEl2.textContent='AI Error: '+(e.message||'Unknown error. Try again.');
     errEl2.style.display='block';
   }
+}
+
+// Called when a player, after a custom-topic fallback notice, picks a
+// preset topic from the inline selector instead (see startSoloQuizFlow).
+// Just re-runs the normal flow with that topic — preset topics always
+// resolve instantly from the pool/bank, no AI call involved.
+function soloUseFallbackTopic(){
+  const select=document.getElementById('solo-fallback-topic');
+  const topic=select?select.value:QUESTION_BANK_TOPICS[0];
+  document.getElementById('solo-topic').value=topic;
+  startSoloQuizFlow();
 }
 
 function _soloBeginGame(){
