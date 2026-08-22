@@ -471,6 +471,7 @@ details[open]>summary::before{content:'▼ ';font-size:10px;}
         <button type="button" class="topic-chip" onclick="document.getElementById('solo-topic').value='Music'">Music</button>
         <button type="button" class="topic-chip" onclick="document.getElementById('solo-topic').value='Geography'">Geography</button>
         <button type="button" class="topic-chip" onclick="document.getElementById('solo-topic').value='Technology'">Technology</button>
+        <button type="button" class="topic-chip" onclick="document.getElementById('solo-topic').value='Mixed'">🎲 Mixed</button>
       </div>
       <div class="error-box" id="solo-setup-error"></div>
     </div>
@@ -3777,6 +3778,21 @@ async function processCSVImport(input){
   input.value='';toggleImportPanel('csv');
 }
 
+// Mirrors the 8 preset topics the server keeps a pre-made question bank
+// for (see soloQuestionPool.js BANK_FILES). Used only as a fallback when
+// the live AI Worker call fails — never called on the happy path.
+const QUESTION_BANK_TOPICS=['General Knowledge','Sports','Movies & TV','Science & Nature','History','Music','Geography','Technology','Mixed'];
+const QUESTION_BANK_ENDPOINT='https://quizmate-server.onrender.com/question-bank';
+
+async function _fetchFromQuestionBank(topic,count){
+  const url=QUESTION_BANK_ENDPOINT+'?topic='+encodeURIComponent(topic)+'&count='+count;
+  const res=await fetch(url,{method:'GET'});
+  if(!res.ok)throw new Error('Question bank unavailable');
+  const data=await res.json();
+  if(!Array.isArray(data.questions)||data.questions.length===0)throw new Error('Question bank returned no questions');
+  return data.questions;
+}
+
 let aiGeneratedQuestions=[];
 async function aiGenerateQuestions(){
   const topic=document.getElementById('ai-topic').value.trim();
@@ -3908,9 +3924,82 @@ async function aiGenerateQuestions(){
     },2000);
     return;
   }catch(e){
-    errEl.textContent='AI Error: '+(e.message||'Unknown error. Try again.');errEl.style.display='block';genBtn.textContent='✨ Generate with AI';
+    // AI generation failed — try the pre-made question bank before
+    // giving up. For a topic that's already one of our 8 presets this
+    // is a silent, same-topic swap (still what the host asked for, just
+    // not freshly generated). For a genuinely custom topic there's no
+    // bank to match, so offer the host a one-click switch instead of a
+    // dead-end error screen.
+    const normalizedTopic=topic.trim().toLowerCase();
+    const presetMatch=QUESTION_BANK_TOPICS.find(t=>t.toLowerCase()===normalizedTopic);
+    if(presetMatch){
+      try{
+        const bankQs=await _fetchFromQuestionBank(presetMatch,count);
+        aiGeneratedQuestions=bankQs.slice(0,count);
+        const added=await importQuestionsToGame(aiGeneratedQuestions);
+        errEl.style.display='none';
+        statusEl.style.display='none';
+        previewEl.style.display='block';
+        document.getElementById('ai-preview-label').textContent='✅ '+added+' of '+count+' questions added (from saved question bank)!';
+        document.getElementById('ai-preview-list').innerHTML='';
+        aiGeneratedQuestions=[];
+        addBtn.style.display='none';
+        genBtn.disabled=false;genBtn.textContent='✨ Generate with AI';
+        setTimeout(()=>{
+          toggleImportPanel('ai');
+          document.getElementById('ai-topic').value='';
+          document.getElementById('ai-preview').style.display='none';
+        },2000);
+        return;
+      }catch(bankErr){
+        errEl.textContent='AI questions are temporarily unavailable and the backup question bank could not be reached. Please try again shortly.';
+        errEl.style.display='block';genBtn.textContent='✨ Generate with AI';
+      }
+    }else{
+      errEl.innerHTML='<div>AI questions are temporarily unavailable for "'+escHtml(topic)+'".</div>'+
+        '<div style="margin-top:8px;">Switch to a preset topic instead?</div>'+
+        '<select id="ai-fallback-topic" style="margin-top:6px;padding:6px 8px;border-radius:6px;">'+
+        QUESTION_BANK_TOPICS.map(t=>'<option value="'+escHtml(t)+'">'+escHtml(t)+'</option>').join('')+
+        '</select> '+
+        '<button class="btn" style="padding:6px 12px;" onclick="aiUseFallbackTopic('+count+')">Use this topic</button>';
+      errEl.style.display='block';
+      genBtn.textContent='✨ Generate with AI';
+    }
   }
   genBtn.disabled=false;statusEl.style.display='none';
+}
+
+// Called when a host, after a custom-topic AI failure, picks a preset
+// topic from the inline fallback selector instead (see catch block above).
+async function aiUseFallbackTopic(count){
+  const select=document.getElementById('ai-fallback-topic');
+  const topic=select?select.value:QUESTION_BANK_TOPICS[0];
+  const errEl=document.getElementById('ai-error');
+  const statusEl=document.getElementById('ai-status');
+  const previewEl=document.getElementById('ai-preview');
+  const genBtn=document.getElementById('ai-generate-btn');
+  const addBtn=document.getElementById('ai-add-btn');
+  try{
+    const bankQs=await _fetchFromQuestionBank(topic,count);
+    aiGeneratedQuestions=bankQs.slice(0,count);
+    const added=await importQuestionsToGame(aiGeneratedQuestions);
+    errEl.style.display='none';
+    statusEl.style.display='none';
+    previewEl.style.display='block';
+    document.getElementById('ai-preview-label').textContent='✅ '+added+' of '+count+' '+topic+' questions added!';
+    document.getElementById('ai-preview-list').innerHTML='';
+    aiGeneratedQuestions=[];
+    addBtn.style.display='none';
+    genBtn.textContent='✨ Generate with AI';
+    setTimeout(()=>{
+      toggleImportPanel('ai');
+      document.getElementById('ai-topic').value='';
+      document.getElementById('ai-preview').style.display='none';
+    },2000);
+  }catch(e){
+    errEl.textContent='Backup question bank is unavailable right now. Please try again shortly.';
+    errEl.style.display='block';
+  }
 }
 
 async function aiAddToGame(){
