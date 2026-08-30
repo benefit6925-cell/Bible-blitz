@@ -2131,6 +2131,13 @@ function setupRoomListeners(){
             showPage('admin');
             showToast('✅ Reconnected successfully!','#00cc66',2500);
           };
+        }else{
+          // FIX — Players never had a joinAck handler registered on reconnect, so the
+          // server's resume data (questionIndex, score, activeQuestions, etc.) was
+          // silently dropped every time a player reconnected — leaving them stuck on
+          // whatever screen they were on, which could look like "starting over".
+          // _resumePlayerSession() below actually puts them back where they left off.
+          _registerPlayerReconnectHandler(s);
         }
         room=await client.joinById(s.pin,{
           pin:s.pin,
@@ -2189,6 +2196,11 @@ async function _silentRejoin(){
           if(data.settings)  gameSettings=data.settings;
           sessionStorage.setItem('qm_session',JSON.stringify({pin:s.pin,nick:s.nick,playerId:room.sessionId,isHost:true}));
         };
+      }else{
+        // FIX — same missing-handler bug as the onLeave rejoin path above: without
+        // this, a player's silent background/foreground reconnect (visibilitychange,
+        // 'online' event) never applies the server's resume data.
+        _registerPlayerReconnectHandler(s);
       }
       room=await client.joinById(s.pin,{
         pin:s.pin,nickname:s.nick,isHost:!!s.isHost||!!hostToken,reconnectToken,hostToken,
@@ -2210,6 +2222,106 @@ document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState==='visible') _silentRejoin();
 });
 window.addEventListener('online',()=>{ _silentRejoin(); });
+
+// ══════════════════════════════════════════
+// PLAYER RECONNECT RESUME
+// ══════════════════════════════════════════
+// Registers the joinAck handler for a reconnecting (non-host) player.
+// Mirrors the host's handler above — this was previously missing entirely
+// for players, meaning the server's resume data was silently dropped.
+function _registerPlayerReconnectHandler(s){
+  _pendingJoinAckHandler=(data)=>{
+    if(data.reconnectToken) sessionStorage.setItem('qm_reconnect_token',data.reconnectToken);
+    sessionStorage.setItem('qm_session',JSON.stringify({pin:s.pin,nick:s.nick,playerId:room.sessionId,reconnectToken:data.reconnectToken||''}));
+    _resumePlayerSession(data);
+  };
+}
+
+// Puts a reconnecting player back exactly where the server says they are —
+// same question, same score, same correct-count — instead of the app
+// defaulting to a blank/fresh quiz state. This is the actual fix for
+// "reconnected and started over from question 1".
+function _resumePlayerSession(data){
+  gameSettings = data.settings || gameSettings;
+
+  // No live round to resume into — just land back in the lobby.
+  if(data.status==='lobby'){
+    setupLobby({settings:data});
+    showPage('lobby');
+    showToast('✅ Back in the lobby — you\'re all set!','#00cc66',2500);
+    return;
+  }
+
+  if(!data.activeQuestions || !data.activeQuestions.length){
+    document.getElementById('waiting-name').textContent = myNickname||'';
+    document.getElementById('waiting-pin').textContent  = myPin||'';
+    showPage('waiting');
+    startWaitingMode();
+    return;
+  }
+
+  activeQuestions = toArray(data.activeQuestions);
+  gameStartTime   = data.startTime;
+
+  // Was already eliminated or had finished before the drop — send them to the
+  // correct holding screen instead of back into live questions.
+  if(data.eliminated || data.finished){
+    quizState.score        = data.score||0;
+    quizState.correctCount = data.correctCount||0;
+    quizState.finished     = true;
+    quizState.eliminated   = !!data.eliminated;
+    const titleEl=document.getElementById('eliminated-score');
+    if(titleEl)titleEl.textContent=quizState.score;
+    const correctEl=document.getElementById('eliminated-correct');
+    if(correctEl)correctEl.textContent=quizState.correctCount+'/'+activeQuestions.length+' correct';
+    showPage('eliminated');
+    startSpectatorMode();
+    return;
+  }
+
+  // status==='active' = this player is joining mid-round for the first time
+  // (they weren't part of it before the drop) — wait for the next round.
+  if(data.status==='active'){
+    document.getElementById('waiting-name').textContent = myNickname;
+    document.getElementById('waiting-pin').textContent  = myPin;
+    showPage('waiting');
+    startWaitingMode();
+    return;
+  }
+
+  // status==='reconnected' — the real resume case.
+  const isSurvival = gameSettings.gameMode==='survival';
+  const isBlitz     = gameSettings.gameMode==='blitz';
+  const resumeIndex = isSurvival ? (data.playerQuestionIndex||0) : (data.questionIndex||0);
+
+  if(isBlitz){
+    blitzState.currentQ = Math.min(resumeIndex, activeQuestions.length-1);
+    showPage('blitz-quiz');
+    renderBlitzQuestion();
+    startBlitzQuestionTimer();
+    showToast('✅ Reconnected — resuming your quiz!','#00cc66',2500);
+    return;
+  }
+
+  quizState={
+    current: Math.min(resumeIndex, activeQuestions.length-1),
+    score: data.score||0,
+    correctCount: data.correctCount||0,
+    answers:{},
+    selected:null,
+    finished:false,
+    eliminated:false,
+    questionStartTime: Date.now()
+  };
+
+  showPage('quiz');
+  const isLightning=gameSettings.gameMode==='lightning';
+  document.getElementById('quiz-global-timer').style.display=(isLightning||isSurvival)?'none':'flex';
+  document.getElementById('quiz-q-timer').style.display=(isLightning||isSurvival)?'flex':'none';
+  document.getElementById('quiz-lives').style.display=isSurvival?'block':'none';
+  renderQuestion();
+  showToast('✅ Reconnected — resuming your quiz!','#00cc66',2500);
+}
 
 // ══════════════════════════════════════════
 // STATE
